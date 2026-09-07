@@ -14,6 +14,7 @@ from pydantic import BaseModel, field_validator
 from src.api.deps import get_current_user_pat_or_jwt, require_pat_only
 from src.infra.logging import get_logger
 from src.infra.sandbox.relay import _frames
+from src.infra.sandbox.relay.presence import publish_presence
 from src.infra.sandbox.relay.registry import (
     SandboxClientRegistry,
     parse_confirm_policy,
@@ -216,6 +217,7 @@ async def sandbox_channel(
     if machine_id:  # 多机属主：同机重连改写属主键，旧流心跳时据此退场
         await _redis().set(_owner_key(user.sub, machine_id), client_id, ex=35)
     stop = asyncio.Event()
+    await publish_presence(user.sub)  # 上线事件：注册成功即推，不等心跳
 
     async def generator():
         try:
@@ -234,6 +236,7 @@ async def sandbox_channel(
                 yield frame
         finally:
             await registry.unregister(user.sub, client_id, machine_id=machine_id)
+            await publish_presence(user.sub)  # 下线事件：断流即推（秒级感知）
 
     return StreamingResponse(
         generator(),
@@ -417,6 +420,7 @@ async def sandbox_machine_rename(
     if len(name) > 64:
         name = name[:64]
     await _registry().rename_machine(user.sub, machine_id, name)
+    await publish_presence(user.sub)
     return {"status": "ok", "machine_id": machine_id, "name": name}
 
 
@@ -427,6 +431,7 @@ async def sandbox_machine_set_default(
 ):
     """设默认机：无会话级选择时的执行目标。"""
     await _registry().set_default_machine(user.sub, machine_id)
+    await publish_presence(user.sub)
     return {"status": "ok", "default_machine_id": machine_id}
 
 
@@ -442,6 +447,7 @@ async def sandbox_machine_forget(
             ErrorCode.SANDBOX_MACHINE_NOT_FOUND,
             args={"machine": machine_id},
         )
+    await publish_presence(user.sub)
     return {"status": "ok"}
 
 
@@ -493,8 +499,10 @@ async def sandbox_offline(
     if machine_id:
         await registry.unregister(user.sub, "", machine_id)
         await _redis().delete(_owner_key(user.sub, machine_id))
+        await publish_presence(user.sub)
         return {"status": "offline", "machine_id": machine_id}
     active = await registry.get_active(user.sub)
     if active is not None:
         await registry.unregister(user.sub, active[0])
+    await publish_presence(user.sub)
     return {"status": "offline"}

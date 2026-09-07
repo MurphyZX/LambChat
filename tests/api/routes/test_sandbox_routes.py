@@ -127,6 +127,8 @@ class _FakeRegistry:
     def __init__(self):
         self.beats = 0
         self.active: tuple[str, str] | None = ("c1", "node-a")
+        self.resolved_target: str | None = None
+        self.machine_value: str = ""
         self.unregistered: list[tuple[str, str]] = []
         self.registered: list[tuple[str, str, str, str, str, str]] = []
         self.heartbeats: list[tuple[str, str, str, str, str, str]] = []
@@ -169,6 +171,12 @@ class _FakeRegistry:
 
     async def get_active(self, user_id):
         return self.active
+
+    async def resolve_target(self, user_id, machine_id=None):
+        return self.resolved_target
+
+    async def _machine_value(self, user_id, machine_id):
+        return self.machine_value
 
 
 async def test_channel_frames_hello_then_tool_call_then_heartbeat(monkeypatch):
@@ -1278,3 +1286,116 @@ async def test_upload_stream_endpoint_serves_binary_frames(monkeypatch):
 
     assert resp.status_code == 200
     assert resp.content == b"".join(frames)
+
+# ---------------------------------------------------------------------------
+# presence 推送挂钩：注册/注销/优雅下线/机器管理都推 presence 快照
+# ---------------------------------------------------------------------------
+
+
+def _presence_probe(monkeypatch, registry):
+    """捕获 publish_presence 调用并替换为记录器。"""
+    published: list[str] = []
+
+    async def fake_publish(user_id: str) -> None:
+        published.append(user_id)
+
+    monkeypatch.setattr(sandbox_route, "publish_presence", fake_publish)
+    return published
+
+
+def _machines_app(monkeypatch, registry):
+    app = FastAPI()
+    register_error_handlers(app)
+    app.include_router(sandbox_route.router, prefix="/api/sandbox", tags=["Sandbox"])
+    app.dependency_overrides[api_deps.get_current_user_pat_or_jwt] = _fake_user
+    monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
+    return app
+
+
+class _MachinesFakeRegistry(_FakeRegistry):
+    """机器管理端点所需的注册表方法。"""
+
+    def __init__(self):
+        super().__init__()
+        self.renamed: list[tuple[str, str, str]] = []
+        self.defaults: list[tuple[str, str]] = []
+        self.forgotten: list[tuple[str, str]] = []
+
+    async def list_machines(self, user_id, include_offline=False):
+        return []
+
+    async def get_default_machine(self, user_id):
+        return None
+
+    async def rename_machine(self, user_id, machine_id, name):
+        self.renamed.append((user_id, machine_id, name))
+
+    async def set_default_machine(self, user_id, machine_id):
+        self.defaults.append((user_id, machine_id))
+
+    async def forget_machine(self, user_id, machine_id):
+        self.forgotten.append((user_id, machine_id))
+        return True
+
+
+async def test_presence_pushed_on_machine_rename_default_forget(monkeypatch):
+    registry = _MachinesFakeRegistry()
+    published = _presence_probe(monkeypatch, registry)
+    app = _machines_app(monkeypatch, registry)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        await client.patch("/api/sandbox/machines/m1", json={"name": "我的机器"})
+        await client.put("/api/sandbox/machines/m1/default")
+        await client.delete("/api/sandbox/machines/m1")
+
+    assert published == ["u1", "u1", "u1"]
+    assert registry.renamed == [("u1", "m1", "我的机器")]
+    assert registry.defaults == [("u1", "m1")]
+    assert registry.forgotten == [("u1", "m1")]
+
+
+async def test_presence_pushed_on_graceful_offline(monkeypatch):
+    registry = _MachinesFakeRegistry()
+    registry.active = ("c1", "node-a")
+    published = _presence_probe(monkeypatch, registry)
+    monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
+    monkeypatch.setattr(sandbox_route, "_redis", lambda: _FakeRedis())
+
+    # 直接调用端点函数（require_pat_only 是工厂闭包，Depends 在 import 期已固定）；
+    # offline 走 legacy 活跃连接注销
+    resp = await sandbox_route.sandbox_offline(machine_id="", user=_fake_user())
+    assert resp["status"] == "offline"
+    assert published == ["u1"]
+
+    resp2 = await sandbox_route.sandbox_offline(machine_id="m1", user=_fake_user())
+    assert resp2["status"] == "offline"
+    assert resp2["machine_id"] == "m1"
+    assert published == ["u1", "u1"]
+
+
+async def test_presence_pushed_on_channel_register_and_disconnect(monkeypatch):
+    """channel 端点：注册成功即推 presence（上线事件）；流关闭（finally 注销）再推（下线事件）。"""
+    registry = _FakeRegistry()
+    registry.resolved_target = None
+    published = _presence_probe(monkeypatch, registry)
+    monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
+    monkeypatch.setattr(sandbox_route, "_redis", lambda: _FakeRedis())
+    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
+    monkeypatch.setattr(sandbox_route.settings, "SANDBOX_MIN_DAEMON_VERSION", "0.0.1")
+
+    user = _fake_user()
+    resp = await sandbox_route.sandbox_channel(version="0.4.0", machine_id="m1", user=user)
+    assert published == ["u1"]  # register 后、建流前推送
+
+    iterator = resp.body_iterator
+    chunks: list[str] = []
+    async for chunk in iterator:
+        chunks.append(chunk)
+        break  # 只读 hello 帧即关闭
+    await iterator.aclose()
+
+    assert chunks and "hello" in chunks[0]
+    assert published == ["u1", "u1"]  # finally 注销后再推
+    assert registry.unregistered  # 注销确实发生
