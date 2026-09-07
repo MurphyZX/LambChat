@@ -238,6 +238,20 @@ async def sandbox_channel(
     # 不能占用共享池；流关闭时 aclose 释放底层连接
     stream_redis = create_redis_client(isolated_pool=True)
 
+    async def _finalize_stream() -> None:
+        """断流清理：注销注册表 + 推送下线 presence。
+
+        必须经 ``asyncio.shield`` 以后台任务执行（见 generator 的 finally）——
+        客户端断开时 Starlette 在 anyio 取消域中取消流任务，被取消域内的
+        裸 ``await`` 会立即再抛 ``CancelledError``，清理代码无从完成，崩溃
+        感知退化为 35s TTL（真机 SIGKILL 冒烟实测：机器键平滑倒数至过期）。
+        """
+        with contextlib.suppress(Exception):
+            await stream_redis.aclose()
+        with contextlib.suppress(Exception):
+            await registry.unregister(user.sub, client_id, machine_id=machine_id)
+        await publish_presence(user.sub)  # 下线事件：断流即推（秒级感知）
+
     async def generator():
         try:
             async for frame in channel_frames(
@@ -255,10 +269,11 @@ async def sandbox_channel(
             ):
                 yield frame
         finally:
-            with contextlib.suppress(Exception):
-                await stream_redis.aclose()
-            await registry.unregister(user.sub, client_id, machine_id=machine_id)
-            await publish_presence(user.sub)  # 下线事件：断流即推（秒级感知）
+            finalize = asyncio.create_task(_finalize_stream())
+            # 正常结束：等清理完成（语义与旧实现一致）；被取消：shield 只中断
+            # 本处的等待，后台任务继续把清理跑完
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(finalize)
 
     return StreamingResponse(
         generator(),
