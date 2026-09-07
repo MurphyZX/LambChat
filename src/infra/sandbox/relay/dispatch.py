@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 
 from src.infra.sandbox.relay import _frames as _frames_codec
 from src.infra.sandbox.relay.registry import SandboxClientRegistry
-from src.infra.storage.redis import get_redis_client
+from src.infra.storage.redis import get_binary_redis_client, get_redis_client
 from src.kernel.config import settings
 from src.kernel.errors import AppError, ErrorCode
 
@@ -19,6 +19,12 @@ _STREAM_POLL_INTERVAL = 0.01
 
 def _redis():
     return get_redis_client()
+
+
+def _binary_redis():
+    """帧通道专用二进制客户端：stream/upblob list 里是裸二进制帧，共享客户端
+    （decode_responses=True）读取即抛 UnicodeDecodeError（2026-09-07 生产事故）。"""
+    return get_binary_redis_client()
 
 
 def _registry() -> SandboxClientRegistry:
@@ -153,7 +159,7 @@ async def dispatch_local_stream(
         "timeout": exec_timeout,
         "ts": time.time(),
     }
-    redis = _redis()
+    redis = _binary_redis()  # stream list 是裸二进制帧（req/resp 均为 JSON，bytes 兼容）
     stream_key = _stream_key(user_id, call_id)
     resp_key = f"sandbox:resp:{call_id}"
     await redis.rpush(registry.queue_key(user_id, target), json.dumps(req))
@@ -259,7 +265,7 @@ async def dispatch_local_stream_upload(
         "timeout": exec_timeout,
         "ts": time.time(),
     }
-    redis = _redis()
+    redis = _binary_redis()  # upblob list 是裸二进制帧（req/resp 均为 JSON，bytes 兼容）
     blob_key = _upblob_key(user_id, call_id)
     resp_key = f"sandbox:resp:{call_id}"
     await redis.rpush(registry.queue_key(user_id, target), json.dumps(req))

@@ -20,7 +20,7 @@ from src.infra.sandbox.relay.registry import (
     parse_daemon_platform,
     parse_daemon_version,
 )
-from src.infra.storage.redis import get_redis_client
+from src.infra.storage.redis import get_binary_redis_client, get_redis_client
 from src.kernel.config import settings
 from src.kernel.errors import AppError, ErrorCode
 from src.kernel.schemas.user import TokenPayload
@@ -44,6 +44,13 @@ def _owner_key(user_id: str, machine_id: str) -> str:
 
 def _redis():
     return get_redis_client()
+
+
+def _binary_redis():
+    """帧通道专用二进制客户端（decode_responses=False）：stream/upblob list
+    里是裸二进制帧，共享客户端读取即抛 UnicodeDecodeError（2026-09-07 生产
+    事故，见 storage.redis.get_binary_redis_connection_pool）。"""
+    return get_binary_redis_client()
 
 
 def _registry() -> SandboxClientRegistry:
@@ -287,7 +294,7 @@ async def sandbox_result_stream(
     膨胀与逐块 JSON 开销；解析在消费端 dispatch_local_stream），本端点只做
     三件事：帧/总量上限、逐帧 rpush、无 eof 帧断流的哨兵补齐。
     """
-    redis = _redis()
+    redis = _binary_redis()  # rpush 裸二进制帧；消费端 dispatch 同走二进制客户端
     key = f"sandbox:stream:{user.sub}:{call_id}"
     total = 0
     saw_eof = False
@@ -348,7 +355,7 @@ async def sandbox_upload_stream(
     list（有界窗口），本端点 lpop 逐帧转发为 chunked 响应直至 eof 帧——
     数据不过服务端内存整缓冲。总量上限已在生产者侧预检（max_bytes）。
     """
-    redis = _redis()
+    redis = _binary_redis()  # lpop 裸二进制帧，解码客户端读取即抛 UnicodeDecodeError
     key = f"sandbox:upblob:{user.sub}:{call_id}"
     deadline = time.monotonic() + float(settings.SANDBOX_LOCAL_STREAM_TIMEOUT) + 10.0
 
