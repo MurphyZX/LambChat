@@ -54,6 +54,10 @@ setup_rosetta_x86_64_toolchain() {
             | tar -xz -C "$uv_dir" --strip-components=1
     fi
     export PATH="$uv_dir:$PATH"
+    # 独立的 uv-managed Python 安装目录：uv 托管解释器目录按版本而非架构
+    # 区分——不隔离会复用宿主 arm64 CPython，产物静默变 arm64（实验首跑
+    # 即被下方的 machine() 断言拦截）
+    export UV_PYTHON_INSTALL_DIR="$REPO_ROOT/client/build/uv-python-x86_64"
     # 独立 venv：与宿主 arm64 .venv 隔离（uv run 按锁文件自动同步）；
     # 落 client/build/（已 gitignore，纯构建期产物）
     export UV_PROJECT_ENVIRONMENT="$REPO_ROOT/client/build/venv-daemon-x86_64"

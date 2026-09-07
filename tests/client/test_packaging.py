@@ -391,9 +391,14 @@ def test_build_script_cross_builds_via_rosetta_on_arm64_mac() -> None:
     # x86_64 uv 静态二进制下载（PATH 前置后 uv run/pyinstaller 全链 x86_64）
     assert "uv-x86_64-apple-darwin.tar.gz" in script
     assert "PATH=" in script
+    # uv 托管解释器目录按版本不按架构区分：不隔离会复用宿主 arm64 CPython
+    # （实验首跑：venv 里混入 arm64 解释器，产物险些静默变 arm64）
+    assert "UV_PYTHON_INSTALL_DIR" in script
     # 独立 venv：不污染宿主 arm64 .venv（落 client/build/，已 gitignore）
     assert "UV_PROJECT_ENVIRONMENT" in script
     assert "venv-daemon-x86_64" in script
+    # 防回归门禁：解释器架构现场断言（工具链退回 arm64 时立即失败）
+    assert 'platform.machine() == "x86_64"' in script
 
 
 def test_release_workflow_daemon_build_passes_target_triple() -> None:
