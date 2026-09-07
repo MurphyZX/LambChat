@@ -8,7 +8,7 @@ set -euo pipefail
 
 REPO="Yanyutin753/LambChat"
 # 稳定名资产随每次 release 重新上传，免 API 解析、免 GitHub 限流
-ASSET_URL="${LAMBCHAT_ASSET_URL:-https://github.com/${REPO}/releases/latest/download/LambChat-macOS-latest.app.tar.gz}"
+# （双架构各一份稳定名，按 CPU 架构路由）
 APP_DIR="${LAMBCHAT_INSTALL_DIR:-/Applications}"
 APP="$APP_DIR/LambChat.app"
 
@@ -17,10 +17,17 @@ die() { printf '\033[1;31m错误:\033[0m %s\n' "$*" >&2; exit 1; }
 
 [ "$(uname -s)" = "Darwin" ] || die "本脚本仅用于 macOS（Windows/Linux 请到下载页获取对应安装包）"
 case "$(uname -m)" in
-    arm64) ;;
-    x86_64) die "检测到 Intel Mac：当前安装包仅支持 Apple Silicon（arm64 架构）" ;;
+    arm64)
+        DEFAULT_ASSET="LambChat-macOS-Apple-Silicon-latest.app.tar.gz"
+        ARCH_LABEL="Apple Silicon"
+        ;;
+    x86_64)
+        DEFAULT_ASSET="LambChat-macOS-Intel-latest.app.tar.gz"
+        ARCH_LABEL="Intel"
+        ;;
     *) die "无法识别的 CPU 架构：$(uname -m)" ;;
 esac
+ASSET_URL="${LAMBCHAT_ASSET_URL:-https://github.com/${REPO}/releases/latest/download/${DEFAULT_ASSET}}"
 command -v curl >/dev/null 2>&1 || die "缺少 curl（终端执行 xcode-select --install 后重试）"
 command -v tar >/dev/null 2>&1 || die "缺少 tar"
 
@@ -30,7 +37,7 @@ command -v tar >/dev/null 2>&1 || die "缺少 tar"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-info "下载最新版 LambChat（约 70MB，视网络可能需要几分钟）..."
+info "下载最新版 LambChat（${ARCH_LABEL} 版，约 70MB，视网络可能需要几分钟）..."
 curl -fL --progress-bar -o "$tmp/LambChat.app.tar.gz" "$ASSET_URL" \
     || die "下载失败：$ASSET_URL（可重试，或手动下载 dmg 安装）"
 

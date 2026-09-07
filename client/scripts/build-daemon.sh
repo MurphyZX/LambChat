@@ -4,11 +4,16 @@
 # 产物链：
 #   client/pyinstaller.spec（入口 __main__.py，= python -m lambchat_sandbox）
 #     → client/dist/lambchat-daemon（单文件二进制；Windows 为 lambchat-daemon.exe）
-#     → frontend/src-tauri/binaries/lambchat-daemon-<host-triple>
+#     → frontend/src-tauri/binaries/lambchat-daemon-<triple>
 #       （Tauri externalBin 约定；Windows 要求 <triple>.exe 后缀）
 #
 # host triple 探测：优先 rustc -vV 的 host: 行（与 Tauri 打包机一致），
 # 无 rustc 时按 uname -m 映射 linux-gnu triple。
+#
+# 交叉目标（DAEMON_TARGET_TRIPLE 环境变量）：CI 在 arm64 macOS 上产 x86_64
+# sidecar 时注入（与 Tauri --target x86_64-apple-darwin 对齐）。PyInstaller
+# 不支持交叉编译，走 Rosetta 路径：换 x86_64 静态 uv（arm64 shell 里由
+# Rosetta 自动接手）+ 独立 venv，uv run 自动按锁文件同步 x86_64 解释器与依赖。
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -31,7 +36,32 @@ detect_host_triple() {
     esac
 }
 
-TRIPLE="$(detect_host_triple)"
+# arm64 宿主上产 x86_64 daemon（Rosetta 路径）。GitHub arm64 runner 预装
+# Rosetta，本地缺失时兜底自装；uv 版本锚定支持 pyproject default-index
+# 字段的当前版（与 CI setup-uv latest 对齐），可用 UV_X86_VERSION 覆盖。
+setup_rosetta_x86_64_toolchain() {
+    if ! /usr/bin/pgrep -q oahd; then
+            echo "==> 安装 Rosetta 2..."
+            softwareupdate --install-rosetta --agree-to-license
+        fi
+        local uv_version="${UV_X86_VERSION:-0.12.10}"
+    local uv_dir="$REPO_ROOT/client/build/uv-x86_64"
+    mkdir -p "$uv_dir"
+    if [ ! -x "$uv_dir/uv" ]; then
+        echo "==> 下载 x86_64 uv ${uv_version}（Rosetta 下运行，产 x86_64 工具链）..."
+        curl -fsSL \
+            "https://github.com/astral-sh/uv/releases/download/${uv_version}/uv-x86_64-apple-darwin.tar.gz" \
+            | tar -xz -C "$uv_dir" --strip-components=1
+    fi
+    export PATH="$uv_dir:$PATH"
+    # 独立 venv：与宿主 arm64 .venv 隔离（uv run 按锁文件自动同步）；
+    # 落 client/build/（已 gitignore，纯构建期产物）
+    export UV_PROJECT_ENVIRONMENT="$REPO_ROOT/client/build/venv-daemon-x86_64"
+    echo "==> Rosetta x86_64 工具链就绪: $(command -v uv) ($(uv --version))"
+    uv run python -c 'import platform; assert platform.machine() == "x86_64", platform.machine()'
+}
+
+TRIPLE="${DAEMON_TARGET_TRIPLE:-$(detect_host_triple)}"
 # Windows 产物带 .exe 后缀：PyInstaller 产出 lambchat-daemon.exe，且 Tauri
 # externalBin 在 Windows 上按 <name>-<triple>.exe 解析（CI windows runner 的
 # triple 探测走 rustc -vV host → x86_64-pc-windows-msvc）
@@ -45,8 +75,15 @@ TARGET="$REPO_ROOT/frontend/src-tauri/binaries/lambchat-daemon-${TRIPLE}${EXE_SU
 EXPECTED_VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' \
     "$REPO_ROOT/client/lambchat_sandbox/__init__.py")"
 
-echo "==> host triple: $TRIPLE"
+echo "==> daemon target triple: $TRIPLE"
 cd "$REPO_ROOT"
+
+# macOS arm64 宿主 × x86_64 目标：换 x86_64 工具链（Rust/Go sidecar 可交叉
+# 编译，PyInstaller 不行——这是本脚本的 Rosetta 路径存在的原因）
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ] \
+    && [ "$TRIPLE" = "x86_64-apple-darwin" ]; then
+    setup_rosetta_x86_64_toolchain
+fi
 
 echo "==> PyInstaller 打包 daemon（onefile）..."
 uv run pyinstaller client/pyinstaller.spec \

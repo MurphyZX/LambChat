@@ -63,16 +63,30 @@ jobs:
             updater_key: windows-x86_64
             updater_sig: "*_x64_en-US.msi.sig"
             updater_asset_suffix: Windows.msi
-          # M4 裁决：macOS 先 arm64 单架构（macos-14 原生），universal + lipo 属 M5
-          - label: macOS
+          # macOS 双架构（M5）：两条目都在 macos-14（arm64）上构建——Rust 侧
+          # 交叉编译 x86_64（rustup target），daemon 侧由 build-daemon.sh 的
+          # Rosetta 路径产 x86_64 sidecar（PyInstaller 不支持交叉编译）。
+          # asset_suffix 带架构：双 mac 构建产物不得同名互踩。
+          - label: macOS Apple Silicon
             runner: macos-14
             bundles: dmg,app
-            artifact_slug: macos
+            artifact_slug: macos-apple-silicon
             target: aarch64-apple-darwin
+            asset_suffix: macOS-Apple-Silicon
             pbs_platform: macos-arm64
             updater_key: darwin-aarch64
-            updater_sig: "*.app.tar.gz.sig"
-            updater_asset_suffix: macOS.app.tar.gz
+            updater_sig: "*_aarch64.app.tar.gz.sig"
+            updater_asset_suffix: macOS-Apple-Silicon.app.tar.gz
+          - label: macOS Intel
+            runner: macos-14
+            bundles: dmg,app
+            artifact_slug: macos-intel
+            target: x86_64-apple-darwin
+            asset_suffix: macOS-Intel
+            pbs_platform: macos-x64
+            updater_key: darwin-x86_64
+            updater_sig: "*_x64.app.tar.gz.sig"
+            updater_asset_suffix: macOS-Intel.app.tar.gz
 
     steps:
       - name: Checkout repository
@@ -154,7 +168,8 @@ jobs:
 
       - name: Add macOS Rust target
         if: runner.os == 'macOS'
-        run: rustup target add aarch64-apple-darwin
+        # 双架构条目各取所需（Intel 条目在 arm64 宿主上交叉编译 x86_64）
+        run: rustup target add ${{ matrix.target }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -188,6 +203,11 @@ jobs:
       - name: Build sandbox daemon sidecar (PyInstaller)
         shell: bash
         env:
+          # uv 安装方式与 lint.yml 保持一致。DAEMON_TARGET_TRIPLE：与
+          # Tauri --target 对齐的 sidecar triple（Intel 条目在 arm64 宿主上
+          # 触发 build-daemon.sh 的 Rosetta 路径；Linux/Windows 无 target 键
+          # → 空串 → 宿主探测，行为不变）。
+          DAEMON_TARGET_TRIPLE: ${{ matrix.target || '' }}
           # uv.lock pins a CN mirror; GH-hosted runners throttle under
           # uv's 50 parallel downloads (same mitigation as lint.yml).
           UV_CONCURRENT_DOWNLOADS: "8"
@@ -321,24 +341,23 @@ jobs:
             exit 1
           fi
           if [ -n "$app_path" ]; then
-            ditto -c -k --sequesterRsrc --keepParent "$app_path" "release-assets/LambChat-${RELEASE_TAG}-macOS.zip"
+            ditto -c -k --sequesterRsrc --keepParent "$app_path" "release-assets/LambChat-${RELEASE_TAG}-${{ matrix.asset_suffix }}.zip"
           else
             echo "No macOS .app bundle found; uploading DMG only."
           fi
-          cp "$dmg_path" "release-assets/LambChat-${RELEASE_TAG}-macOS.dmg"
+          cp "$dmg_path" "release-assets/LambChat-${RELEASE_TAG}-${{ matrix.asset_suffix }}.dmg"
           # Tauri updater 的 macOS 产物（createUpdaterArtifacts + 签名密钥）。
-          # 缺失会让 darwin-aarch64 条目被静默略过、mac 永远收不到更新，
+          # 缺失会让本架构 darwin 条目被静默略过、mac 永远收不到更新，
           # 因此这里直接失败而不是跳过。
           app_tgz="$(find "$bundle_root" -path '*/release/bundle/*' -name '*.app.tar.gz' -type f | sort | head -1 || true)"
           if [ -z "$app_tgz" ]; then
             echo "No macOS .app.tar.gz updater artifact found (requires TAURI_SIGNING_PRIVATE_KEY)"
             exit 1
           fi
-          cp "$app_tgz" "release-assets/LambChat-${RELEASE_TAG}-macOS.app.tar.gz"
-          # 稳定名副本：一键安装脚本（frontend/public/install.sh）按
-          # releases/latest/download/LambChat-macOS-latest.app.tar.gz 直链下载，
-          # 免版本号解析、免 API 限流。带版本名原件仍保留（updater 契约不变）。
-          cp "$app_tgz" "release-assets/LambChat-macOS-latest.app.tar.gz"
+          cp "$app_tgz" "release-assets/LambChat-${RELEASE_TAG}-${{ matrix.updater_asset_suffix }}"
+          # 稳定名副本（一键安装脚本按 releases/latest/download/<稳定名> 直链
+          # 下载，免版本号解析、免 API 限流）。双架构各一份稳定名。
+          cp "$app_tgz" "release-assets/LambChat-${{ matrix.asset_suffix }}-latest.app.tar.gz"
           # daemon sidecar 资产：保留 triple 原名（selfupdate 按 lambchat-daemon-<triple> 前缀匹配）
           cp frontend/src-tauri/binaries/lambchat-daemon-* release-assets/
 
@@ -756,7 +775,9 @@ jobs:
               ("windows-x86_64", "*_x64_en-US.msi.sig", f"LambChat-{tag}-Windows.msi"),
               ("linux-x86_64", "*_amd64.AppImage.sig", f"LambChat-{tag}-Linux-x86_64.AppImage"),
               ("linux-aarch64", "*_aarch64.AppImage.sig", f"LambChat-{tag}-Linux-arm64.AppImage"),
-              ("darwin-aarch64", "*.app.tar.gz.sig", f"LambChat-{tag}-macOS.app.tar.gz"),
+              # 双 darwin：sig 按 Tauri updater 产物名的 arch 段区分
+              ("darwin-aarch64", "*_aarch64.app.tar.gz.sig", f"LambChat-{tag}-macOS-Apple-Silicon.app.tar.gz"),
+              ("darwin-x86_64", "*_x64.app.tar.gz.sig", f"LambChat-{tag}-macOS-Intel.app.tar.gz"),
           ]
           platforms = {}
           for key, pattern, asset in mapping:
