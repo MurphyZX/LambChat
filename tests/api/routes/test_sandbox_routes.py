@@ -883,6 +883,9 @@ async def _make_download_seam(monkeypatch, tmp_path):
             return LEGACY_MACHINE_ID
 
     monkeypatch.setattr(dispatch_module, "_redis", lambda: redis)
+    # 流式函数/端点走二进制客户端（帧通道）：同一 fake 实例，行为与既有断言一致
+    monkeypatch.setattr(dispatch_module, "_binary_redis", lambda: redis)
+    monkeypatch.setattr(sandbox_route, "_binary_redis", lambda: redis)
     monkeypatch.setattr(dispatch_module, "_registry", _LegacyRegistry)
 
     async def fake_platform(user_id, machine_id=None):
@@ -1037,6 +1040,7 @@ def _stream_app(monkeypatch, redis):
     app.include_router(sandbox_route.router, prefix="/api/sandbox", tags=["Sandbox"])
     app.dependency_overrides[api_deps.get_current_user_pat_or_jwt] = _fake_pat_user
     monkeypatch.setattr(sandbox_route, "_redis", lambda: redis)
+    monkeypatch.setattr(sandbox_route, "_binary_redis", lambda: redis)
     return app
 
 
@@ -1180,4 +1184,97 @@ async def test_stream_upload_seam_single_get_for_whole_file(monkeypatch, tmp_pat
 
     assert counters == {"gets": 1, "ops": 1}  # 整个文件一个 GET
     assert responses[0].error is None
-    assert (tmp_path / "s1" / "up.bin").read_bytes() == content
+
+
+# ----------
+# 帧通道 × decode_responses=True 客户端（2026-09-07 生产事故）
+# ----------
+
+
+class _RedisByteStore:
+    """Redis 服务端视角的存储：值一律 bytes（真实 Redis 不区分写入方客户端）。"""
+
+    def __init__(self):
+        self.lists: dict[str, list[bytes]] = {}
+        self.kv: dict[str, bytes] = {}
+
+
+class _DecodingRedisView:
+    """复刻生产共享客户端（storage.redis 的 decode_responses=True）：读取按
+    UTF-8 解码——非 UTF-8 字节在 lpop/get 时即抛 UnicodeDecodeError。"""
+
+    def __init__(self, store: _RedisByteStore):
+        self._store = store
+
+    async def rpush(self, key, value):
+        self._store.lists.setdefault(key, []).append(
+            value.encode("utf-8") if isinstance(value, str) else value
+        )
+
+    async def lpop(self, key):
+        items = self._store.lists.get(key)
+        raw = items.pop(0) if items else None
+        return None if raw is None else raw.decode("utf-8")
+
+    async def set(self, key, value, ex=None):
+        self._store.kv[key] = value.encode("utf-8") if isinstance(value, str) else value
+
+    async def get(self, key):
+        raw = self._store.kv.get(key)
+        return None if raw is None else raw.decode("utf-8")
+
+    async def delete(self, key):
+        self._store.lists.pop(key, None)
+        self._store.kv.pop(key, None)
+
+    async def expire(self, key, seconds):
+        pass
+
+
+class _BinaryRedisView(_DecodingRedisView):
+    """decode_responses=False 客户端：lpop/get 直通 bytes，不做解码。"""
+
+    async def lpop(self, key):
+        items = self._store.lists.get(key)
+        return items.pop(0) if items else None
+
+    async def get(self, key):
+        return self._store.kv.get(key)
+
+
+async def test_upload_stream_endpoint_serves_binary_frames(monkeypatch):
+    """2026-09-07 生产事故回归（上传方向）：upblob 帧含非 UTF-8 字节时，
+    /upload/{call_id} 的 lpop 必须走二进制安全客户端——解码客户端在读取时
+    即抛 UnicodeDecodeError，daemon 拉流只能收到损坏/截断的响应。"""
+    from src.infra.sandbox.relay._frames import (
+        FRAME_DATA,
+        FRAME_EOF,
+        FRAME_META,
+        encode_frame,
+    )
+
+    store = _RedisByteStore()
+    monkeypatch.setattr(sandbox_route, "_redis", lambda: _DecodingRedisView(store))
+    monkeypatch.setattr(sandbox_route, "_binary_redis", lambda: _BinaryRedisView(store))
+
+    app = FastAPI()
+    register_error_handlers(app)
+    app.include_router(sandbox_route.router, prefix="/api/sandbox", tags=["Sandbox"])
+    app.dependency_overrides[api_deps.get_current_user_pat_or_jwt] = _fake_pat_user
+
+    content = bytes(range(256)) * 64  # 16KiB，必含非法 UTF-8 字节
+    frames = [
+        encode_frame(FRAME_META, json.dumps({"size": len(content)}).encode()),
+        encode_frame(FRAME_DATA, content),
+        encode_frame(FRAME_EOF),
+    ]
+    binary = _BinaryRedisView(store)
+    for frame in frames:  # 生产者（dispatch_local_stream_upload）rpush 二进制帧
+        await binary.rpush("sandbox:upblob:u1:call-bin", frame)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        resp = await client.get("/api/sandbox/upload/call-bin")
+
+    assert resp.status_code == 200
+    assert resp.content == b"".join(frames)

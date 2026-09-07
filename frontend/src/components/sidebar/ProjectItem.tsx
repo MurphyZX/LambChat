@@ -335,7 +335,7 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                 if (e.key === "Enter") handleSaveIcon();
                 if (e.key === "Escape") setIsEditingIcon(false);
               }}
-              className="w-16 text-xs bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-500 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-stone-400"
+              className="w-16 text-12 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-500 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-stone-400"
               autoFocus
             />
           ) : (
@@ -365,7 +365,7 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                 onKeyDown={handleKeyDown}
                 onBlur={handleSaveName}
                 disabled={isSaving}
-                className="w-full text-sm bg-transparent text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-500 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-stone-400"
+                className="w-full text-14 bg-transparent text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-500 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-stone-400"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
@@ -387,10 +387,7 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
 
           {/* Menu button - only for custom projects */}
           {!isFavorites && !isEditing && (
-            <Tooltip
-              content={t("sidebar.moreOptions")}
-              open={isTouched && !isMenuOpen}
-            >
+            <Tooltip content={t("sidebar.moreOptions")}>
               <button
                 ref={menuButtonRef}
                 onClick={handleMenuClick}

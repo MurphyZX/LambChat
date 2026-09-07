@@ -306,7 +306,7 @@ export function ProfilePreferencesTab() {
               onClick={handleMemoryToggle}
               className="flex w-full items-center justify-between py-3 first:pt-0 last:pb-0 text-left"
             >
-              <span className="text-sm text-stone-700 dark:text-stone-200">
+              <span className="text-14 text-stone-700 dark:text-stone-200">
                 {t("profile.memoryToggle")}
               </span>
               <span
@@ -433,11 +433,11 @@ export function ProfilePreferencesTab() {
         <div>
           <div className="flex items-center gap-1.5">
             <Cloud size={13} className="text-stone-400 dark:text-stone-500" />
-            <span className="font-medium font-serif text-sm text-stone-900 dark:text-stone-100">
+            <span className="font-medium font-serif text-14 text-stone-900 dark:text-stone-100">
               {t("profile.cloudSandbox")}
             </span>
           </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+          <p className="text-12 text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
             {t("profile.cloudSandboxDesc")}
           </p>
           <SelectRow
@@ -473,7 +473,7 @@ export function ProfilePreferencesTab() {
               onClick={() => {
                 window.dispatchEvent(new Event("lambchat:check-update"));
               }}
-              className="flex items-center gap-1.5 rounded-lg border border-stone-200/70 dark:border-stone-600/60 px-3 py-1.5 text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-white/60 dark:hover:bg-black/20 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-stone-200/70 dark:border-stone-600/60 px-3 py-1.5 text-12 font-medium text-stone-600 dark:text-stone-300 hover:bg-white/60 dark:hover:bg-black/20 transition-colors"
             >
               <RefreshCw size={12} />
               {t("update.checkNow", "检查更新")}

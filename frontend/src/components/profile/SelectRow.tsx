@@ -32,10 +32,10 @@ export function SelectRow<T extends string>({
         onClick={onToggle}
         className="flex w-full items-center justify-between py-3 first:pt-0 last:pb-0 text-left"
       >
-        <span className="text-sm text-stone-700 dark:text-stone-200">
+        <span className="text-14 text-stone-700 dark:text-stone-200">
           {label}
         </span>
-        <span className="flex items-center gap-1 text-xs text-stone-500 dark:text-stone-400">
+        <span className="flex items-center gap-1 text-12 text-stone-500 dark:text-stone-400">
           {loading ? (
             <SkeletonLine width="w-16" />
           ) : (
@@ -62,7 +62,7 @@ export function SelectRow<T extends string>({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-5 pt-4 pb-2">
-                <h4 className="text-sm font-semibold font-serif text-stone-900 dark:text-stone-100">
+                <h4 className="text-14 font-semibold font-serif text-stone-900 dark:text-stone-100">
                   {label}
                 </h4>
               </div>
@@ -71,7 +71,7 @@ export function SelectRow<T extends string>({
                   <button
                     key={opt.key}
                     onClick={() => onSelect(opt.key)}
-                    className={`w-full text-left px-5 py-2.5 text-sm transition-colors ${
+                    className={`w-full text-left px-5 py-2.5 text-14 transition-colors ${
                       value === opt.key
                         ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 font-medium"
                         : "text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-700/50"
@@ -89,7 +89,7 @@ export function SelectRow<T extends string>({
               <div className="border-t border-stone-100 dark:border-stone-700/50 px-5 py-3">
                 <button
                   onClick={onToggle}
-                  className="w-full text-center text-xs font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                  className="w-full text-center text-12 font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                 >
                   {t("common.cancel")}
                 </button>

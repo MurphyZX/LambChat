@@ -251,7 +251,7 @@ export function useWebSocketNotifications({
                 <div className="line-clamp-1 text-13 font-semibold leading-tight">
                   {notificationCopy.title}
                 </div>
-                <div className="mt-0.5 line-clamp-1 text-xs leading-snug text-stone-500 dark:text-stone-400">
+                <div className="mt-0.5 line-clamp-1 text-12 leading-snug text-stone-500 dark:text-stone-400">
                   {notificationCopy.body}
                 </div>
               </div>

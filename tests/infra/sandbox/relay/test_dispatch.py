@@ -52,6 +52,8 @@ class _FakeRegistry:
 def fake(monkeypatch):
     redis = _FakeRedis()
     monkeypatch.setattr(dispatch_module, "_redis", lambda: redis)
+    # 流式函数走二进制客户端（帧通道）：同一 fake 实例，行为与既有断言一致
+    monkeypatch.setattr(dispatch_module, "_binary_redis", lambda: redis)
     monkeypatch.setattr(dispatch_module, "_registry", lambda: _FakeRegistry(True))
     return redis
 
@@ -357,3 +359,98 @@ async def test_stream_ack_timeout_raises(fake, monkeypatch):
         ):
             pass
     assert exc.value.error_code == ErrorCode.SANDBOX_TIMEOUT
+
+
+# ----------
+# 帧通道 × decode_responses=True 客户端（2026-09-07 生产事故）
+# ----------
+
+
+class _RedisByteStore:
+    """Redis 服务端视角的存储：值一律 bytes（真实 Redis 不区分写入方客户端）。"""
+
+    def __init__(self):
+        self.lists: dict[str, list[bytes]] = {}
+        self.kv: dict[str, bytes] = {}
+
+
+class _DecodingRedisView:
+    """复刻生产共享客户端（storage.redis 的 decode_responses=True）：读取按
+    UTF-8 解码——非 UTF-8 字节在 lpop/get 时即抛 UnicodeDecodeError。"""
+
+    def __init__(self, store: _RedisByteStore):
+        self._store = store
+
+    async def rpush(self, key, value):
+        self._store.lists.setdefault(key, []).append(
+            value.encode("utf-8") if isinstance(value, str) else value
+        )
+
+    async def lpop(self, key):
+        items = self._store.lists.get(key)
+        raw = items.pop(0) if items else None
+        return None if raw is None else raw.decode("utf-8")
+
+    async def set(self, key, value, ex=None):
+        self._store.kv[key] = value.encode("utf-8") if isinstance(value, str) else value
+
+    async def get(self, key):
+        raw = self._store.kv.get(key)
+        return None if raw is None else raw.decode("utf-8")
+
+    async def delete(self, key):
+        self._store.lists.pop(key, None)
+        self._store.kv.pop(key, None)
+
+
+class _BinaryRedisView(_DecodingRedisView):
+    """decode_responses=False 客户端：lpop/get 直通 bytes，不做解码。"""
+
+    async def lpop(self, key):
+        items = self._store.lists.get(key)
+        return items.pop(0) if items else None
+
+    async def get(self, key):
+        return self._store.kv.get(key)
+
+
+async def test_stream_binary_frames_need_binary_client(monkeypatch):
+    """2026-09-07 生产事故回归：fs_download_stream 的裸二进制帧在
+    decode_responses=True 客户端上 lpop 即抛 UnicodeDecodeError（生产报错
+    "utf-8 codec can't decode byte 0xc6 in position 3"——837128 字节 PNG 帧
+    头 02 00 0C C6 08 的 position 3 正是 0xC6），reveal_file 全线误报
+    file_not_found_or_empty。帧通道读取必须走二进制安全客户端。"""
+    from src.infra.sandbox.relay._frames import FRAME_DATA, FRAME_EOF, encode_frame
+
+    store = _RedisByteStore()
+    decoding = _DecodingRedisView(store)
+    monkeypatch.setattr(dispatch_module, "_redis", lambda: decoding)
+    monkeypatch.setattr(dispatch_module, "_binary_redis", lambda: _BinaryRedisView(store))
+    monkeypatch.setattr(dispatch_module, "_registry", lambda: _FakeRegistry(True))
+    monkeypatch.setattr(dispatch_module, "_STREAM_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_STREAM_TIMEOUT", 5)
+
+    png = b"\x89PNG\r\n\x1a\n" + bytes(range(256)) * 4  # 必含非法 UTF-8 字节
+
+    async def daemon():
+        await asyncio.sleep(0.02)
+        req = json.loads(await decoding.lpop("sandbox:req:u1"))
+        assert req["op"] == "fs_download_stream"
+        stream_key = f"sandbox:stream:u1:{req['call_id']}"
+        await decoding.set(
+            f"sandbox:resp:{req['call_id']}", json.dumps({"user_id": "u1", "stage": "ack"})
+        )
+        # daemon 上行帧按 bytes 入库（与 sandbox_result_stream 端点的 rpush 一致）
+        await decoding.rpush(stream_key, encode_frame(FRAME_DATA, png))
+        await decoding.rpush(stream_key, encode_frame(FRAME_EOF))
+
+    task = asyncio.create_task(daemon())
+    chunks = await _collect_stream(
+        dispatch_module.dispatch_local_stream(
+            "u1", "fs_download_stream", {"cwd": "/w", "path": "f"}
+        )
+    )
+    await task
+    assert chunks == [png]
+    assert not store.kv  # resp 键消费完即清

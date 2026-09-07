@@ -12,6 +12,7 @@ import {
   toolDetailPropsFromPanelData,
   type ToolDetailProps,
 } from "./ToolLivePanelContent";
+import { useToolStreamingLabel } from "./useToolStreamingLabel";
 import { ToolArgsBlock } from "./ToolArgsBlock";
 import { ToolInlineDetails } from "./ToolInlineDetails";
 import { ToolDurationFooter } from "./ToolDurationFooter";
@@ -102,12 +103,12 @@ function ToolSearchDetail({ args, result }: ToolDetailProps) {
                   size={13}
                   className="shrink-0 text-sky-500 dark:text-sky-400"
                 />
-                <span className="text-sm font-semibold text-theme-text font-mono truncate">
+                <span className="text-14 font-semibold text-theme-text font-mono truncate">
                   {match.name}
                 </span>
               </div>
               {match.description && (
-                <p className="text-xs text-theme-text-secondary leading-relaxed line-clamp-3">
+                <p className="text-12 text-theme-text-secondary leading-relaxed line-clamp-3">
                   {truncate(match.description, 300)}
                 </p>
               )}
@@ -117,7 +118,7 @@ function ToolSearchDetail({ args, result }: ToolDetailProps) {
       )}
 
       {hasRawFallback && (
-        <div className="group/result relative flex-1 min-h-0 text-xs text-theme-text-secondary overflow-y-auto min-w-0">
+        <div className="group/result relative flex-1 min-h-0 text-12 text-theme-text-secondary overflow-y-auto min-w-0">
           <ToolHoverCopyButton
             text={typeof result === "string" ? result : JSON.stringify(result)}
             position="resultCompact"
@@ -173,6 +174,12 @@ const ToolSearchItem = memo(function ToolSearchItem({
     summary && summary.total > 0 ? ` (${summary.total})` : ""
   }`.trim();
 
+  // 进行中：标签学「思考中」，平滑流出正在生成的参数尾部
+  const { label, isStreamingLabel } = useToolStreamingLabel(pillLabel, args, {
+    isPending,
+    result,
+  });
+
   const detailContent = canExpand && (
     <ToolSearchDetail
       args={args}
@@ -190,7 +197,8 @@ const ToolSearchItem = memo(function ToolSearchItem({
       <CollapsiblePill
         status={status}
         icon={<Search size={12} className="shrink-0 opacity-50" />}
-        label={pillLabel}
+        label={label}
+        animatedDots={isStreamingLabel}
         variant="tool"
         formatLabel={false}
         expandable={canExpand}
@@ -239,7 +247,7 @@ const ToolSearchItem = memo(function ToolSearchItem({
                       size={11}
                       className="shrink-0 text-sky-500 dark:text-sky-400 opacity-70"
                     />
-                    <span className="text-xs text-theme-text font-medium font-mono min-w-0 truncate flex-1">
+                    <span className="text-12 text-theme-text font-medium font-mono min-w-0 truncate flex-1">
                       {match.name}
                     </span>
                     {match.description && (
@@ -253,7 +261,7 @@ const ToolSearchItem = memo(function ToolSearchItem({
                   </div>
                 ))}
                 {summary.matches.length > 4 && (
-                  <div className="text-xs text-theme-text-tertiary px-2.5">
+                  <div className="text-12 text-theme-text-tertiary px-2.5">
                     {t("chat.message.toolMoreTools", {
                       count: summary.matches.length - 4,
                     })}
@@ -263,7 +271,7 @@ const ToolSearchItem = memo(function ToolSearchItem({
             )}
 
             {hasResult && !summary && (
-              <div className="group/result relative text-xs text-theme-text-secondary overflow-y-auto min-w-0">
+              <div className="group/result relative text-12 text-theme-text-secondary overflow-y-auto min-w-0">
                 <ToolHoverCopyButton
                   text={
                     typeof result === "string"

@@ -80,7 +80,7 @@ function AssetRow({
       <a
         href={url}
         download
-        className="group inline-flex w-full items-center gap-3 rounded-2xl bg-stone-900 px-5 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/15 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:text-15"
+        className="group inline-flex w-full items-center gap-3 rounded-2xl bg-stone-900 px-5 py-3.5 text-14 font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/15 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:text-15"
       >
         {badge}
         <span className="min-w-0 flex-1 truncate font-mono">{name}</span>
@@ -100,7 +100,7 @@ function AssetRow({
     <a
       href={url}
       download
-      className="group inline-flex w-full items-center gap-3 rounded-2xl border border-stone-200/80 bg-white/55 px-4 py-3 text-sm font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-lg hover:shadow-stone-200/30 dark:border-stone-700/50 dark:bg-stone-800/35 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30 sm:text-15"
+      className="group inline-flex w-full items-center gap-3 rounded-2xl border border-stone-200/80 bg-white/55 px-4 py-3 text-14 font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-lg hover:shadow-stone-200/30 dark:border-stone-700/50 dark:bg-stone-800/35 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30 sm:text-15"
     >
       {badge}
       <span className="min-w-0 flex-1 truncate font-mono text-stone-700 dark:text-stone-200">
@@ -175,10 +175,10 @@ function SectionHeadingXL({
         </span>
         <span className="block h-px w-8 bg-gradient-to-l from-transparent to-stone-300/40 dark:to-stone-600/25" />
       </div>
-      <h2 className="mb-5 bg-gradient-to-b from-stone-900 via-stone-800 to-stone-600 bg-clip-text text-[1.9rem] font-extrabold font-serif leading-[1.15] tracking-[-0.025em] text-transparent dark:from-stone-50 dark:via-stone-200 dark:to-stone-400 sm:text-4xl lg:text-[2.6rem]">
+      <h2 className="mb-5 bg-gradient-to-b from-stone-900 via-stone-800 to-stone-600 bg-clip-text text-[1.9rem] font-extrabold font-serif leading-[1.15] tracking-[-0.025em] text-transparent dark:from-stone-50 dark:via-stone-200 dark:to-stone-400 sm:text-36 lg:text-[2.6rem]">
         {title}
       </h2>
-      <p className="blog-prose mx-auto max-w-md text-15 leading-[1.8] text-stone-400 dark:text-stone-500 sm:max-w-lg sm:text-base lg:text-17">
+      <p className="blog-prose mx-auto max-w-md text-15 leading-[1.8] text-stone-400 dark:text-stone-500 sm:max-w-lg sm:text-16 lg:text-17">
         {description}
       </p>
     </div>
@@ -283,7 +283,7 @@ export function DownloadPage() {
           </Link>
           <Link
             to="/chat"
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200/80 bg-white/55 px-4 py-2 text-sm font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/30 dark:border-stone-700/50 dark:bg-stone-800/35 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30"
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200/80 bg-white/55 px-4 py-2 text-14 font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/30 dark:border-stone-700/50 dark:bg-stone-800/35 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30"
           >
             <ArrowLeft size={13} />
             {t("download.back")}
@@ -331,7 +331,7 @@ export function DownloadPage() {
           <p
             data-reveal
             data-reveal-delay="2"
-            className="blog-prose mx-auto mb-11 max-w-[20rem] text-base leading-[1.8] text-stone-500 dark:text-stone-400 sm:mb-16 sm:max-w-xl sm:text-xl lg:text-[1.4rem] sm:leading-[1.85]"
+            className="blog-prose mx-auto mb-11 max-w-[20rem] text-16 leading-[1.8] text-stone-500 dark:text-stone-400 sm:mb-16 sm:max-w-xl sm:text-20 lg:text-[1.4rem] sm:leading-[1.85]"
           >
             {t("download.description")}
           </p>
@@ -343,7 +343,7 @@ export function DownloadPage() {
               data-reveal-delay="3"
               className="blog-feature-card blog-glass-inner-glow mx-auto max-w-md rounded-2xl border border-stone-100/80 bg-white/80 p-6 dark:border-stone-800/40 dark:bg-stone-900/40"
             >
-              <p className="mb-3 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+              <p className="mb-3 text-14 leading-relaxed text-stone-500 dark:text-stone-400">
                 {t("download.loadFailed")}
               </p>
               <a
@@ -368,7 +368,7 @@ export function DownloadPage() {
                   href={apk.url}
                   download
                   data-hero-direct-download
-                  className="blog-btn-primary group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-stone-900 px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/15 active:translate-y-0 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:w-auto sm:px-9"
+                  className="blog-btn-primary group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-stone-900 px-8 py-4 text-14 font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/15 active:translate-y-0 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:w-auto sm:px-9"
                 >
                   <DownloadIcon
                     size={15}
@@ -381,7 +381,7 @@ export function DownloadPage() {
                   href={recommended.url}
                   download
                   data-hero-direct-download
-                  className="blog-btn-primary group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-stone-900 px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/15 active:translate-y-0 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:w-auto sm:px-9"
+                  className="blog-btn-primary group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-stone-900 px-8 py-4 text-14 font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/15 active:translate-y-0 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:w-auto sm:px-9"
                 >
                   <DownloadIcon
                     size={15}
@@ -394,7 +394,7 @@ export function DownloadPage() {
               ) : (
                 <a
                   href="#desktop"
-                  className="blog-btn-primary group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-stone-900 px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/12 active:translate-y-0 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:w-auto sm:px-9"
+                  className="blog-btn-primary group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-stone-900 px-8 py-4 text-14 font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/12 active:translate-y-0 dark:bg-stone-50 dark:text-stone-900 dark:hover:bg-white dark:hover:shadow-stone-50/10 sm:w-auto sm:px-9"
                 >
                   <DownloadIcon size={15} />
                   {t("download.heroCta")}
@@ -402,7 +402,7 @@ export function DownloadPage() {
               )}
               <a
                 href="#tutorial"
-                className="blog-btn-ghost group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full border border-stone-200/80 bg-white/55 px-8 py-4 text-sm font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-lg hover:shadow-stone-200/30 active:translate-y-0 dark:border-stone-700/50 dark:bg-stone-800/35 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30 sm:w-auto sm:px-9"
+                className="blog-btn-ghost group inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full border border-stone-200/80 bg-white/55 px-8 py-4 text-14 font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-lg hover:shadow-stone-200/30 active:translate-y-0 dark:border-stone-700/50 dark:bg-stone-800/35 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30 sm:w-auto sm:px-9"
               >
                 <GraduationCap size={15} />
                 {t("download.heroCtaTutorial")}
@@ -419,7 +419,7 @@ export function DownloadPage() {
             >
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5">
                 {info?.latest_version && (
-                  <span className="blog-tech-pill inline-flex items-center gap-2 rounded-full border border-stone-100/60 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-stone-500 dark:border-stone-700/20 dark:bg-stone-900/50 dark:text-stone-400 sm:text-13">
+                  <span className="blog-tech-pill inline-flex items-center gap-2 rounded-full border border-stone-100/60 bg-white/70 px-3.5 py-1.5 text-12 font-medium text-stone-500 dark:border-stone-700/20 dark:bg-stone-900/50 dark:text-stone-400 sm:text-13">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     {t("download.latestVersion", {
                       version: info.latest_version,
@@ -483,13 +483,13 @@ export function DownloadPage() {
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3.5">
                         <span
-                          className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl text-white shadow-md transition-all duration-500 group-hover:rotate-3 group-hover:scale-110 ${meta.gradient}`}
+                          className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-20 text-white shadow-md transition-all duration-500 group-hover:rotate-3 group-hover:scale-110 ${meta.gradient}`}
                         >
                           <Icon size={20} />
                         </span>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xl font-bold text-stone-900 dark:text-stone-100">
+                            <span className="text-20 font-bold text-stone-900 dark:text-stone-100">
                               {platformLabel(platform)}
                             </span>
                             {isDetected && (
@@ -520,7 +520,7 @@ export function DownloadPage() {
                           )}
                         </>
                       ) : (
-                        <p className="text-sm text-stone-400 dark:text-stone-500">
+                        <p className="text-14 text-stone-400 dark:text-stone-500">
                           {t("download.noAssets")}
                         </p>
                       )}
@@ -544,11 +544,11 @@ export function DownloadPage() {
                   />
                   <div className="mb-4 flex items-center gap-3">
                     <span
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-base text-white shadow-sm transition-all duration-500 group-hover:rotate-3 group-hover:scale-110 ${meta.gradient}`}
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-16 text-white shadow-sm transition-all duration-500 group-hover:rotate-3 group-hover:scale-110 ${meta.gradient}`}
                     >
                       <Icon size={16} />
                     </span>
-                    <span className="text-base font-bold text-stone-900 dark:text-stone-100 sm:text-17">
+                    <span className="text-16 font-bold text-stone-900 dark:text-stone-100 sm:text-17">
                       {platformLabel(platform)}
                     </span>
                   </div>
@@ -562,7 +562,7 @@ export function DownloadPage() {
                         />
                       ))
                     ) : (
-                      <p className="text-xs text-stone-400 dark:text-stone-500">
+                      <p className="text-12 text-stone-400 dark:text-stone-500">
                         {t("download.noAssets")}
                       </p>
                     )}
@@ -597,12 +597,12 @@ export function DownloadPage() {
             >
               <div className="absolute left-6 top-0 h-[2px] w-10 rounded-full bg-gradient-to-r from-emerald-400/80 to-teal-500/80 opacity-60 transition-all duration-500 group-hover:w-16 sm:left-7" />
               <div className="mb-5 flex items-center gap-3.5">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/90 to-teal-500/90 text-xl text-white shadow-md transition-all duration-500 group-hover:rotate-3 group-hover:scale-110">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/90 to-teal-500/90 text-20 text-white shadow-md transition-all duration-500 group-hover:rotate-3 group-hover:scale-110">
                   <Smartphone size={20} />
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-stone-900 dark:text-stone-100 sm:text-xl">
+                    <span className="text-18 font-bold text-stone-900 dark:text-stone-100 sm:text-20">
                       Android
                     </span>
                     <span className="rounded-full bg-emerald-100/90 px-2.5 py-1 text-10 font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 sm:text-11">
@@ -654,7 +654,7 @@ export function DownloadPage() {
                   {daemonCommands.map((cmd) => (
                     <p
                       key={cmd}
-                      className="overflow-x-auto font-mono text-sm leading-relaxed whitespace-nowrap text-stone-200 sm:text-15"
+                      className="overflow-x-auto font-mono text-14 leading-relaxed whitespace-nowrap text-stone-200 sm:text-15"
                     >
                       <span className="select-none text-emerald-400/80">
                         ${" "}
@@ -662,7 +662,7 @@ export function DownloadPage() {
                       {cmd}
                     </p>
                   ))}
-                  <p className="flex items-center gap-2 border-t border-white/10 pt-4 font-mono text-xs text-emerald-400/90 sm:text-13">
+                  <p className="flex items-center gap-2 border-t border-white/10 pt-4 font-mono text-12 text-emerald-400/90 sm:text-13">
                     <Check size={13} />
                     paired · daemon online
                   </p>
@@ -672,7 +672,7 @@ export function DownloadPage() {
               {/* 二进制下载：四列紧凑行 */}
               {/* 二进制下载：说明 + 四列紧凑行 */}
               <div data-reveal data-reveal-delay="2" className="space-y-3">
-                <p className="text-center text-13 leading-relaxed text-stone-400 dark:text-stone-500 sm:text-sm">
+                <p className="text-center text-13 leading-relaxed text-stone-400 dark:text-stone-500 sm:text-14">
                   {t("download.daemon.usage")}
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -684,7 +684,7 @@ export function DownloadPage() {
             </div>
           ) : (
             !failed && (
-              <p className="text-center text-sm text-stone-400 dark:text-stone-500">
+              <p className="text-center text-14 text-stone-400 dark:text-stone-500">
                 {t("download.noAssets")}
               </p>
             )
@@ -719,7 +719,7 @@ export function DownloadPage() {
                   data-reveal-delay={String(idx + 1)}
                   className="blog-feature-card group relative flex gap-4 rounded-2xl border border-stone-100/80 bg-white/80 p-5 transition-all duration-500 hover:-translate-y-1 hover:bg-white dark:border-stone-800/40 dark:bg-stone-900/40 dark:hover:bg-stone-900/60 sm:p-6"
                 >
-                  <span className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400/90 to-orange-500/90 text-base text-white shadow-md transition-all duration-500 group-hover:rotate-3 group-hover:scale-110 sm:h-12 sm:w-12">
+                  <span className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400/90 to-orange-500/90 text-16 text-white shadow-md transition-all duration-500 group-hover:rotate-3 group-hover:scale-110 sm:h-12 sm:w-12">
                     {idx === 0 ? (
                       <DownloadIcon size={18} />
                     ) : idx === 1 ? (
@@ -732,7 +732,7 @@ export function DownloadPage() {
                     <span className="mb-1 block text-10 font-bold uppercase tracking-[0.14em] text-amber-600/80 dark:text-amber-400/70">
                       {String(idx + 1).padStart(2, "0")}
                     </span>
-                    <p className="text-sm leading-[1.75] text-stone-600 dark:text-stone-300 sm:text-15">
+                    <p className="text-14 leading-[1.75] text-stone-600 dark:text-stone-300 sm:text-15">
                       {t(`download.tutorial.${key}`)}
                     </p>
                   </div>
@@ -760,7 +760,7 @@ export function DownloadPage() {
                 {/* 云端沙箱行 */}
                 <div className="flex items-center gap-3 rounded-xl border border-stone-100/80 bg-stone-50/60 px-4 py-3 dark:border-stone-800/50 dark:bg-stone-800/30">
                   <Cloud size={15} className="shrink-0 text-stone-400" />
-                  <span className="min-w-0 truncate text-13 font-medium text-stone-700 dark:text-stone-200 sm:text-sm">
+                  <span className="min-w-0 truncate text-13 font-medium text-stone-700 dark:text-stone-200 sm:text-14">
                     {t("profile.cloudSandbox")}
                   </span>
                   <span className="ml-auto shrink-0 whitespace-nowrap rounded-full border border-stone-200/80 px-2.5 py-1 text-10 text-stone-400 dark:border-stone-700/60 dark:text-stone-500 sm:px-3 sm:text-11">
@@ -775,14 +775,16 @@ export function DownloadPage() {
                     size={15}
                     className="shrink-0 text-amber-600/90 dark:text-amber-400/90"
                   />
-                  <span className="shrink-0 text-13 font-semibold text-stone-800 dark:text-stone-100 sm:text-sm">
+                  <span className="shrink-0 text-13 font-semibold text-stone-800 dark:text-stone-100 sm:text-14">
                     {t("profile.localSandbox.title")}
                   </span>
-                  <span className="flex min-w-0 shrink items-center gap-1.5 text-11 text-stone-500 dark:text-stone-400 sm:text-xs">
+                  <span className="flex min-w-0 shrink items-center gap-1.5 text-11 text-stone-500 dark:text-stone-400 sm:text-12">
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                     {t("profile.localSandbox.statusOnline")}
                     <span className="truncate font-mono text-10 opacity-70 sm:text-11">
-                      {t("profile.localSandbox.version", { version: "0.3.0" })}
+                      {t("profile.localSandbox.version", {
+                        version: info?.latest_version ?? "2.8.6",
+                      })}
                     </span>
                   </span>
                   <span className="ml-auto hidden text-10 text-stone-400 dark:text-stone-500 sm:block sm:text-11">
@@ -795,10 +797,10 @@ export function DownloadPage() {
                   <span className="shrink-0 text-10 font-semibold uppercase tracking-[0.12em] text-stone-400 dark:text-stone-500 sm:text-11">
                     {t("agentOptions.sandbox.label")}
                   </span>
-                  <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-stone-200/80 px-2.5 py-1 text-11 text-stone-500 dark:border-stone-700/60 dark:text-stone-400 sm:px-3 sm:text-xs">
+                  <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-stone-200/80 px-2.5 py-1 text-11 text-stone-500 dark:border-stone-700/60 dark:text-stone-400 sm:px-3 sm:text-12">
                     {t("agentOptions.sandbox.options.cloud")}
                   </span>
-                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-stone-900 px-3 py-1 text-11 font-semibold text-white dark:bg-stone-50 dark:text-stone-900 sm:px-3.5 sm:text-xs">
+                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-stone-900 px-3 py-1 text-11 font-semibold text-white dark:bg-stone-50 dark:text-stone-900 sm:px-3.5 sm:text-12">
                     <Check size={11} />
                     {t("agentOptions.sandbox.options.local")}
                   </span>
@@ -833,7 +835,7 @@ export function DownloadPage() {
               href={RELEASES_FALLBACK_URL}
               target="_blank"
               rel="noreferrer"
-              className="blog-btn-ghost group inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-stone-200/80 bg-white/50 px-8 py-4 text-sm font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-lg hover:shadow-stone-200/30 active:translate-y-0 dark:border-stone-700/50 dark:bg-stone-800/30 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30 sm:px-9"
+              className="blog-btn-ghost group inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-stone-200/80 bg-white/50 px-8 py-4 text-14 font-medium text-stone-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-lg hover:shadow-stone-200/30 active:translate-y-0 dark:border-stone-700/50 dark:bg-stone-800/30 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:shadow-stone-900/30 sm:px-9"
             >
               <ExternalLink size={14} />
               {t("download.viewAllReleases")}

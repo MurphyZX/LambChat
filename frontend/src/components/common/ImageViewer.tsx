@@ -239,7 +239,7 @@ export function ImageViewer({
         />
 
         {positionLabel && (
-          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-md bg-white/10 px-2.5 py-1 text-xs font-medium tabular-nums text-white/70">
+          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-md bg-white/10 px-2.5 py-1 text-12 font-medium tabular-nums text-white/70">
             {positionLabel}
           </div>
         )}

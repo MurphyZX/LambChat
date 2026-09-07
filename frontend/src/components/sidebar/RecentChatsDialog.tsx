@@ -55,11 +55,6 @@ export function RecentChatsDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
-  // Row whose status tooltip is shown after a touch (auto-hides after 3s)
-  const [touchedSessionId, setTouchedSessionId] = useState<string | null>(null);
-  const touchStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
   const anchorRef = useRef(anchorEl);
   anchorRef.current = anchorEl;
   const isOpenRef = useRef(isOpen);
@@ -141,23 +136,6 @@ export function RecentChatsDialog({
     applyPaginationState(initialPaginationState);
     void loadSessions(true);
   }, [applyPaginationState, loadSessions]);
-
-  // Touch: show the row's status tooltip, auto-hide after 3s
-  const handleRowTouchStart = useCallback((sessionId: string) => {
-    if (touchStatusTimerRef.current) clearTimeout(touchStatusTimerRef.current);
-    setTouchedSessionId(sessionId);
-    touchStatusTimerRef.current = setTimeout(
-      () => setTouchedSessionId(null),
-      3000,
-    );
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (touchStatusTimerRef.current)
-        clearTimeout(touchStatusTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (isOpen) resetSessions();
@@ -243,7 +221,7 @@ export function RecentChatsDialog({
       <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-stone-200/60 dark:border-stone-800/60 shrink-0">
         <div className="flex items-center gap-2">
           <BrandLogo alt={APP_NAME} className="h-5" />
-          <span className="text-sm font-bold text-stone-800 dark:text-stone-100 font-serif leading-none">
+          <span className="text-14 font-bold text-stone-800 dark:text-stone-100 font-serif leading-none">
             {t("sidebar.recentChats")}
           </span>
         </div>
@@ -263,7 +241,7 @@ export function RecentChatsDialog({
         {isLoading ? (
           renderLoadingRows(6)
         ) : sessions.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center text-xs text-stone-400 dark:text-stone-500">
+          <div className="flex h-full flex-col items-center justify-center text-center text-12 text-stone-400 dark:text-stone-500">
             {t("sidebar.noSessions") || "No recent chats"}
           </div>
         ) : (
@@ -273,7 +251,6 @@ export function RecentChatsDialog({
               const isWaitingForHuman = taskStatus === "waiting_human";
               const isGenerating =
                 taskStatus === "running" || taskStatus === "pending";
-              const statusTooltipOpen = touchedSessionId === session.id;
               const runningLabel = isGenerating
                 ? t(
                     taskStatus === "pending"
@@ -290,7 +267,6 @@ export function RecentChatsDialog({
                     onSelectSession(session.id);
                     onClose();
                   }}
-                  onTouchStart={() => handleRowTouchStart(session.id)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left group ${
                     session.id === currentSessionId
                       ? "bg-stone-100 dark:bg-stone-800/60"
@@ -312,7 +288,7 @@ export function RecentChatsDialog({
                     </div>
                   </div>
                   {isGenerating && runningLabel && (
-                    <Tooltip content={runningLabel} open={statusTooltipOpen}>
+                    <Tooltip content={runningLabel}>
                       <span
                         aria-label={runningLabel}
                         className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full border-2 border-amber-500/25 border-t-amber-500 dark:border-t-amber-400 animate-spin"
@@ -320,10 +296,7 @@ export function RecentChatsDialog({
                     </Tooltip>
                   )}
                   {isWaitingForHuman && (
-                    <Tooltip
-                      content={t("sidebar.waitingHuman", "等待回复")}
-                      open={statusTooltipOpen}
-                    >
+                    <Tooltip content={t("sidebar.waitingHuman", "等待回复")}>
                       <span
                         data-session-status="ask-human"
                         aria-label="Ask human · 等待你的回复"

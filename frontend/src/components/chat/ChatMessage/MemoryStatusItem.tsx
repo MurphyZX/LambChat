@@ -38,7 +38,7 @@ export function MemoryStatusItem({
       }
       suffix={
         status === "ready" && durationText ? (
-          <span className="text-xs font-mono font-medium min-w-0 truncate overflow-hidden leading-none">
+          <span className="text-12 font-mono font-medium min-w-0 truncate overflow-hidden leading-none">
             {durationText}
           </span>
         ) : undefined

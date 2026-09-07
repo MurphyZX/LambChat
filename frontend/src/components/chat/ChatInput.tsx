@@ -780,10 +780,10 @@ export const ChatInput = memo(function ChatInput({
                   {composerExpanded ? (
                     <div className="flex items-center justify-between border-b px-2 pb-3 pt-1">
                       <div>
-                        <div className="text-sm font-medium text-[var(--theme-text)]">
+                        <div className="text-14 font-medium text-[var(--theme-text)]">
                           {t("chat.expandedComposerTitle", "展开编辑")}
                         </div>
-                        <div className="mt-0.5 text-xs text-[var(--theme-text-secondary)]">
+                        <div className="mt-0.5 text-12 text-[var(--theme-text-secondary)]">
                           {t(
                             "chat.expandedComposerHint",
                             "适合编辑长提示词。Esc 收起，发送快捷键保持不变。",

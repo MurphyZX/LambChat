@@ -65,7 +65,7 @@ test("身份 chip 自适应截断：空间足够完整显示，不足才出省�
   // 显示、行内受挤先出 …）；按钮 overflow-hidden 兜底，链路再断也只裁自己
   // 不重叠
   expect(chip).toMatch(/shrink min-w-0 overflow-hidden/);
-  expect(chip).toMatch(/min-w-0 truncate text-sm/);
+  expect(chip).toMatch(/min-w-0 truncate text-14/);
 });
 
 test("右簇沙箱 chip 手机端仅图标（与用量图标一致）", () => {

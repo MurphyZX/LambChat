@@ -23,13 +23,19 @@ describe("sidebar touch tooltips", () => {
   it("project item icon affordances use Tooltip instead of native titles", () => {
     const source = read("../ProjectItem.tsx");
     expect(source).toMatch(/from "\.\.\/common\/Tooltip"/);
-    expect(source).toMatch(/open=\{isTouched && !isMenuOpen\}/);
+    // 触摸行只亮出按钮本身，不强制弹出 tooltip 气泡（长按仍可唤起）
+    expect(source).not.toMatch(/open=\{isTouched/);
     expect(source).not.toMatch(/title=\{t\(/);
   });
   it("session item more button uses Tooltip instead of a native title", () => {
     const source = read("../SessionItem.tsx");
-    expect(source).toMatch(/open=\{isTouched && !isMenuOpen\}/);
+    expect(source).not.toMatch(/open=\{isTouched/);
     expect(source).not.toMatch(/title=\{t\(/);
+  });
+  it("recent chats rows do not force status tooltips open on touch", () => {
+    const source = read("../RecentChatsDialog.tsx");
+    expect(source).not.toMatch(/open=\{statusTooltipOpen\}/);
+    expect(source).not.toMatch(/statusTooltipOpen/);
   });
   it("mark-all-read badge renders a Tooltip instead of a native title", () => {
     const source = read("../MarkAllReadBadge.tsx");

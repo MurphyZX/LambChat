@@ -51,7 +51,7 @@ function SectionHeader({
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--usage-icon-bg)] text-[var(--theme-primary)] sm:h-9 sm:w-9">
           <FileText size={15} strokeWidth={2} />
         </div>
-        <h2 className="truncate text-13 font-bold tracking-tight text-theme-text sm:text-sm">
+        <h2 className="truncate text-13 font-bold tracking-tight text-theme-text sm:text-14">
           {title}
         </h2>
       </div>
@@ -462,10 +462,10 @@ export function UsageLogsTable({
         <div className="mb-4 rounded-2xl bg-[var(--glass-bg-subtle)] p-5 ring-1 ring-inset ring-[var(--theme-border-faint)]">
           <Activity size={28} className="text-theme-text-tertiary/25" />
         </div>
-        <p className="text-sm font-medium text-theme-text-secondary/60">
+        <p className="text-14 font-medium text-theme-text-secondary/60">
           {t("usage.noUsage")}
         </p>
-        <p className="mt-1.5 text-xs text-theme-text-tertiary/50">
+        <p className="mt-1.5 text-12 text-theme-text-tertiary/50">
           {t("usage.noUsageHint")}
         </p>
       </div>

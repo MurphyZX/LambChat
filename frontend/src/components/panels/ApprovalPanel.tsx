@@ -64,7 +64,7 @@ function FormFieldRenderer({
 }) {
   const { t } = useTranslation();
   const cls =
-    "w-full rounded-lg pl-3 pr-3 py-2 text-sm transition-all duration-150 focus:outline-none disabled:opacity-50 approval-input";
+    "w-full rounded-lg pl-3 pr-3 py-2 text-14 transition-all duration-150 focus:outline-none disabled:opacity-50 approval-input";
 
   const interact = () => onInteract?.();
 
@@ -189,7 +189,7 @@ function FormFieldRenderer({
             disabled={disabled}
           />
           <span
-            className="text-sm transition-colors duration-150 group-hover:text-[var(--theme-text)]"
+            className="text-14 transition-colors duration-150 group-hover:text-[var(--theme-text)]"
             style={{ color: "var(--theme-text-secondary)" }}
           >
             {field.label}
@@ -561,7 +561,7 @@ export function ApprovalPanel({
         {approvals.length > 1 && (
           <div className="mb-2 flex items-center justify-between px-1">
             <div
-              className="flex items-center gap-1.5 text-xs"
+              className="flex items-center gap-1.5 text-12"
               style={{ color: "var(--theme-text-secondary)" }}
             >
               <ListOrdered size={14} />
@@ -631,7 +631,7 @@ export function ApprovalPanel({
               </div>
               {currentRemaining !== undefined && (
                 <span
-                  className={`approval-timer ml-auto flex items-center gap-1 text-xs tabular-nums ${
+                  className={`approval-timer ml-auto flex items-center gap-1 text-12 tabular-nums ${
                     isUrgent ? "approval-timer-urgent" : ""
                   }`}
                 >
@@ -664,7 +664,7 @@ export function ApprovalPanel({
                 {!isAskHuman && (
                   <div className="approval-message">
                     <div
-                      className="prose prose-stone dark:prose-invert max-w-none text-sm leading-relaxed prose-p:my-0.5 prose-headings:my-1"
+                      className="prose prose-stone dark:prose-invert max-w-none text-14 leading-relaxed prose-p:my-0.5 prose-headings:my-1"
                       style={{ color: "var(--theme-text)" }}
                     >
                       {currentApproval.metadata?.approval_type ===
@@ -700,7 +700,7 @@ export function ApprovalPanel({
                       return (
                         <div key={field.name} className="space-y-1">
                           <label
-                            className="block text-xs font-medium"
+                            className="block text-12 font-medium"
                             style={{ color: "var(--theme-text-secondary)" }}
                           >
                             {field.label}
@@ -776,7 +776,7 @@ export function ApprovalPanel({
                             <div key={field.name} className="space-y-1">
                               {displayField.type !== "checkbox" && (
                                 <label
-                                  className="block text-xs font-medium"
+                                  className="block text-12 font-medium"
                                   style={{
                                     color: "var(--theme-text-secondary)",
                                   }}
@@ -831,7 +831,7 @@ export function ApprovalPanel({
                     title={
                       isAskHuman ? t("approvals.ignore") : t("approvals.cancel")
                     }
-                    className="approval-btn-cancel flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="approval-btn-cancel flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-12 transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <X size={14} />
                     <span>
@@ -845,7 +845,7 @@ export function ApprovalPanel({
                     disabled={isSubmitDisabled}
                     aria-label={t("approvals.submit")}
                     title={t("approvals.submit")}
-                    className="approval-btn-submit flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="approval-btn-submit flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-12 transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Send size={14} />
                     <span>{t("approvals.submit")}</span>

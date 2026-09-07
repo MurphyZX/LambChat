@@ -181,7 +181,9 @@ def test_perform_update_replaces_target(tmp_path, _fake_argv0):
     target = _fake_argv0
 
     message = selfupdate.perform_update(
-        "Yanyutin753/LambChat", transport=_good_transport(b"NEW-BINARY", log)
+        "Yanyutin753/LambChat",
+        current_version="0.3.1",  # 与包 __version__ 解耦：daemon 版本已对齐应用 2.x 序列
+        transport=_good_transport(b"NEW-BINARY", log),
     )
 
     assert "0.4.0" in message
@@ -213,7 +215,9 @@ def test_perform_update_download_failure_raises(_fake_argv0):
     resp = _api_response("v0.4.0", [{"name": _ASSET_NAME}])
     with pytest.raises(selfupdate.SelfUpdateError, match="下载"):
         selfupdate.perform_update(
-            "Yanyutin753/LambChat", transport=_transport(api_response=resp, asset_status=500)
+            "Yanyutin753/LambChat",
+            current_version="0.3.1",
+            transport=_transport(api_response=resp, asset_status=500),
         )
     assert _fake_argv0.read_bytes() == b"OLD-BINARY"
 
@@ -224,7 +228,9 @@ def test_perform_update_digest_mismatch_raises(tmp_path, _fake_argv0):
     resp = _api_response("v0.4.0", [{"name": _ASSET_NAME, "digest": bad_digest}])
     with pytest.raises(selfupdate.SelfUpdateError, match="校验"):
         selfupdate.perform_update(
-            "Yanyutin753/LambChat", transport=_transport(api_response=resp, asset_content=b"EVIL")
+            "Yanyutin753/LambChat",
+            current_version="0.3.1",
+            transport=_transport(api_response=resp, asset_content=b"EVIL"),
         )
     assert _fake_argv0.read_bytes() == b"OLD-BINARY"
     assert not (tmp_path / "lambchat-daemon.new").exists()  # 失败清理临时文件
@@ -235,7 +241,9 @@ def test_perform_update_without_digest_skips_verification(_fake_argv0):
     resp = _api_response("v0.4.0", [{"name": _ASSET_NAME}])  # 无 digest 字段
 
     message = selfupdate.perform_update(
-        "Yanyutin753/LambChat", transport=_transport(api_response=resp, asset_content=b"NEW")
+        "Yanyutin753/LambChat",
+        current_version="0.3.1",
+        transport=_transport(api_response=resp, asset_content=b"NEW"),
     )
 
     assert _fake_argv0.read_bytes() == b"NEW"
@@ -252,6 +260,7 @@ def test_perform_update_windows_rename_order(monkeypatch, tmp_path):
 
     selfupdate.perform_update(
         "Yanyutin753/LambChat",
+        current_version="0.3.1",
         target_path=target,
         transport=_good_transport(b"NEW-BINARY", asset_name=win_asset),
     )

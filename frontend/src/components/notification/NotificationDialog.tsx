@@ -130,7 +130,7 @@ export function NotificationDialog({
                 />
               </div>
               <p
-                className="text-sm"
+                className="text-14"
                 style={{ color: "var(--theme-text-secondary)" }}
               >
                 {t("notification.noNotifications")}
@@ -170,7 +170,7 @@ export function NotificationDialog({
                         className={`shrink-0 h-2 w-2 rounded-full ${config.dotClass}`}
                       />
                       <span
-                        className="text-xs font-medium"
+                        className="text-12 font-medium"
                         style={{ color: "var(--theme-text-secondary)" }}
                       >
                         {t(config.labelKey)}
@@ -179,7 +179,7 @@ export function NotificationDialog({
                     <button
                       onClick={() => handleDismiss(n.id)}
                       disabled={dismissingId === n.id}
-                      className="flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 text-xs transition-all disabled:opacity-50"
+                      className="flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 text-12 transition-all disabled:opacity-50"
                       style={{ color: "var(--theme-text-secondary)" }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor =
@@ -198,7 +198,7 @@ export function NotificationDialog({
                   </div>
                   {/* Title */}
                   <p
-                    className="font-semibold text-sm leading-snug break-words"
+                    className="font-semibold text-14 leading-snug break-words"
                     style={{ color: "var(--theme-text)" }}
                   >
                     {title}
@@ -206,7 +206,7 @@ export function NotificationDialog({
                   {/* Content */}
                   {content && (
                     <p
-                      className="text-xs mt-1.5 leading-relaxed break-words"
+                      className="text-12 mt-1.5 leading-relaxed break-words"
                       style={{ color: "var(--theme-text-secondary)" }}
                     >
                       {content}
