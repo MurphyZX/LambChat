@@ -661,7 +661,7 @@ export function SessionListContent({
                         e.stopPropagation();
                         handleToggleAllVisible();
                       }}
-                      className="rounded-md px-2 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-200"
+                      className="rounded-md px-2 py-1 text-12 font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-200"
                     >
                       {allVisibleSelected
                         ? t("sidebar.clearVisibleSelection")
@@ -770,7 +770,7 @@ export function SessionListContent({
                       {isLoadingMoreUncategorized && (
                         <div className="flex items-center gap-2 text-stone-400 dark:text-stone-500">
                           <LoadingSpinner size="xs" />
-                          <span className="text-xs">{t("common.loading")}</span>
+                          <span className="text-12">{t("common.loading")}</span>
                         </div>
                       )}
                     </div>
@@ -822,7 +822,7 @@ export function SessionListContent({
             )}
 
             <div className="flex items-center justify-between gap-2 rounded-[10px] bg-stone-100/85 p-1 ring-1 ring-inset ring-stone-200/80 dark:bg-stone-800/55 dark:ring-stone-700/70">
-              <div className="flex h-8 min-w-[72px] shrink-0 items-center justify-center rounded-lg bg-white/70 px-2 text-xs font-semibold text-stone-600 ring-1 ring-inset ring-stone-200/70 dark:bg-stone-900/45 dark:text-stone-300 dark:ring-stone-700/60">
+              <div className="flex h-8 min-w-[72px] shrink-0 items-center justify-center rounded-lg bg-white/70 px-2 text-12 font-semibold text-stone-600 ring-1 ring-inset ring-stone-200/70 dark:bg-stone-900/45 dark:text-stone-300 dark:ring-stone-700/60">
                 {t("sidebar.selectedCount", {
                   count: selectedCount,
                   defaultValue: "已选 {{count}} 个",

@@ -51,16 +51,16 @@ export function ServerSetupScreen() {
             <Server size={20} className="text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+            <h1 className="text-18 font-semibold text-stone-800 dark:text-stone-100">
               {t("serverSetup.title")}
             </h1>
-            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
+            <p className="mt-0.5 text-12 text-stone-500 dark:text-stone-400">
               {t("serverSetup.desc")}
             </p>
           </div>
         </div>
 
-        <label className="block text-xs font-medium text-stone-500 dark:text-stone-400">
+        <label className="block text-12 font-medium text-stone-500 dark:text-stone-400">
           {t("serverSetup.label")}
         </label>
         <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-stone-300/70 bg-white px-3 py-2.5 focus-within:border-amber-500/60 dark:border-stone-600/70 dark:bg-stone-900/60">
@@ -74,22 +74,22 @@ export function ServerSetupScreen() {
             placeholder="https://chat.example.com"
             spellCheck={false}
             autoComplete="off"
-            className="w-full bg-transparent text-sm text-stone-800 outline-none placeholder:text-stone-400 dark:text-stone-100"
+            className="w-full bg-transparent text-14 text-stone-800 outline-none placeholder:text-stone-400 dark:text-stone-100"
           />
         </div>
 
         {input && !normalized && (
-          <p className="mt-2 text-xs text-red-500">
+          <p className="mt-2 text-12 text-red-500">
             {t("serverSetup.invalid")}
           </p>
         )}
-        {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+        {error && <p className="mt-2 text-12 text-red-500">{error}</p>}
 
         <button
           type="button"
           disabled={!normalized || testing}
           onClick={() => void handleConnect()}
-          className="mt-5 w-full rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-5 w-full rounded-xl bg-amber-600 px-4 py-2.5 text-14 font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {testing ? t("serverSetup.testing") : t("serverSetup.connect")}
         </button>

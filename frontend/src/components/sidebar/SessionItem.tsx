@@ -355,7 +355,7 @@ function SessionItemComponent({
 
         {/* Task running indicator - same position/size as unread badge */}
         {isGenerating && taskStatusLabel && (
-          <Tooltip content={taskStatusLabel} open={isTouched}>
+          <Tooltip content={taskStatusLabel}>
             <span
               aria-label={taskStatusLabel}
               className="shrink-0 inline-flex items-center justify-center"
@@ -366,10 +366,7 @@ function SessionItemComponent({
         )}
 
         {isWaitingForHuman && (
-          <Tooltip
-            content={t("sidebar.waitingHuman", "等待回复")}
-            open={isTouched}
-          >
+          <Tooltip content={t("sidebar.waitingHuman", "等待回复")}>
             <span
               data-session-status="ask-human"
               aria-label="Ask human · 等待你的回复"
@@ -396,10 +393,7 @@ function SessionItemComponent({
             </span>
           )}
         {!selectionMode && !isEditing && (
-          <Tooltip
-            content={t("sidebar.moreOptions")}
-            open={isTouched && !isMenuOpen}
-          >
+          <Tooltip content={t("sidebar.moreOptions")}>
             <button
               ref={menuButtonRef}
               onClick={handleMenuClick}

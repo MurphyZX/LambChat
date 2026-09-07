@@ -346,7 +346,7 @@ export function UsagePanel() {
               <LayoutDashboard size={15} strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-13 font-bold tracking-tight text-theme-text sm:text-sm">
+              <h2 className="truncate text-13 font-bold tracking-tight text-theme-text sm:text-14">
                 {dashboardTitle}
               </h2>
               <p className="mt-0.5 truncate text-10 leading-snug text-theme-text-tertiary sm:text-11">

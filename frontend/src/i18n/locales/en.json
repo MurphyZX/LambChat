@@ -3633,6 +3633,10 @@
     "mobile": {
       "title": "Mobile app",
       "desc": "The LambChat Android client (direct APK install) — sign in with the same account as the web."
+    },
+    "macGatekeeper": {
+      "title": "macOS first-launch note",
+      "body": "The app is not notarized through the App Store. If macOS says it \"can't be verified\" or is \"damaged\" on first launch, right-click the app and choose Open, or allow it in System Settings → Privacy & Security."
     }
   }
 }

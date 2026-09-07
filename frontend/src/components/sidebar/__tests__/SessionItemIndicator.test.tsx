@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, within } from "@testing-library/react";
+import { act, fireEvent, render, within } from "@testing-library/react";
 import { SessionItem } from "../SessionItem";
 import type { BackendSession } from "../../../services/api/session";
 
@@ -55,25 +55,38 @@ describe("SessionItem task running indicator", () => {
     const indicator = document.querySelector(".animate-spin")?.parentElement;
     expect(indicator).toHaveAttribute("aria-label", "等待中");
   });
-  it("shows the running label as a tooltip bubble, not inline text, on touch", () => {
+  it("does not pop the running label bubble when the row is touched", () => {
     const { row } = renderSessionItem({ task_status: "running" });
     expect(within(row).queryByText("运行中")).not.toBeInTheDocument();
     touchRow(row);
-    const bubble = within(document.body).getByText("运行中");
-    expect(bubble).toHaveClass("fixed", "pointer-events-none");
+    expect(within(document.body).queryByText("运行中")).not.toBeInTheDocument();
     expect(
       document.querySelector(".animate-spin")?.parentElement?.textContent,
     ).toBe("");
   });
-  it("shows the waiting-for-reply label as a tooltip bubble, not inline text, on touch", () => {
+  it("does not pop the waiting-for-reply bubble when the row is touched", () => {
     const { row } = renderSessionItem({ task_status: "waiting_human" });
     expect(within(row).queryByText("等待回复")).not.toBeInTheDocument();
     touchRow(row);
-    const bubble = within(document.body).getByText("等待回复");
-    expect(bubble).toHaveClass("fixed", "pointer-events-none");
     expect(
-      document.querySelector("[data-session-status=ask-human]")?.textContent,
-    ).toBe("");
+      within(document.body).queryByText("等待回复"),
+    ).not.toBeInTheDocument();
+  });
+  it("still shows the running label after a deliberate long press on the spinner", () => {
+    const { row } = renderSessionItem({ task_status: "running" });
+    const spinner = document.querySelector(".animate-spin")?.parentElement;
+    expect(spinner).toBeTruthy();
+    vi.useFakeTimers();
+    try {
+      fireEvent.touchStart(spinner!, { touches: [{ clientX: 0, clientY: 0 }] });
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(within(document.body).queryByText("运行中")).toBeInTheDocument();
+      expect(within(row).queryByText("运行中")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("shows only a running-indicator-sized icon while waiting for a reply", () => {
     renderSessionItem({ task_status: "waiting_human" });
@@ -96,15 +109,18 @@ describe("SessionItem task running indicator", () => {
 });
 
 describe("SessionItem more-options button tooltip", () => {
-  it("reveals the more-options label as a tooltip bubble on touch", () => {
+  it("reveals the more-options button itself on touch, without popping its bubble", () => {
     // The i18n mock returns the key itself when no in-code fallback exists
     const { row } = renderSessionItem({});
     const moreButton = row.querySelector("button");
     expect(moreButton).not.toHaveAttribute("title");
     expect(moreButton).toHaveAttribute("aria-label", "sidebar.moreOptions");
     touchRow(row);
-    const bubble = within(document.body).getByText("sidebar.moreOptions");
-    expect(bubble).toHaveClass("fixed", "pointer-events-none");
+    // 触摸后按钮亮出（opacity 1），但不再强制弹出气泡
+    expect(moreButton).toHaveStyle({ opacity: "1" });
+    expect(
+      within(document.body).queryByText("sidebar.moreOptions"),
+    ).not.toBeInTheDocument();
     expect(
       within(row).queryByText("sidebar.moreOptions"),
     ).not.toBeInTheDocument();

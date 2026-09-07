@@ -34,7 +34,7 @@ test("LsItem pill label appends entry count", () => {
   expect(source).toMatch(/toolItemCount[^\n]*entries\.length/);
   // pill label itself must include the count, not only the panel args block
   expect(source).toMatch(
-    /label=\{`\$\{t\("chat\.message\.toolLs"\)\} \$\{dirPath\}\$\{pillCount\}`\}/,
+    /useToolStreamingLabel\(\s*`\$\{t\("chat\.message\.toolLs"\)\} \$\{dirPath\}\$\{pillCount\}`/,
   );
 });
 

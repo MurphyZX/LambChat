@@ -131,7 +131,7 @@ function SharedPageLanguageToggle() {
             <button
               key={lang.code}
               onClick={() => selectLanguage(lang.code)}
-              className={`w-full px-4 py-2 text-left text-sm flex items-center justify-between transition-colors ${
+              className={`w-full px-4 py-2 text-left text-14 flex items-center justify-between transition-colors ${
                 i18n.language === lang.code
                   ? "bg-theme-bg-subtle text-theme-text"
                   : "text-theme-text-secondary hover:bg-theme-bg-subtle hover:text-theme-text"
@@ -481,7 +481,7 @@ export function SharedPage({
                   className="text-amber-500 dark:text-amber-400"
                 />
               </div>
-              <h1 className="text-xl font-semibold text-theme-text font-serif mb-2 font-serif tracking-tight">
+              <h1 className="text-20 font-semibold text-theme-text font-serif mb-2 font-serif tracking-tight">
                 {t("share.loginRequired")}
               </h1>
               <p className="text-stone-500 dark:text-stone-400 mb-8 leading-relaxed">
@@ -514,7 +514,7 @@ export function SharedPage({
                   className="text-red-500 dark:text-red-400"
                 />
               </div>
-              <h1 className="text-xl font-semibold text-theme-text font-serif mb-2 font-serif tracking-tight">
+              <h1 className="text-20 font-semibold text-theme-text font-serif mb-2 font-serif tracking-tight">
                 {t("share.notFound")}
               </h1>
               <p className="text-stone-500 dark:text-stone-400 mb-8 leading-relaxed">
@@ -611,7 +611,7 @@ export function SharedPage({
               </div>
 
               {/* Title */}
-              <h1 className="text-[1.75rem] sm:text-4xl lg:text-[2.75rem] font-light text-theme-text text-center leading-[1.2] tracking-[-0.01em] max-w-3xl mx-auto font-serif">
+              <h1 className="text-[1.75rem] sm:text-36 lg:text-[2.75rem] font-light text-theme-text text-center leading-[1.2] tracking-[-0.01em] max-w-3xl mx-auto font-serif">
                 {sessionTitle}
               </h1>
 
@@ -779,7 +779,7 @@ export function SharedPage({
                     className="text-stone-300 dark:text-stone-600"
                   />
                 </div>
-                <p className="text-stone-400 dark:text-stone-500 text-sm font-serif">
+                <p className="text-stone-400 dark:text-stone-500 text-14 font-serif">
                   {t("share.noMessages")}
                 </p>
               </div>

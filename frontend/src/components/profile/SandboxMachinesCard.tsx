@@ -72,23 +72,23 @@ export function SandboxMachinesCard() {
           size={13}
           className="text-stone-400 dark:text-stone-500 shrink-0"
         />
-        <span className="font-medium font-serif text-sm text-stone-900 dark:text-stone-100">
+        <span className="font-medium font-serif text-14 text-stone-900 dark:text-stone-100">
           {t("profile.localSandbox.machines")}
         </span>
       </div>
-      <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+      <p className="text-12 text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
         {t("profile.localSandbox.machinesDesc")}
       </p>
 
       {/* 当前服务器：label-value 行（同设置行语言，mono 值右对齐截断）；
           运行时配置优先，构建期烘焙兜底 */}
       <div className="flex items-center justify-between gap-3 py-2.5">
-        <span className="flex shrink-0 items-center gap-1.5 text-sm text-stone-700 dark:text-stone-200">
+        <span className="flex shrink-0 items-center gap-1.5 text-14 text-stone-700 dark:text-stone-200">
           <Link2 size={13} className="opacity-50" />
           {t("profile.localSandbox.currentServer")}
         </span>
         <span
-          className="min-w-0 truncate font-mono text-xs text-stone-500 dark:text-stone-400"
+          className="min-w-0 truncate font-mono text-12 text-stone-500 dark:text-stone-400"
           data-sandbox-server-url
         >
           {serverUrl}
@@ -97,7 +97,7 @@ export function SandboxMachinesCard() {
 
       <div data-sandbox-machines-count={machines.length}>
         {online && machines.length === 0 && (
-          <p className="py-1.5 text-xs text-stone-400 dark:text-stone-500">
+          <p className="py-1.5 text-12 text-stone-400 dark:text-stone-500">
             {t("profile.localSandbox.machinesEmpty")}
           </p>
         )}
@@ -121,7 +121,7 @@ export function SandboxMachinesCard() {
                       if (e.key === "Enter") void submitRename();
                       if (e.key === "Escape") setRenamingId(null);
                     }}
-                    className="min-w-0 flex-1 rounded-md border border-amber-300 dark:border-amber-500/60 bg-theme-bg-card dark:bg-stone-800 px-2 py-1 text-sm text-stone-800 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    className="min-w-0 flex-1 rounded-md border border-amber-300 dark:border-amber-500/60 bg-theme-bg-card dark:bg-stone-800 px-2 py-1 text-14 text-stone-800 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                   <button
                     type="button"
@@ -143,7 +143,7 @@ export function SandboxMachinesCard() {
                 </span>
               ) : (
                 <>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-800 dark:text-stone-100">
+                  <span className="min-w-0 flex-1 truncate text-14 font-medium text-stone-800 dark:text-stone-100">
                     {machine.name}
                     {isDefault && (
                       <span className="ml-1.5 whitespace-nowrap rounded-full bg-amber-100 dark:bg-amber-500/15 px-1.5 py-0.5 text-10 font-medium text-amber-700 dark:text-amber-400">
@@ -151,7 +151,7 @@ export function SandboxMachinesCard() {
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 whitespace-nowrap text-xs text-stone-500 dark:text-stone-400">
+                  <span className="shrink-0 whitespace-nowrap text-12 text-stone-500 dark:text-stone-400">
                     {machinePlatformLabel(machine.platform, t)}
                     {machine.version ? ` · v${machine.version}` : ""}
                   </span>
@@ -160,7 +160,7 @@ export function SandboxMachinesCard() {
                       type="button"
                       onClick={() => void handleSetDefault(machine.machine_id)}
                       disabled={busy}
-                      className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-stone-400 dark:text-stone-500 transition-colors hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 disabled:opacity-50"
+                      className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-12 text-stone-400 dark:text-stone-500 transition-colors hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 disabled:opacity-50"
                       title={t("profile.localSandbox.setDefault")}
                     >
                       <Star size={11} />

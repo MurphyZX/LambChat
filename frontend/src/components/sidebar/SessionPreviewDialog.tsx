@@ -128,7 +128,7 @@ export function SessionPreviewDialog({
                   fill="currentColor"
                 />
               </svg>
-              <h2 className="text-sm font-semibold font-serif text-stone-800 dark:text-stone-100 truncate">
+              <h2 className="text-14 font-semibold font-serif text-stone-800 dark:text-stone-100 truncate">
                 {sessionName}
               </h2>
             </div>
@@ -147,7 +147,7 @@ export function SessionPreviewDialog({
                 <Loader2 size={20} className="animate-spin text-stone-400" />
               </div>
             ) : messages.length === 0 ? (
-              <div className="text-center py-12 text-sm text-stone-400 dark:text-stone-500">
+              <div className="text-center py-12 text-14 text-stone-400 dark:text-stone-500">
                 {t("sidebar.noMessages") || "No messages yet"}
               </div>
             ) : (

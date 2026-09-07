@@ -3633,6 +3633,10 @@
     "mobile": {
       "title": "手机端 App",
       "desc": "LambChat Android 客户端（APK 直装），与网页端同一账号登录。"
+    },
+    "macGatekeeper": {
+      "title": "macOS 首次启动提示",
+      "body": "应用未做 App Store 公证。首次打开若提示「无法验证开发者」或「已损坏」，请右键点击应用选择「打开」，或在 系统设置 → 隐私与安全性 中点「仍要打开」。"
     }
   }
 }

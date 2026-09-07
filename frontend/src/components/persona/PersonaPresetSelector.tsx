@@ -159,13 +159,13 @@ export function PersonaPresetSelector({
             </div>
             <div>
               <h2
-                className="text-base font-semibold"
+                className="text-16 font-semibold"
                 style={{ color: "var(--theme-text)" }}
               >
                 {t("personaPresets.title", "角色广场")}
               </h2>
               <p
-                className="text-xs"
+                className="text-12"
                 style={{ color: "var(--theme-text-secondary)" }}
               >
                 {t("personaPresets.subtitle", "选择一个角色开始对话")}
@@ -182,7 +182,7 @@ export function PersonaPresetSelector({
                   onOpenChange(false);
                   onManagePresets();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg p-2 text-xs font-medium transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 sm:px-2.5"
+                className="inline-flex items-center gap-1.5 rounded-lg p-2 text-12 font-medium transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 sm:px-2.5"
                 style={{ color: "var(--theme-text-secondary)" }}
               >
                 <Settings2 size={18} className="shrink-0" />
@@ -212,7 +212,7 @@ export function PersonaPresetSelector({
                 value={query}
                 onValueChange={setQuery}
                 placeholder={t("personaPresets.search", "搜索角色")}
-                className="h-10 w-full rounded-lg border bg-transparent pl-9 pr-3 text-sm outline-none"
+                className="h-10 w-full rounded-lg border bg-transparent pl-9 pr-3 text-14 outline-none"
                 style={{
                   borderColor: "var(--theme-border)",
                   color: "var(--theme-text)",
@@ -223,7 +223,7 @@ export function PersonaPresetSelector({
               <button
                 type="button"
                 onClick={onClearPreset}
-                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-12 font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
                 style={{
                   borderColor: "var(--theme-border)",
                   color: "var(--theme-text-secondary)",
@@ -242,7 +242,7 @@ export function PersonaPresetSelector({
               <button
                 type="button"
                 onClick={() => setActiveTag(null)}
-                className="shrink-0 rounded-full border px-3 py-1 text-xs"
+                className="shrink-0 rounded-full border px-3 py-1 text-12"
                 style={{
                   borderColor: activeTag
                     ? "var(--theme-border)"
@@ -259,7 +259,7 @@ export function PersonaPresetSelector({
                   key={tag}
                   type="button"
                   onClick={() => setActiveTag(tag)}
-                  className="shrink-0 rounded-full border px-3 py-1 text-xs"
+                  className="shrink-0 rounded-full border px-3 py-1 text-12"
                   style={{
                     borderColor:
                       activeTag === tag
@@ -280,11 +280,11 @@ export function PersonaPresetSelector({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-stone-500">
+            <div className="py-10 text-center text-14 text-stone-500">
               {t("common.loading", "加载中...")}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-10 text-center text-sm text-stone-500">
+            <div className="py-10 text-center text-14 text-stone-500">
               {t("personaPresets.empty", "暂无角色预设")}
             </div>
           ) : (
@@ -384,7 +384,7 @@ export function PersonaPresetSelector({
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3
-                            className="truncate text-base font-semibold font-serif  text-[var(--theme-text)] leading-tight"
+                            className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
                             title={preset.name}
                           >
                             {preset.name}
