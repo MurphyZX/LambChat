@@ -16,8 +16,6 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
-use tauri_plugin_shell::process::CommandChild;
-use tauri_plugin_shell::ShellExt;
 
 /// 意外退出后的自动重启次数上限。
 const MAX_RESTARTS: u8 = 3;
@@ -59,12 +57,11 @@ macro_rules! warn_log {
     };
 }
 
-/// 当前托管的 daemon 子进程（env 直启或 sidecar 两种形态）。
+/// 当前托管的 daemon 子进程：command-group 的 [`GroupChild`]——
+/// Unix 进程组 / Windows Job Object（CREATE_NEW_PROCESS_GROUP + 任务对象），
+/// 进程树信号与整树终止由 crate 跨平台实现（替代手搓 killpg/taskkill）。
 enum DaemonChild {
-    /// `LAMBCHAT_DAEMON_BIN` 直启（dev 回退），标准库句柄。
-    Env(std::process::Child),
-    /// shell 插件托管的 sidecar 句柄。
-    Sidecar(CommandChild),
+    Group(command_group::GroupChild),
 }
 
 /// daemon 生命周期状态（挂到 Tauri managed state）。
@@ -140,64 +137,90 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
     }
     let generation = manager.generation.fetch_add(1, Ordering::SeqCst) + 1;
 
-    // 优先 dev 回退：外部可执行（如 uv 包装脚本）。子命令 `run` = 常驻 daemon 模式。
-    if let Some(env_bin) = std::env::var_os("LAMBCHAT_DAEMON_BIN") {
-        return match std::process::Command::new(&env_bin).arg("run").spawn() {
-            Ok(child) => {
-                warn_log!(
-                    "daemon started from LAMBCHAT_DAEMON_BIN={} (pid {})",
-                    env_bin.to_string_lossy(),
-                    child.id()
-                );
-                *slot = Some(DaemonChild::Env(child));
-                manager.unsupported.store(false, Ordering::SeqCst);
-                *manager.started_at.lock().unwrap() = Some(std::time::Instant::now());
-                spawn_env_monitor(app.clone(), generation);
-                emit_status(app);
-                Ok(())
+    // 统一经 command-group 组启动（Unix 进程组 / Windows Job Object）：
+    // 1. dev 回退：LAMBCHAT_DAEMON_BIN 外部可执行；
+    // 2. 常规：随包分发的 sidecar（bundle 资源目录内 binaries/lambchat-daemon-<triple>）。
+    //    不再经 plugin-shell spawn——插件句柄无进程组语义，Windows 只能退化为
+    //    taskkill；组启动让停止/整树清理由 command-group 跨平台完成。
+    let mut command = if let Some(env_bin) = std::env::var_os("LAMBCHAT_DAEMON_BIN") {
+        warn_log!(
+            "daemon from LAMBCHAT_DAEMON_BIN={}",
+            env_bin.to_string_lossy()
+        );
+        std::process::Command::new(&env_bin)
+    } else {
+        let bin = sidecar_binary_path(app).ok_or_else(|| {
+            manager.unsupported.store(true, Ordering::SeqCst);
+            "lambchat-daemon sidecar binary not available".to_string()
+        })?;
+        std::process::Command::new(bin)
+    };
+    command.arg("run").stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+
+    use command_group::CommandGroup;
+    let mut child = command.group_spawn().map_err(|e| {
+        manager.unsupported.store(true, Ordering::SeqCst);
+        format!("failed to spawn lambchat-daemon: {e}")
+    })?;
+    let pid = child.id();
+    warn_log!("daemon started in process group (pid {pid})");
+    // 排空 stdout/stderr 管道（防缓冲写满阻塞 daemon；日志进壳 stderr）
+    if let Some(out) = child.inner().stdout.take() {
+        std::thread::spawn(move || {
+            use std::io::Read;
+            let mut buf = [0u8; 4096];
+            let mut out = out;
+            loop {
+                match out.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        let s = String::from_utf8_lossy(&buf[..n]);
+                        eprint!("{s}");
+                    }
+                }
             }
-            Err(e) => {
-                manager.unsupported.store(true, Ordering::SeqCst);
-                Err(format!(
-                    "failed to spawn LAMBCHAT_DAEMON_BIN={}: {e}",
-                    env_bin.to_string_lossy()
-                ))
+        });
+    }
+    if let Some(err) = child.inner().stderr.take() {
+        std::thread::spawn(move || {
+            use std::io::Read;
+            let mut buf = [0u8; 4096];
+            let mut err = err;
+            loop {
+                match err.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        let s = String::from_utf8_lossy(&buf[..n]);
+                        eprint!("{s}");
+                    }
+                }
             }
-        };
+        });
     }
 
-    // 常规路径：随壳分发的 sidecar（经 shell 插件解析 target-triple 后 spawn）。
-    // 子命令 `run` = 常驻 daemon 模式（未配对时 daemon 自行快速退出，
-    // 由重启上限收敛；配对完成后的 restart_daemon 会再次拉起）。
-    let spawn_result = app
-        .shell()
-        .sidecar("lambchat-daemon")
-        .map_err(|e| format!("sidecar binary not available: {e}"))?
-        .args(["run"])
-        .spawn();
-    let (mut rx, child) = match spawn_result {
-        Ok(pair) => pair,
-        Err(e) => {
-            manager.unsupported.store(true, Ordering::SeqCst);
-            return Err(format!("failed to spawn lambchat-daemon sidecar: {e}"));
-        }
-    };
-    warn_log!("daemon sidecar started (pid {})", child.pid());
-    let pid = child.pid();
-    *slot = Some(DaemonChild::Sidecar(child));
+    *slot = Some(DaemonChild::Group(child));
     manager.unsupported.store(false, Ordering::SeqCst);
     *manager.started_at.lock().unwrap() = Some(std::time::Instant::now());
-
-    // 退出检测不走插件事件通道（原因见 spawn_sidecar_monitor 注释）。
-    spawn_sidecar_monitor(app.clone(), generation, pid);
-
-    // 仅排空插件事件通道（stdout/stderr 事件），防止管道缓冲写满阻塞插件内部线程。
-    // 注意绝不能 drop rx：读端关闭会让仍在运行的 daemon 写 stdout 时收到 EPIPE。
-    tauri::async_runtime::spawn(async move {
-        while (rx.recv().await).is_some() {}
-    });
+    spawn_group_monitor(app.clone(), generation);
     emit_status(app);
     Ok(())
+}
+
+/// sidecar 可执行路径：bundle 资源目录 `binaries/lambchat-daemon-<target-triple>`
+/// （与 tauri-plugin-shell 的 sidecar 解析同约定；dev 无 bundle 资源时返回 None）。
+fn sidecar_binary_path(app: &AppHandle) -> Option<PathBuf> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    let exe = if cfg!(windows) { ".exe" } else { "" };
+    let triple = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
+        ("linux", "aarch64") => "aarch64-unknown-linux-gnu",
+        ("macos", "x86_64") => "x86_64-apple-darwin",
+        ("macos", "aarch64") => "aarch64-apple-darwin",
+        ("windows", "x86_64") => "x86_64-pc-windows-msvc",
+        _ => return None,
+    };
+    let path = resource_dir.join("binaries").join(format!("lambchat-daemon-{triple}{exe}"));
+    path.is_file().then_some(path)
 }
 
 /// 托管状态变化事件：前端订阅（替代 10s 轮询 daemon_process_status），
@@ -228,123 +251,42 @@ fn emit_status(app: &AppHandle) {
 pub fn stop(app: &AppHandle) {
     let manager = app.state::<DaemonManager>();
     // 持锁递增 generation 并取走槽位（与 start 一致）：generation 的全部变更点
-    // 都在 child 锁内，handle_exit 的持锁复检（take_if_current）才能成立。递增后，
-    // 在飞行的监视线即便刚通过锁外的快速检查，也会在 handle_exit 的锁内
-    // 复检被拦下，不会把这次主动 stop 误判为意外退出而触发重启。
-    //
-    // 锁在击杀等待**之前**释放：优雅宽限最长 3s，持锁等待会把
-    // daemon_process_status / restart_daemon 等 IPC 一并卡住；generation 与
-    // 槽位的变更已在临界区内完成，锁外等待不破坏归属判定（restart_daemon
-    // 的 stop→start 仍在同一线程串行，不会新旧进程交叠）。
+    // 都在 child 锁内，handle_exit 的持锁复检（take_if_current）才能成立。
+    // 锁在等待**之前**释放：优雅宽限最长 3s，持锁等待会卡住 IPC。
     let child = {
         let mut slot = manager.child.lock().unwrap();
         manager.generation.fetch_add(1, Ordering::SeqCst);
         slot.take()
     };
-    match child {
-        Some(DaemonChild::Env(mut child)) => {
-            warn_log!("stopping daemon (pid {})", child.id());
-            // env 直启用 try_wait 探活（持有子进程句柄，无 pid 复用误判）：
-            // 退出即被收割，宽限内收敛。非 unix 无 SIGTERM，直落 kill 兜底。
-            #[cfg(unix)]
-            {
-                let _ = unsafe { libc::kill(child.id() as libc::pid_t, libc::SIGTERM) };
-                let deadline = std::time::Instant::now() + STOP_GRACE;
-                while std::time::Instant::now() < deadline {
-                    match child.try_wait() {
-                        Ok(Some(_)) | Err(_) => break,
-                        Ok(None) => std::thread::sleep(STOP_POLL_INTERVAL),
-                    }
-                }
-            }
-            if !matches!(child.try_wait(), Ok(Some(_))) {
-                let _ = child.kill(); // 宽限超时/非 unix：SIGKILL 兜底
-            }
-            let _ = child.wait(); // 收尸，防僵尸
-        }
-        Some(DaemonChild::Sidecar(child)) => {
-            warn_log!("stopping daemon sidecar (pid {})", child.pid());
-            graceful_terminate_sidecar(child.pid());
-            if process_alive(child.pid()) {
-                if let Err(e) = child.kill() {
-                    warn_log!("failed to kill daemon sidecar: {e}");
+    if let Some(DaemonChild::Group(mut child)) = child {
+        warn_log!("stopping daemon group (pid {})", child.id());
+        #[cfg(unix)]
+        {
+            use command_group::UnixChildExt;
+            let _ = child.signal(command_group::Signal::SIGTERM);
+            let deadline = std::time::Instant::now() + STOP_GRACE;
+            while std::time::Instant::now() < deadline {
+                match child.try_wait() {
+                    Ok(Some(_)) | Err(_) => break,
+                    Ok(None) => std::thread::sleep(STOP_POLL_INTERVAL),
                 }
             }
         }
-        None => {}
+        // Windows：Job Object 整树终止（组 kill，等价 unix killpg）；daemon 的
+        // 优雅下线（post_offline）由 SIGBREAK 侧与断流清理兜底——组 kill 后
+        // 服务端 SSE 断流 → unregister + presence 推送，感知仍为毫秒级。
+        if !matches!(child.try_wait(), Ok(Some(_))) {
+            if let Err(e) = child.kill() {
+                warn_log!("failed to kill daemon group: {e}");
+            }
+        }
+        let _ = child.wait(); // 收尸
     }
     manager.restarts.store(0, Ordering::SeqCst);
     *manager.started_at.lock().unwrap() = None;
     emit_status(app);
 }
 
-/// sidecar 形态的优雅终止：SIGTERM → 宽限内 `kill(pid, 0)` 探活。
-///
-/// plugin-shell 的 [`CommandChild`] 没有信号 API（只有 kill = SIGKILL），故
-/// 绕过句柄直接 `libc::kill(pid, SIGTERM)`（pid 已知）。PyInstaller onefile
-/// 的外层 wrapper 收到 SIGTERM 后随内层 daemon 退出而退出（内层 PDEATHSIG
-/// 兜底）；插件内部 wait 线程先行 `child.wait()` 收尸，探活随即 ESRCH——
-/// pid 复用误判窗口极小且后果与既有 kill 路径一致（见 [`process_alive`]）。
-/// 超时返回后由调用方 `child.kill()` SIGKILL 兜底。
-fn graceful_terminate_sidecar(pid: u32) {
-    #[cfg(unix)]
-    {
-        let rc = unsafe { libc::kill(pid as libc::pid_t, libc::SIGTERM) };
-        if rc != 0 {
-            let err = std::io::Error::last_os_error();
-            // ESRCH：进程已不在（视为已终止）；其余发送失败交 SIGKILL 兜底。
-            if err.raw_os_error() != Some(libc::ESRCH) {
-                warn_log!("failed to SIGTERM daemon sidecar (pid {pid}): {err}");
-            }
-            return;
-        }
-        let deadline = std::time::Instant::now() + STOP_GRACE;
-        while std::time::Instant::now() < deadline {
-            if !process_alive(pid) {
-                return;
-            }
-            std::thread::sleep(STOP_POLL_INTERVAL);
-        }
-        warn_log!(
-            "daemon sidecar (pid {pid}) still alive {}s after SIGTERM; falling back to SIGKILL",
-            STOP_GRACE.as_secs()
-        );
-    }
-    #[cfg(not(unix))]
-    {
-        // Windows：无 POSIX 信号。先 `taskkill /T`（向进程树发关闭请求，控制台
-        // 进程若装了 CTRL 处理器有一次优雅机会），宽限内仍存活再 `/T /F` 强杀
-        // 进程树。强杀路径 daemon 无法 post_offline——由服务端 SSE 断流 →
-        // unregister + presence 推送兜底，前端感知仍为秒级。
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let graceful = std::process::Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
-        if let Err(e) = graceful {
-            warn_log!("taskkill (graceful) failed for pid {pid}: {e}");
-        }
-        let deadline = std::time::Instant::now() + STOP_GRACE;
-        while std::time::Instant::now() < deadline {
-            if !process_alive(pid) {
-                return;
-            }
-            std::thread::sleep(STOP_POLL_INTERVAL);
-        }
-        warn_log!(
-            "daemon sidecar (pid {pid}) still alive {}s after taskkill; force-killing tree",
-            STOP_GRACE.as_secs()
-        );
-        let forced = std::process::Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T", "/F"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
-        if let Err(e) = forced {
-            warn_log!("taskkill /F failed for pid {pid}: {e}");
-        }
-    }
-}
 
 /// 进程状态：`"running" | "stopped" | "unsupported"`。
 pub fn status(app: &AppHandle) -> &'static str {
@@ -358,8 +300,11 @@ pub fn status(app: &AppHandle) -> &'static str {
     }
 }
 
-/// env 直启子进程的监视线：轮询 `try_wait`，退出后走统一的 [`handle_exit`]。
-fn spawn_env_monitor(app: AppHandle, generation: u64) {
+
+
+/// 组子进程监视线：500ms `try_wait` 轮询（command-group 句柄语义，跨平台，
+/// 替代 kill(pid,0)/tasklist 探活），退出走 [`handle_exit`]。
+fn spawn_group_monitor(app: AppHandle, generation: u64) {
     tauri::async_runtime::spawn_blocking(move || {
         loop {
             std::thread::sleep(ENV_POLL_INTERVAL);
@@ -369,77 +314,15 @@ fn spawn_env_monitor(app: AppHandle, generation: u64) {
             }
             let mut slot = manager.child.lock().unwrap();
             match slot.as_mut() {
-                Some(DaemonChild::Env(child)) => match child.try_wait() {
+                Some(DaemonChild::Group(child)) => match child.try_wait() {
                     Ok(Some(_)) | Err(_) => break,
                     Ok(None) => {}
                 },
-                // 槽位形态变化（不可能在同代发生，防御性退出）
-                _ => return,
+                _ => return, // 形态变化（不可能在同代发生，防御性退出）
             }
         }
         handle_exit(&app, generation);
     });
-}
-
-/// sidecar 子进程的监视线：每 500ms `kill(pid, 0)` 探活，退出走 [`handle_exit`]。
-///
-/// 为什么不用插件事件（`CommandEvent::Terminated`）：tauri-plugin-shell 2.3.6
-/// 中 Terminated 由内部 wait 线程在拿到 guard **写锁**后投递，而 stdout/stderr
-/// 管道 reader 线程持有 guard **读锁**直到管道 EOF。PyInstaller onefile 的
-/// 内层进程**继承管道写端**——SIGKILL 外层 wrapper 后内层仍存活，管道永不
-/// EOF，wait 线程永久阻塞在写锁上：Terminated 永不投递，且 sender 未释放
-/// 导致 rx 也永不关闭，事件监听协程随之永久挂起（T8 实测复现）。故 sidecar
-/// 与 env 直启统一采用 spawn_blocking 轮询模式。
-fn spawn_sidecar_monitor(app: AppHandle, generation: u64, pid: u32) {
-    tauri::async_runtime::spawn_blocking(move || {
-        loop {
-            std::thread::sleep(ENV_POLL_INTERVAL);
-            let manager = app.state::<DaemonManager>();
-            if manager.generation.load(Ordering::SeqCst) != generation {
-                return; // 槽位已被新一轮 start/stop 接管
-            }
-            let slot = manager.child.lock().unwrap();
-            match slot.as_ref() {
-                Some(DaemonChild::Sidecar(current)) if current.pid() == pid => {
-                    if !process_alive(pid) {
-                        break;
-                    }
-                }
-                // 槽位已不属于这一代（形态或 pid 变化）
-                _ => return,
-            }
-        }
-        handle_exit(&app, generation);
-    });
-}
-
-/// 进程探活：`kill(pid, 0)` 只做存在性/权限校验，不发送实际信号。
-/// 仅 ESRCH（不存在）返回 false；EPERM（存在但属主不同）仍视为存活。
-/// 注：pid 复用理论上可能误判存活——只会延迟退出检测（500ms 轮询窗口内
-/// 无关进程恰好拿到同 pid 的概率极低），由重启计数语义兜底，不影响正确性。
-fn process_alive(pid: u32) -> bool {
-    #[cfg(unix)]
-    {
-        let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
-        rc == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
-    }
-    #[cfg(not(unix))]
-    {
-        // Windows：无 kill(pid,0) 等价物，用 tasklist 按 PID 过滤探活（仅监视线
-        // 每 500ms 调用一次，查询进程的开销可接受）。查询失败按存活处理——
-        // 宁可多等一次宽限，也不误判退出触发无谓重启。
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let output = std::process::Command::new("tasklist")
-            .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-        match output {
-            // 无匹配时 tasklist 输出 "INFO: No tasks are running..."（不含 pid）
-            Ok(out) => String::from_utf8_lossy(&out.stdout).contains(&pid.to_string()),
-            Err(_) => true,
-        }
-    }
 }
 
 /// 子进程退出后的统一处理：仅当退出事件仍属于当前 generation 时才视为意外退出。
@@ -1006,14 +889,21 @@ mod tests {
     #[test]
     fn take_if_current_never_takes_slot_of_newer_generation() {
         let manager = Arc::new(DaemonManager::default());
-        let child_gen1 = std::process::Command::new("sleep").arg("30").spawn().unwrap();
+        use command_group::CommandGroup;
+        let mut child_gen1 = std::process::Command::new("sleep")
+            .arg("30")
+            .group_spawn()
+            .unwrap();
         let pid_gen1 = child_gen1.id();
-        let child_gen3 = std::process::Command::new("sleep").arg("30").spawn().unwrap();
+        let child_gen3 = std::process::Command::new("sleep")
+            .arg("30")
+            .group_spawn()
+            .unwrap();
 
         // 主线程持锁：装入 gen=1 的子进程（start 的落点效果）。
         let mut slot = manager.child.lock().unwrap();
         manager.generation.store(1, Ordering::SeqCst);
-        *slot = Some(DaemonChild::Env(child_gen1));
+        *slot = Some(DaemonChild::Group(child_gen1));
 
         // 监视线线程：此刻 generation 仍为 1（主线程持锁且尚未递增）。
         // 旧实现在锁外通过检查后，会阻塞在主线程持有的 child 锁上。
@@ -1026,12 +916,12 @@ mod tests {
         // restart_daemon 交错（修复后纪律：generation 变更全程持锁）——
         // stop：gen→2、取走并 kill 旧子进程；start：gen→3、装入新子进程。
         manager.generation.fetch_add(1, Ordering::SeqCst);
-        if let Some(DaemonChild::Env(mut old)) = slot.take() {
+        if let Some(DaemonChild::Group(mut old)) = slot.take() {
             let _ = old.kill();
             let _ = old.wait();
         }
         manager.generation.fetch_add(1, Ordering::SeqCst);
-        *slot = Some(DaemonChild::Env(child_gen3));
+        *slot = Some(DaemonChild::Group(child_gen3));
         drop(slot);
 
         match stale_exit.join().unwrap() {
@@ -1039,7 +929,7 @@ mod tests {
             None => {}
             // 理论上仅当交错未发生（gen 仍为 1 时取走原槽位）才会走到这里，
             // 此时取到的必须是 gen=1 的子进程本身；取到新代 pid 即竞窗实锤。
-            Some(DaemonChild::Env(mut c)) => {
+            Some(DaemonChild::Group(mut c)) => {
                 let pid = c.id();
                 let _ = c.kill();
                 let _ = c.wait();
@@ -1048,13 +938,13 @@ mod tests {
                     "stale exit handler took the child of a newer generation"
                 );
             }
-            Some(DaemonChild::Sidecar(_)) => panic!("unexpected sidecar child in test"),
+            
         }
 
         // 新代子进程必须仍在槽内（未被迟到的退出事件 take 掉）。
         let mut final_slot = manager.child.lock().unwrap();
         match final_slot.take() {
-            Some(DaemonChild::Env(mut c)) => {
+            Some(DaemonChild::Group(mut c)) => {
                 let _ = c.kill();
                 let _ = c.wait();
             }
