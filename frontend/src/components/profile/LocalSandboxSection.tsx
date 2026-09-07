@@ -10,7 +10,7 @@ import {
   Download,
 } from "lucide-react";
 import { sandboxApi } from "../../services/api/sandbox";
-import { getAccessToken } from "../../services/api/token";
+import { getValidAccessToken } from "../../services/api/tokenManager";
 import { effectiveApiBase } from "../../services/api/serverConfig";
 import {
   SANDBOX_STATUS_REFRESH_EVENT,
@@ -32,6 +32,11 @@ import { SelectRow } from "./SelectRow";
 import { SandboxMachinesCard } from "./SandboxMachinesCard";
 
 const PROCESS_POLL_INTERVAL_MS = 10 * 1000;
+
+/** 自动配对失败后的重试间隔（导出供测试用假时钟推进）。 */
+export const AUTO_PAIR_RETRY_DELAY_MS = 3 * 1000;
+/** 每挂载最多尝试次数（含首次）：有界重试，不无限循环。 */
+const AUTO_PAIR_MAX_ATTEMPTS = 3;
 
 const CONFIRM_POLICY_OPTIONS = [
   { key: "all", labelKey: "profile.localSandbox.policyOptions.all" },
@@ -55,7 +60,8 @@ function resolveServerUrl(): string {
  *
  * 动态适配：纯 web 在 daemon 在线（桌面端已配对连接）时渲染状态行 +
  * 机器列表（会话里可选本地档与执行机器），离线时渲染配对引导提示；
- * 壳内按配对态渲染状态行 + 配对表单（无副作用 login → 铸 PAT →
+ * 壳内按配对态渲染状态行 + 配对表单（一键：当前会话 JWT 铸 PAT——
+ * OAuth 账号唯一可用路径；换账号：无副作用 login → 铸 PAT →
  * savePairing → restartDaemon）或策略/目录/重启/取消配对控制行。
  *
  * ``embedded``：嵌入"沙箱"合并卡渲染——去掉自带卡片壳，只留分区头与
@@ -79,6 +85,7 @@ export function LocalSandboxSection({
   const [policy, setPolicy] = useState<ConfirmPolicy>("all");
   const [policyOpen, setPolicyOpen] = useState(false);
   const [pairing, setPairing] = useState(false);
+  const [pairingCurrent, setPairingCurrent] = useState(false);
   const [applying, setApplying] = useState(false);
   const [unpairing, setUnpairing] = useState(false);
   const [username, setUsername] = useState("");
@@ -127,45 +134,55 @@ export function LocalSandboxSection({
     statusError === "unauthorized";
   const loading = processStatus === "";
 
-  // 登录即配对（自动，每挂载一次）：未配对且 daemon 停止时——
+  // 登录即配对（自动）：未配对且 daemon 停止时——
   // - 已有落盘 PAT：直接拉起 daemon（配对数据还在，只是进程没起来——
   //   例如壳启动时 sidecar 缺失/版本门拒连后的恢复）；
   // - 无 PAT：用壳会话 JWT 铸 PAT 自动配对（同账号；换账号配对仍走表单）。
-  // 任何失败静默回落配对表单，不循环重试。
-  const autoPairHandled = useRef(false);
+  // JWT 必须经 getValidAccessToken 取（过期自动静默刷新）——裸 localStorage
+  // 值在 access token 过期后铸 PAT 必 401，会让用户（尤其无密码的 OAuth
+  // 账号）永远落回密码表单。失败间隔退避重试，每挂载最多
+  // AUTO_PAIR_MAX_ATTEMPTS 次，条件变化/超上限即停。
+  const [autoPairRetryTick, setAutoPairRetryTick] = useState(0);
+  const autoPairAttempts = useRef(0);
   useEffect(() => {
-    if (
-      !shell ||
-      loading ||
-      !unpaired ||
-      unpairing ||
-      autoPairHandled.current
-    ) {
-      return;
-    }
-    autoPairHandled.current = true;
-    (async () => {
-      try {
-        const existingPat = await readPairingPat().catch(() => null);
-        if (existingPat) {
-          await restartDaemon();
-          notifySandboxStatusRefresh();
-          refresh();
-          refreshProcessStatus();
-          return;
-        }
-        const sessionJwt = getAccessToken();
-        if (!sessionJwt) return;
-        const pat = await sandboxApi.createPairingPat(sessionJwt);
-        await applyPatAndRestart(pat.token, pat.pat_id, policy);
-      } catch (err) {
-        console.warn("[LocalSandboxSection] auto pair failed:", err);
-      }
-    })();
-    // applyPatAndRestart/refresh/refreshProcessStatus 每渲染重建；
-    // autoPairHandled 保证只执行一次，依赖收窄不会漏触发
+    if (!shell || loading || !unpaired || unpairing) return;
+    if (autoPairAttempts.current >= AUTO_PAIR_MAX_ATTEMPTS) return;
+    const isRetry = autoPairAttempts.current > 0;
+    autoPairAttempts.current += 1;
+    let cancelled = false;
+    const timer = window.setTimeout(
+      () => {
+        if (cancelled) return;
+        (async () => {
+          try {
+            const existingPat = await readPairingPat().catch(() => null);
+            if (existingPat) {
+              await restartDaemon();
+              notifySandboxStatusRefresh();
+              refresh();
+              refreshProcessStatus();
+              return;
+            }
+            const sessionJwt = await getValidAccessToken();
+            if (!sessionJwt) return;
+            const pat = await sandboxApi.createPairingPat(sessionJwt);
+            await applyPatAndRestart(pat.token, pat.pat_id, policy);
+          } catch (err) {
+            console.warn("[LocalSandboxSection] auto pair failed:", err);
+            setAutoPairRetryTick((tick) => tick + 1);
+          }
+        })();
+      },
+      isRetry ? AUTO_PAIR_RETRY_DELAY_MS : 0,
+    );
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // autoPairRetryTick 仅作失败重试触发器；applyPatAndRestart/refresh 等
+    // 每渲染重建，attempt 计数在 ref 里防重复
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shell, loading, unpaired, unpairing]);
+  }, [shell, loading, unpaired, unpairing, autoPairRetryTick]);
 
   // 分区头：独立形态是卡片大标题（同其他卡）；嵌入形态是 tile 内的软标题
   // （同通知页 h4 语言），带一句说明文案
@@ -302,6 +319,31 @@ export function LocalSandboxSection({
     }
   };
 
+  /** 一键配对：当前壳会话（刷新后的 JWT）直接铸 PAT，不碰密码通道——
+   * OAuth 账号没有密码，这是他们唯一可用的手动配对路径。 */
+  const handlePairWithCurrentAccount = async () => {
+    if (pairingCurrent) return;
+    setPairingCurrent(true);
+    try {
+      const sessionJwt = await getValidAccessToken();
+      if (!sessionJwt) {
+        toast.error(t("profile.localSandbox.pairNeedLogin"));
+        return;
+      }
+      const pat = await sandboxApi.createPairingPat(sessionJwt);
+      await applyPatAndRestart(pat.token, pat.pat_id, policy);
+      toast.success(t("profile.localSandbox.paired"));
+    } catch (err) {
+      console.warn(
+        "[LocalSandboxSection] pair with current account failed:",
+        err,
+      );
+      toast.error(t("profile.localSandbox.pairFailed"));
+    } finally {
+      setPairingCurrent(false);
+    }
+  };
+
   const handlePolicyChange = async (next: ConfirmPolicy) => {
     setPolicy(next);
     setPolicyOpen(false);
@@ -419,6 +461,21 @@ export function LocalSandboxSection({
             <p className="text-12 text-stone-500 dark:text-stone-400">
               {t("profile.localSandbox.pairTitle")}
             </p>
+            {/* 一键配对：当前登录账号铸 PAT（OAuth 账号唯一可用的手动路径） */}
+            <button
+              type="button"
+              onClick={handlePairWithCurrentAccount}
+              disabled={pairingCurrent}
+              data-pair-current-account
+              className="w-full rounded-xl bg-amber-500 disabled:opacity-50 px-3 py-2 text-14 font-medium text-white transition-colors hover:bg-amber-600"
+            >
+              {pairingCurrent
+                ? t("common.loading")
+                : t("profile.localSandbox.pairWithCurrent")}
+            </button>
+            <p className="pt-1 text-12 text-stone-400 dark:text-stone-500">
+              {t("profile.localSandbox.pairOtherAccount")}
+            </p>
             <input
               type="text"
               autoComplete="username"
@@ -438,7 +495,7 @@ export function LocalSandboxSection({
             <button
               type="submit"
               disabled={pairing || !username.trim() || !password}
-              className="w-full rounded-xl bg-amber-500 disabled:opacity-50 px-3 py-2 text-14 font-medium text-white transition-colors hover:bg-amber-600"
+              className="w-full rounded-xl border border-stone-200/80 dark:border-stone-500/70 disabled:opacity-50 px-3 py-2 text-14 font-medium text-stone-600 dark:text-stone-300 transition-colors hover:border-stone-300 dark:hover:border-stone-400/70 hover:bg-white dark:hover:bg-stone-800/70"
             >
               {pairing
                 ? t("common.loading")
