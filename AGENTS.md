@@ -115,7 +115,21 @@ feat/fix 分支 ──PR──▶ develop ──PR──▶ main ──▶ yang 
 |------|------|------|
 | `main` | 生产分支，每次合并出 `main-<时间戳>` 镜像 | 必须 PR；Merge Gate 只放行 `develop` 与 `hotfix/*` 来源 |
 | `develop` | 集成分支（默认分支），所有 feature/fix PR 的目标，每次合并出 `develop-<时间戳>` 镜像 | 必须 PR（0 approvals，自合留痕即可） |
-| `feat/*` `fix/*` `perf/*` `docs/*` `chore/*` | 短生命周期工作分支，从 `develop` 拉 | 无 |
+| `feat/*` `fix/*` `perf/*` `docs/*` `chore/*` | 短生命周期工作分支，从最新 `origin/develop` 拉 | 无 |
+
+### 开发起点（基于最新 origin/develop）
+
+**规矩：任何开发开工前，先同步远端并基于最新的 `origin/develop` 进行——新分支直接从 `origin/develop` 拉，已有分支先 rebase 到 `origin/develop` 再继续；禁止基于过期的本地 `develop` 或其他工作分支开工。**
+
+```bash
+git fetch origin
+
+# 开新工作分支：直接基于最新 origin/develop
+git checkout -b feat/xxx origin/develop
+
+# 已有分支继续开发 / 开 PR 前：先 rebase 到最新 origin/develop
+git rebase origin/develop
+```
 
 ### 提交信息规范
 
