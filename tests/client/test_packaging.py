@@ -207,12 +207,12 @@ def test_release_workflow_publishes_assets_immediately_per_platform() -> None:
     # macOS updater 走 .app.tar.gz（dmg 不能原地更新）；双架构各有平台键，
     # sig 按 Tauri updater 产物名的 arch 段区分（_aarch64 / _x64）
     assert by_label["macOS Apple Silicon"]["updater_key"] == "darwin-aarch64"
-    assert by_label["macOS Apple Silicon"]["updater_sig"] == "*_aarch64.app.tar.gz.sig"
+    assert by_label["macOS Apple Silicon"]["updater_sig"] == "*-macOS-Apple-Silicon.app.tar.gz.sig"
     assert by_label["macOS Apple Silicon"]["updater_asset_suffix"] == (
         "macOS-Apple-Silicon.app.tar.gz"
     )
     assert by_label["macOS Intel"]["updater_key"] == "darwin-x86_64"
-    assert by_label["macOS Intel"]["updater_sig"] == "*_x64.app.tar.gz.sig"
+    assert by_label["macOS Intel"]["updater_sig"] == "*-macOS-Intel.app.tar.gz.sig"
     assert by_label["macOS Intel"]["updater_asset_suffix"] == "macOS-Intel.app.tar.gz"
     merge_step = next(
         s
@@ -267,8 +267,8 @@ def test_release_workflow_guards_version_drift_and_manifest_version_from_tag() -
     )
     assert 'version = tag.lstrip("v")' in regen["run"]
     assert "read_text()" not in regen["run"] or "tauri.conf" not in regen["run"]
-    assert '("darwin-aarch64", "*_aarch64.app.tar.gz.sig"' in regen["run"]
-    assert '("darwin-x86_64", "*_x64.app.tar.gz.sig"' in regen["run"]
+    assert '("darwin-aarch64", "*-macOS-Apple-Silicon.app.tar.gz.sig"' in regen["run"]
+    assert '("darwin-x86_64", "*-macOS-Intel.app.tar.gz.sig"' in regen["run"]
 
 
 def test_release_workflow_macos_collect_requires_app_tar_gz() -> None:
