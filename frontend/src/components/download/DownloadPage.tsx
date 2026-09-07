@@ -12,7 +12,6 @@ import {
   AppWindow,
   Cloud,
   Check,
-  ShieldCheck,
   Smartphone,
 } from "lucide-react";
 import { versionApi } from "../../services/api/version";
@@ -575,28 +574,6 @@ export function DownloadPage() {
               );
             })}
           </div>
-
-          {/* macOS Gatekeeper 首启提示：应用未公证，右键打开/系统设置放行 */}
-          {desktop.macos.length > 0 && (
-            <div
-              data-reveal
-              className="blog-feature-card mx-auto mt-5 flex max-w-2xl items-start gap-3 rounded-2xl border border-stone-100/80 bg-white/70 p-4 sm:mt-6 sm:p-5 dark:border-stone-800/40 dark:bg-stone-900/40"
-            >
-              <ShieldCheck
-                size={15}
-                className="mt-0.5 shrink-0 text-stone-400 dark:text-stone-500"
-              />
-              <p className="text-12 leading-relaxed text-stone-500 dark:text-stone-400 sm:text-13">
-                <span className="font-semibold text-stone-600 dark:text-stone-300">
-                  {t("download.macGatekeeper.title")}
-                </span>
-                <span className="mx-1.5" aria-hidden="true">
-                  ·
-                </span>
-                {t("download.macGatekeeper.body")}
-              </p>
-            </div>
-          )}
         </div>
       </section>
 
@@ -805,7 +782,9 @@ export function DownloadPage() {
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                     {t("profile.localSandbox.statusOnline")}
                     <span className="truncate font-mono text-10 opacity-70 sm:text-11">
-                      {t("profile.localSandbox.version", { version: "0.3.0" })}
+                      {t("profile.localSandbox.version", {
+                        version: info?.latest_version ?? "2.8.6",
+                      })}
                     </span>
                   </span>
                   <span className="ml-auto hidden text-10 text-stone-400 dark:text-stone-500 sm:block sm:text-11">
