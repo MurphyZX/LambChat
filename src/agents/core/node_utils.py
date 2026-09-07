@@ -560,7 +560,9 @@ def build_human_message(
                     "image_url": {"url": image_url},
                 }
             )
-            if data_url and url:
+            # URL 必须写进文本摘要：模型读不出 image 块里的 URL，
+            # 没有链接就无法用 upload_url_to_sandbox 按需取字节
+            if url:
                 text_summary_attachments.append({**attachment, "image_index": image_index})
         elif url:
             text_summary_attachments.append(attachment)
