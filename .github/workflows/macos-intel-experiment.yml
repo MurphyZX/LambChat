@@ -101,12 +101,18 @@ jobs:
             echo "  $(basename "$bin"): $archs"
             [ "$archs" = "x86_64" ] || { echo "unexpected archs in $bin: $archs"; exit 1; }
           done
-          # ad-hoc 封印（arm64 内核的强制要求，同生产门禁）
-          test -f "$app_path/Contents/_CodeSignature/CodeResources"
-          codesign --verify --deep --strict --verbose=2 "$app_path"
           # PBS 运行时按编译期 ARCH 选择 macos-x64 子目录
+          find "$app_path/Contents/Resources/resources/python" -maxdepth 2 -type f -print
           test -f "$app_path/Contents/Resources/resources/python/macos-x64/python.tar.gz"
-          echo "OK: x86_64 app, ad-hoc sealed, macos-x64 PBS runtime embedded"
+          # ad-hoc 封印仅在提供签名密钥时校验：本实验无密钥走 --no-sign（跳过
+          # 封印），生产流水线必有密钥，由 app-release.yml 的签名门禁负责
+          if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            test -f "$app_path/Contents/_CodeSignature/CodeResources"
+            codesign --verify --deep --strict --verbose=2 "$app_path"
+          else
+            echo "(no signing key: ad-hoc seal check skipped, covered by release pipeline)"
+          fi
+          echo "OK: x86_64 app built, macos-x64 PBS runtime embedded"
 
       - name: Upload experiment artifacts
         uses: actions/upload-artifact@v4
