@@ -141,6 +141,8 @@ export function shouldAdoptLocalOnOnline(
 /** daemon 首次上线（离线→在线翻转）时由沙箱状态层派发，默认本地档跟进。 */
 export const SANDBOX_ONLINE_CHANGED_EVENT = "sandbox-online-changed";
 
+type StorageLike = Pick<Storage, "getItem">;
+
 function applyStoredAgentOptionDefaults(
   defaultValues: Record<string, boolean | string | number>,
   options?: AgentInfo["options"],

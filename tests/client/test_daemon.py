@@ -1112,6 +1112,7 @@ async def test_sigbreak_fallback_installs_sync_handler_when_loop_unsupported(mon
     """add_signal_handler 不可用（Windows Proactor）且存在 SIGBREAK 时，
     经 signal.signal 注册同步处理器（call_soon_threadsafe 取消任务）。"""
     import signal as signal_module
+
     from lambchat_sandbox import daemon as daemon_module
 
     loop = asyncio.get_running_loop()
@@ -1134,6 +1135,7 @@ async def test_sigbreak_fallback_installs_sync_handler_when_loop_unsupported(mon
 async def test_no_signal_support_returns_empty(monkeypatch):
     """无 SIGBREAK（非 Windows）且 loop 不支持：返回空（依赖 SIGINT/外部取消）。"""
     import signal as signal_module
+
     from lambchat_sandbox import daemon as daemon_module
 
     loop = asyncio.get_running_loop()

@@ -21,7 +21,6 @@ import {
   _resetSandboxStatusStoreForTests,
   refreshSandboxStatus,
   setSandboxWsHealthy,
-  subscribeSandboxStatus,
 } from "../sandboxStatusStore";
 
 function flushedStatus(online: boolean) {
