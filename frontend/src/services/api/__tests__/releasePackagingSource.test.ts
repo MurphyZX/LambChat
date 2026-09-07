@@ -38,6 +38,22 @@ test("release workflow publishes branded desktop and mobile artifacts", () => {
   expect(workflow).toMatch(/rustup target add \$\{\{ matrix\.target \}\}/);
   expect(workflow).toMatch(/asset_suffix: macOS-Apple-Silicon/);
   expect(workflow).toMatch(/asset_suffix: macOS-Intel/);
+  // darwin updater 签名用确定性命名（跟 updater 资产名走）：Tauri 原始
+  // sig 名不带架构段（双 mac job 互踩 clobber），按 arch 段 glob 匹配会
+  // 静默丢 darwin 条目、Mac 收不到自动更新
+  expect(workflow).toMatch(
+    /updater_sig: "\*-macOS-Apple-Silicon\.app\.tar\.gz\.sig"/,
+  );
+  expect(workflow).toMatch(/updater_sig: "\*-macOS-Intel\.app\.tar\.gz\.sig"/);
+  expect(workflow).toMatch(
+    /cp "\$app_tgz"\.sig "release-assets\/LambChat-\$\{RELEASE_TAG\}-\$\{\{ matrix\.updater_asset_suffix \}\}\.sig"/,
+  );
+  expect(workflow).toMatch(
+    /"darwin-aarch64", "\*-macOS-Apple-Silicon\.app\.tar\.gz\.sig"/,
+  );
+  expect(workflow).toMatch(
+    /"darwin-x86_64", "\*-macOS-Intel\.app\.tar\.gz\.sig"/,
+  );
   expect(workflow).toMatch(/frontend\/src-tauri\/target\/release\/bundle/);
   expect(workflow).toMatch(
     /LambChat-\$\{RELEASE_TAG\}-Linux-\$\{arch\}\.AppImage/,

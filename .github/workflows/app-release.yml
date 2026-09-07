@@ -75,7 +75,7 @@ jobs:
             asset_suffix: macOS-Apple-Silicon
             pbs_platform: macos-arm64
             updater_key: darwin-aarch64
-            updater_sig: "*_aarch64.app.tar.gz.sig"
+            updater_sig: "*-macOS-Apple-Silicon.app.tar.gz.sig"
             updater_asset_suffix: macOS-Apple-Silicon.app.tar.gz
           - label: macOS Intel
             runner: macos-14
@@ -85,7 +85,7 @@ jobs:
             asset_suffix: macOS-Intel
             pbs_platform: macos-x64
             updater_key: darwin-x86_64
-            updater_sig: "*_x64.app.tar.gz.sig"
+            updater_sig: "*-macOS-Intel.app.tar.gz.sig"
             updater_asset_suffix: macOS-Intel.app.tar.gz
 
     steps:
@@ -355,6 +355,7 @@ jobs:
             exit 1
           fi
           cp "$app_tgz" "release-assets/LambChat-${RELEASE_TAG}-${{ matrix.updater_asset_suffix }}"
+          cp "$app_tgz".sig "release-assets/LambChat-${RELEASE_TAG}-${{ matrix.updater_asset_suffix }}.sig"
           # 稳定名副本（一键安装脚本按 releases/latest/download/<稳定名> 直链
           # 下载，免版本号解析、免 API 限流）。双架构各一份稳定名。
           cp "$app_tgz" "release-assets/LambChat-${{ matrix.asset_suffix }}-latest.app.tar.gz"
@@ -776,8 +777,8 @@ jobs:
               ("linux-x86_64", "*_amd64.AppImage.sig", f"LambChat-{tag}-Linux-x86_64.AppImage"),
               ("linux-aarch64", "*_aarch64.AppImage.sig", f"LambChat-{tag}-Linux-arm64.AppImage"),
               # 双 darwin：sig 按 Tauri updater 产物名的 arch 段区分
-              ("darwin-aarch64", "*_aarch64.app.tar.gz.sig", f"LambChat-{tag}-macOS-Apple-Silicon.app.tar.gz"),
-              ("darwin-x86_64", "*_x64.app.tar.gz.sig", f"LambChat-{tag}-macOS-Intel.app.tar.gz"),
+              ("darwin-aarch64", "*-macOS-Apple-Silicon.app.tar.gz.sig", f"LambChat-{tag}-macOS-Apple-Silicon.app.tar.gz"),
+              ("darwin-x86_64", "*-macOS-Intel.app.tar.gz.sig", f"LambChat-{tag}-macOS-Intel.app.tar.gz"),
           ]
           platforms = {}
           for key, pattern, asset in mapping:
