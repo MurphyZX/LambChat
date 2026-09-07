@@ -17,6 +17,7 @@ import {
   notifySandboxStatusRefresh,
   useSandboxStatus,
 } from "../useSandboxStatus";
+import { _resetSandboxStatusStoreForTests } from "../../stores/sandboxStatusStore";
 
 function Probe() {
   const { status, statusError, online, machines } = useSandboxStatus();
@@ -30,6 +31,8 @@ function Probe() {
 beforeEach(() => {
   mocks.getStatus.mockReset();
   mocks.listMachines.mockReset();
+  // 单例 store 状态跨用例隔离（hook 现在是 store 薄壳）
+  _resetSandboxStatusStoreForTests();
 });
 
 test("fetches status on mount and refetches on the refresh event", async () => {

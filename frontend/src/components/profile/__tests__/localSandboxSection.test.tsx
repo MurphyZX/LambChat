@@ -61,6 +61,7 @@ vi.mock("../../../services/api/sandbox", () => ({
     listMachines: mocks.listMachines,
   },
   machinePlatformLabel: (platform: string) => platform,
+  sandboxApiMachines: { listMachines: mocks.listMachines },
 }));
 
 vi.mock("react-hot-toast", () => ({
@@ -71,6 +72,8 @@ import {
   AUTO_PAIR_RETRY_DELAY_MS,
   LocalSandboxSection,
 } from "../LocalSandboxSection";
+import { LocalSandboxSection } from "../LocalSandboxSection";
+import { _resetSandboxStatusStoreForTests } from "../../../stores/sandboxStatusStore";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -80,6 +83,9 @@ beforeEach(async () => {
     machines: [],
     default_machine_id: null,
   });
+  mocks.listMachines.mockResolvedValue({ machines: [], default_machine_id: null });
+  // useSandboxStatus 现在是全局单例 store 的薄壳：跨用例隔离状态
+  _resetSandboxStatusStoreForTests();
 });
 
 test("pure web offline renders the pairing guidance with a download CTA", async () => {

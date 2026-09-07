@@ -95,16 +95,26 @@ export async function refreshSandboxStatus(): Promise<void> {
       sandboxApiMachines.listMachines(),
     ]);
     const next: Partial<SandboxStatusStoreState> = {};
+    // 各自防御非法 fulfilled 值（undefined/形态不符）：单边脏数据不打崩整轮刷新
     if (statusResult.status === "fulfilled") {
-      next.status = statusResult.value;
-      next.statusError = null;
+      const value = statusResult.value as SandboxStatus | null | undefined;
+      if (value && typeof value === "object") {
+        next.status = value;
+        next.statusError = null;
+      }
     } else {
       // 静默失败：保留上次状态，仅记录错误类别
       next.statusError = toStatusError(statusResult.reason);
     }
     if (machinesResult.status === "fulfilled") {
-      next.machines = machinesResult.value.machines;
-      next.defaultMachineId = machinesResult.value.default_machine_id;
+      const value = machinesResult.value as
+        | { machines?: SandboxMachine[]; default_machine_id?: string | null }
+        | null
+        | undefined;
+      if (value && typeof value === "object") {
+        next.machines = Array.isArray(value.machines) ? value.machines : [];
+        next.defaultMachineId = value.default_machine_id ?? null;
+      }
     }
     next.lastSyncedAt = Date.now();
     store.set({ ...store.get(), ...next });

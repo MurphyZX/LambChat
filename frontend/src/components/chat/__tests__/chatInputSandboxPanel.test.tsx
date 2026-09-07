@@ -32,9 +32,7 @@ vi.mock("../../../services/api/sandbox", () => ({
     getStatus: mocks.getStatus,
     createPat: vi.fn(),
   },
-  sandboxApiMachines: {
-    listMachines: mocks.listMachines,
-  },
+  sandboxApiMachines: { listMachines: mocks.listMachines },
 }));
 
 vi.mock("../../../services/api/team", () => ({
@@ -59,6 +57,7 @@ import { ChatInputToolbar } from "../ChatInputToolbar";
 import { RunModePopover } from "../RunModePopover";
 import { resolveSandboxPresentation } from "../sandboxOption";
 import type { SandboxMachine } from "../../../services/api/sandbox";
+import { _resetSandboxStatusStoreForTests } from "../../../stores/sandboxStatusStore";
 import type { AgentOption } from "../../../types";
 
 const THINKING_DESCRIPTION = "Control thinking intensity";
@@ -172,7 +171,10 @@ beforeEach(async () => {
     machines: [],
     default_machine_id: null,
   });
+  mocks.listMachines.mockResolvedValue({ machines: [], default_machine_id: null });
   mocks.teamList.mockResolvedValue({ total: 0, teams: [] });
+  // useSandboxStatus 现在是全局单例 store 的薄壳：跨用例隔离状态
+  _resetSandboxStatusStoreForTests();
 });
 
 test("thinking panel open renders only the thinking modal, not the sandbox modal", () => {
