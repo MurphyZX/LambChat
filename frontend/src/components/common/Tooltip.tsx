@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type ReactNode,
   useState,
   useCallback,
@@ -8,7 +9,8 @@ import {
 import { createPortal } from "react-dom";
 import { useStickyDropdownPosition } from "../../hooks/useStickyDropdownPosition";
 
-type Placement = "top" | "bottom" | "auto";
+type Placement = "top" | "bottom" | "left" | "right" | "auto";
+type ResolvedPlacement = Exclude<Placement, "auto">;
 
 interface TooltipProps {
   content: ReactNode;
@@ -34,6 +36,151 @@ const TOUCH_MOVE_CANCEL_PX = 10;
  * tooltip on a mere tap instead of a deliberate long press.
  */
 const TOUCH_MOUSE_GATE_MS = 600;
+/** Gap between trigger and bubble (px) */
+const TOOLTIP_GAP = 10;
+/** Minimum distance between bubble and viewport edge (px) */
+const VIEWPORT_PADDING = 8;
+const TOOLTIP_MAX_WIDTH = 240;
+/** Arrow is a 10px (border-[5px]) triangle; keep it clear of the rounded corners */
+const ARROW_SIZE = 10;
+const ARROW_MARGIN = 6;
+
+/** Rough bubble size from content, used to pick a placement before measuring */
+function estimateTooltipSize(content: ReactNode) {
+  const text =
+    typeof content === "string" || typeof content === "number"
+      ? String(content)
+      : "";
+  const estimatedWidth = Math.min(
+    TOOLTIP_MAX_WIDTH,
+    Math.max(72, text.length * 7 + 20),
+  );
+  const estimatedLines = Math.max(
+    1,
+    Math.ceil((text.length * 7 + 20) / TOOLTIP_MAX_WIDTH),
+  );
+
+  return {
+    width: estimatedWidth,
+    height: estimatedLines * 24 + 12,
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), Math.max(min, max));
+}
+
+function resolvePlacement(
+  requested: Placement,
+  rect: DOMRect,
+  width: number,
+  height: number,
+): ResolvedPlacement {
+  if (requested !== "auto") return requested;
+
+  const spaceLeft = rect.left - VIEWPORT_PADDING;
+  const spaceRight = window.innerWidth - rect.right - VIEWPORT_PADDING;
+  const spaceAbove = rect.top - VIEWPORT_PADDING;
+  const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PADDING;
+  const horizontalFitsLeft = spaceLeft >= width + TOOLTIP_GAP;
+  const horizontalFitsRight = spaceRight >= width + TOOLTIP_GAP;
+
+  // Triggers hugging a viewport edge (e.g. the left rail) read better sideways
+  if (rect.left <= VIEWPORT_PADDING + 48 && horizontalFitsRight) return "right";
+  if (
+    window.innerWidth - rect.right <= VIEWPORT_PADDING + 48 &&
+    horizontalFitsLeft
+  )
+    return "left";
+  // Only one side fits horizontally: use it
+  if (horizontalFitsRight && !horizontalFitsLeft && spaceRight >= spaceBelow)
+    return "right";
+  if (horizontalFitsLeft && !horizontalFitsRight && spaceLeft > spaceAbove)
+    return "left";
+
+  return spaceAbove >= height + TOOLTIP_GAP && spaceAbove >= spaceBelow
+    ? "top"
+    : "bottom";
+}
+
+function getTooltipPosition(
+  rect: DOMRect,
+  requested: Placement,
+  content: ReactNode,
+) {
+  const { width, height } = estimateTooltipSize(content);
+  const resolved = resolvePlacement(requested, rect, width, height);
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  if (resolved === "right" || resolved === "left") {
+    const idealLeft =
+      resolved === "right"
+        ? rect.right + TOOLTIP_GAP
+        : rect.left - TOOLTIP_GAP - width;
+    const idealTop = centerY - height / 2;
+    const clampedTop = clamp(
+      idealTop,
+      VIEWPORT_PADDING,
+      viewportHeight - height - VIEWPORT_PADDING,
+    );
+
+    return {
+      resolved,
+      style: {
+        position: "fixed",
+        left: clamp(
+          idealLeft,
+          VIEWPORT_PADDING,
+          viewportWidth - width - VIEWPORT_PADDING,
+        ),
+        top: clampedTop,
+        transform: "none",
+      } satisfies CSSProperties,
+      arrowStyle: {
+        top: clamp(
+          centerY - clampedTop,
+          ARROW_MARGIN,
+          height - ARROW_MARGIN - ARROW_SIZE,
+        ),
+      } satisfies CSSProperties,
+    };
+  }
+
+  const idealLeft = centerX - width / 2;
+  const left = clamp(
+    idealLeft,
+    VIEWPORT_PADDING,
+    viewportWidth - width - VIEWPORT_PADDING,
+  );
+  const idealTop =
+    resolved === "top"
+      ? rect.top - TOOLTIP_GAP - height
+      : rect.bottom + TOOLTIP_GAP;
+
+  return {
+    resolved,
+    style: {
+      position: "fixed",
+      left,
+      top: clamp(
+        idealTop,
+        VIEWPORT_PADDING,
+        viewportHeight - height - VIEWPORT_PADDING,
+      ),
+      transform: "none",
+    } satisfies CSSProperties,
+    arrowStyle: {
+      left: clamp(
+        centerX - left,
+        ARROW_MARGIN,
+        width - ARROW_MARGIN - ARROW_SIZE,
+      ),
+    } satisfies CSSProperties,
+  };
+}
 
 export function Tooltip({
   content,
@@ -51,7 +198,8 @@ export function Tooltip({
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);
   const childElRef = useRef<HTMLElement | null>(null);
-  const resolvedPlacement = useRef<"top" | "bottom">("top");
+  const resolvedPlacement = useRef<ResolvedPlacement>("top");
+  const arrowStyle = useRef<CSSProperties>({});
 
   // Get the actual child element (not the display:contents wrapper)
   const getChild = useCallback(
@@ -171,33 +319,25 @@ export function Tooltip({
   const visible = open === true || show;
 
   const tipStyle = useStickyDropdownPosition(childElRef, visible, (rect) => {
-    const textLen =
-      typeof content === "string"
-        ? content.length
-        : content?.toString().length ?? 0;
-    const estimatedHeight = Math.min(textLen * 0.6, 120) + 24;
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    let showAbove = spaceAbove > estimatedHeight + 8;
-    if (placement === "top") showAbove = true;
-    else if (placement === "bottom") showAbove = false;
-    else showAbove = spaceAbove > spaceBelow;
-
-    resolvedPlacement.current = showAbove ? "top" : "bottom";
-
+    const position = getTooltipPosition(rect, placement, content);
+    resolvedPlacement.current = position.resolved;
+    arrowStyle.current = position.arrowStyle;
     return {
-      position: "fixed",
-      left: rect.left + rect.width / 2,
-      top: showAbove ? rect.top - 8 : rect.bottom + 8,
-      transform: showAbove ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+      ...position.style,
       zIndex,
     };
   });
 
   if (typeof content !== "string" && typeof content !== "number") return null;
 
-  const arrowTop = resolvedPlacement.current === "top";
+  const arrowClassName = {
+    top: "absolute left-0 top-full border-[5px] border-transparent border-t-stone-700 dark:border-t-stone-900",
+    bottom:
+      "absolute left-0 bottom-full border-[5px] border-transparent border-b-stone-700 dark:border-b-stone-900",
+    left: "absolute right-0 top-0 border-[5px] border-transparent border-l-stone-700 dark:border-l-stone-900",
+    right:
+      "absolute left-0 top-0 border-[5px] border-transparent border-r-stone-700 dark:border-r-stone-900",
+  }[resolvedPlacement.current];
 
   return (
     <>
@@ -208,7 +348,8 @@ export function Tooltip({
       {visible &&
         createPortal(
           <span
-            className={`fixed max-w-[240px] w-max rounded-lg bg-stone-700 dark:bg-stone-900 px-2.5 py-1.5 text-12 leading-relaxed text-white shadow-lg whitespace-normal pointer-events-none ${
+            data-placement={resolvedPlacement.current}
+            className={`fixed z-50 max-w-[min(240px,calc(100vw-16px))] w-max rounded-md border border-white/10 bg-stone-700/95 px-2.5 py-1.5 text-12 font-medium leading-relaxed text-white shadow-xl shadow-black/20 backdrop-blur-sm whitespace-normal pointer-events-none ${
               className ?? ""
             }`}
             style={{
@@ -217,11 +358,11 @@ export function Tooltip({
             }}
           >
             {content}
-            {arrowTop ? (
-              <span className="absolute left-1/2 -translate-x-1/2 top-full border-[5px] border-transparent border-t-stone-700 dark:border-t-stone-900" />
-            ) : (
-              <span className="absolute left-1/2 -translate-x-1/2 bottom-full border-[5px] border-transparent border-b-stone-700 dark:border-b-stone-900" />
-            )}
+            <span
+              data-tooltip-arrow
+              className={arrowClassName}
+              style={arrowStyle.current}
+            />
           </span>,
           document.body,
         )}
