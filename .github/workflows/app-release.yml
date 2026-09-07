@@ -106,9 +106,10 @@ jobs:
           gradle_code="$(grep -E '^\s+versionCode' frontend/android/app/build.gradle | sed -E 's/.*versionCode ([0-9]+).*/\1/')"
           ios="$(grep -m1 'MARKETING_VERSION' frontend/ios/App/App.xcodeproj/project.pbxproj | sed -E 's/.*= ([^;]+);.*/\1/')"
           pyproject="$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')"
+          daemon="$(grep -m1 '^__version__ = ' client/lambchat_sandbox/__init__.py | sed -E 's/__version__ = "([^"]+)"/\1/')"
           want_code="$(printf '%s' "$tag" | tr -d '.')"
           fail=0
-          for entry in "frontend/package.json=$pkg" "tauri.conf.json=$tauri" "android versionName=$gradle_name" "iOS MARKETING_VERSION=$ios" "pyproject.toml=$pyproject"; do
+          for entry in "frontend/package.json=$pkg" "tauri.conf.json=$tauri" "android versionName=$gradle_name" "iOS MARKETING_VERSION=$ios" "pyproject.toml=$pyproject" "daemon __version__=$daemon"; do
             k="${entry%%=*}"; v="${entry#*=}"
             if [ "$v" != "$tag" ]; then echo "✗ $k is $v, expected $tag"; fail=1; fi
           done
@@ -469,9 +470,10 @@ jobs:
           gradle_code="$(grep -E '^\s+versionCode' frontend/android/app/build.gradle | sed -E 's/.*versionCode ([0-9]+).*/\1/')"
           ios="$(grep -m1 'MARKETING_VERSION' frontend/ios/App/App.xcodeproj/project.pbxproj | sed -E 's/.*= ([^;]+);.*/\1/')"
           pyproject="$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')"
+          daemon="$(grep -m1 '^__version__ = ' client/lambchat_sandbox/__init__.py | sed -E 's/__version__ = "([^"]+)"/\1/')"
           want_code="$(printf '%s' "$tag" | tr -d '.')"
           fail=0
-          for entry in "frontend/package.json=$pkg" "tauri.conf.json=$tauri" "android versionName=$gradle_name" "iOS MARKETING_VERSION=$ios" "pyproject.toml=$pyproject"; do
+          for entry in "frontend/package.json=$pkg" "tauri.conf.json=$tauri" "android versionName=$gradle_name" "iOS MARKETING_VERSION=$ios" "pyproject.toml=$pyproject" "daemon __version__=$daemon"; do
             k="${entry%%=*}"; v="${entry#*=}"
             if [ "$v" != "$tag" ]; then echo "✗ $k is $v, expected $tag"; fail=1; fi
           done
@@ -609,9 +611,10 @@ jobs:
           gradle_code="$(grep -E '^\s+versionCode' frontend/android/app/build.gradle | sed -E 's/.*versionCode ([0-9]+).*/\1/')"
           ios="$(grep -m1 'MARKETING_VERSION' frontend/ios/App/App.xcodeproj/project.pbxproj | sed -E 's/.*= ([^;]+);.*/\1/')"
           pyproject="$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')"
+          daemon="$(grep -m1 '^__version__ = ' client/lambchat_sandbox/__init__.py | sed -E 's/__version__ = "([^"]+)"/\1/')"
           want_code="$(printf '%s' "$tag" | tr -d '.')"
           fail=0
-          for entry in "frontend/package.json=$pkg" "tauri.conf.json=$tauri" "android versionName=$gradle_name" "iOS MARKETING_VERSION=$ios" "pyproject.toml=$pyproject"; do
+          for entry in "frontend/package.json=$pkg" "tauri.conf.json=$tauri" "android versionName=$gradle_name" "iOS MARKETING_VERSION=$ios" "pyproject.toml=$pyproject" "daemon __version__=$daemon"; do
             k="${entry%%=*}"; v="${entry#*=}"
             if [ "$v" != "$tag" ]; then echo "✗ $k is $v, expected $tag"; fail=1; fi
           done
