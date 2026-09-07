@@ -1133,6 +1133,7 @@ async def test_sigbreak_fallback_installs_sync_handler_when_loop_unsupported(mon
 
 async def test_no_signal_support_returns_empty(monkeypatch):
     """无 SIGBREAK（非 Windows）且 loop 不支持：返回空（依赖 SIGINT/外部取消）。"""
+    import signal as signal_module
     from lambchat_sandbox import daemon as daemon_module
 
     loop = asyncio.get_running_loop()
@@ -1141,7 +1142,7 @@ async def test_no_signal_support_returns_empty(monkeypatch):
         raise NotImplementedError
 
     monkeypatch.setattr(loop, "add_signal_handler", _not_implemented)
-    monkeypatch.delattr(signal, "SIGBREAK", raising=False)
+    monkeypatch.delattr(signal_module, "SIGBREAK", raising=False)
 
     installed = daemon_module._install_sigterm_cancel()
     assert installed == []
