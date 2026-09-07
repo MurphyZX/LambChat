@@ -248,6 +248,9 @@ def test_release_workflow_guards_version_drift_and_manifest_version_from_tag() -
         )
         assert "versionCode" in preflight["run"], job
         assert "MARKETING_VERSION" in preflight["run"], job
+        # 服务端版本（/api/version 运行时读 pyproject.toml）同入门禁：
+        # 漏 bump 会让网页端展示的版本与客户端发版不同步
+        assert "pyproject.toml=$pyproject" in preflight["run"], job
 
     # 闸 2：增量合并的 manifest.version 取自 tag（不再读 tauri.conf.json）
     merge_step = next(
