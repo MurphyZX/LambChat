@@ -602,23 +602,46 @@ async def _silently_close(client: ChannelClient) -> None:
         await client.close()
 
 
-def _install_sigterm_cancel() -> list[signal.Signals]:
-    """注册 SIGTERM→取消当前任务；返回已注册信号（供退出时移除）。"""
+def _install_sigterm_cancel() -> list:
+    """注册优雅取消信号，返回已安装项（供退出时移除）。
+
+    - Unix：``loop.add_signal_handler``（SIGTERM；SIGINT 走解释器默认的
+      KeyboardInterrupt → 任务取消，同一优雅下线路径）；
+    - Windows：ProactorEventLoop 不实现 ``add_signal_handler``——回退
+      ``signal.signal(SIGBREAK, ...)`` 同步处理器，经
+      ``loop.call_soon_threadsafe`` 线程安全地取消任务（Ctrl+Break /
+      ``taskkill`` 控制台事件触发；SIGBREAK 仅存在于 Windows，其余平台跳过）。
+    """
     task = asyncio.current_task()
     if task is None:  # 协程内必有任务；防御性兜底
         return []
     loop = asyncio.get_running_loop()
+    installed: list = []
     try:
         loop.add_signal_handler(signal.SIGTERM, task.cancel)
+        installed.append(("loop", signal.SIGTERM))
     except (NotImplementedError, RuntimeError, ValueError):
-        return []  # Windows Proactor / 非主线程：跳过，依赖 SIGINT/外部取消
-    return [signal.SIGTERM]
+        pass  # Windows Proactor / 非主线程：走 SIGBREAK fallback
+    if not installed:
+        sigbreak = getattr(signal, "SIGBREAK", None)
+        if sigbreak is not None:
+            try:
+                signal.signal(
+                    sigbreak, lambda *_: loop.call_soon_threadsafe(task.cancel)
+                )
+                installed.append(("signal", sigbreak))
+            except (ValueError, OSError, RuntimeError):
+                pass  # 非主线程等：跳过，依赖 SIGINT/外部取消
+    return installed
 
 
-def _remove_signal_handlers(installed: list[signal.Signals]) -> None:
+def _remove_signal_handlers(installed: list) -> None:
     if not installed:
         return
     loop = asyncio.get_running_loop()
-    for sig in installed:
-        with contextlib.suppress(NotImplementedError, RuntimeError, ValueError):
-            loop.remove_signal_handler(sig)
+    for kind, sig in installed:
+        with contextlib.suppress(NotImplementedError, RuntimeError, ValueError, OSError):
+            if kind == "loop":
+                loop.remove_signal_handler(sig)
+            else:
+                signal.signal(sig, signal.SIG_DFL)

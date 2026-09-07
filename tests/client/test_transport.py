@@ -588,3 +588,27 @@ async def test_channel_url_omits_machine_params_when_unset():
     await client.connect()
     assert "machine_id=" not in str(log[0].url)
     assert "machine_name=" not in str(log[0].url)
+
+
+async def test_post_result_appends_machine_id_query_when_set():
+    """机器绑定回传：有 machine_id 的 daemon 把标识带在 query 上（服务端据此
+    校验回传机与下发目标机一致，防同用户多机冒答）。"""
+    log: list[httpx.Request] = []
+    client = ChannelClient(
+        SERVER, PAT, machine_id="m-123", client=_client(_api_transport(log))
+    )
+    await client.post_result("call-9", {"stage": "ack"})
+
+    req = log[0]
+    assert req.url.params.get("machine_id") == "m-123"
+    await client.close()
+
+
+async def test_post_result_without_machine_id_omits_query():
+    """legacy daemon（无 machine_id）：query 不带该参数（服务端跳过绑定校验）。"""
+    log: list[httpx.Request] = []
+    client = _channel_client(_api_transport(log))
+    await client.post_result("call-9", {"stage": "ack"})
+
+    assert log[0].url.params.get("machine_id") is None
+    await client.close()

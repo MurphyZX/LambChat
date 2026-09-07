@@ -222,9 +222,14 @@ class ChannelClient:
             await cm.__aexit__(None, None, None)
 
     async def post_result(self, call_id: str, body: dict[str, Any]) -> None:
-        """回传执行结果；body 中值为 None 的字段按契约剔除（exclude_none）。"""
+        """回传执行结果；body 中值为 None 的字段按契约剔除（exclude_none）。
+
+        有 machine_id 时以 query 参数随行回传——服务端据此校验回传机与下发
+        目标机一致（同用户多机防冒答）；不带（legacy daemon）则服务端跳过校验。
+        """
+        machine_param = f"?machine_id={quote(self._machine_id)}" if self._machine_id else ""
         response = await self._client.post(
-            f"{self._base}/api/sandbox/results/{quote(call_id, safe='')}",
+            f"{self._base}/api/sandbox/results/{quote(call_id, safe='')}{machine_param}",
             json={k: v for k, v in body.items() if v is not None},
             headers=self._auth_headers(),
             timeout=POST_TIMEOUT_S,
