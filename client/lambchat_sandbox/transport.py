@@ -292,9 +292,15 @@ class ChannelClient:
         return _StreamStatusGuard(cm, "get_stream")
 
     async def post_offline(self) -> None:
-        """优雅退出通知（服务端 offline 端点）。"""
+        """优雅退出通知（服务端 offline 端点）。
+
+        多机 daemon 必须带 machine_id——服务端据此定向注销本机；不带则走
+        legacy 分支（查 legacy hash），多机注册表无从注销，下线感知退化为
+        等 TTL 过期（真机冒烟实测：offline 200 但机器键存活满 35s）。
+        """
+        machine_param = f"?machine_id={quote(self._machine_id)}" if self._machine_id else ""
         response = await self._client.post(
-            f"{self._base}/api/sandbox/offline",
+            f"{self._base}/api/sandbox/offline{machine_param}",
             headers=self._auth_headers(),
             timeout=POST_TIMEOUT_S,
         )

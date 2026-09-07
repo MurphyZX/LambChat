@@ -612,3 +612,26 @@ async def test_post_result_without_machine_id_omits_query():
 
     assert log[0].url.params.get("machine_id") is None
     await client.close()
+
+
+async def test_post_offline_appends_machine_id_when_set():
+    """多机 daemon 的优雅下线必须带 machine_id（服务端定向注销本机；不带则
+    服务端走 legacy 分支查不到注册表，下线退化为等 35s TTL——真机冒烟实测）。"""
+    log: list[httpx.Request] = []
+    client = ChannelClient(
+        SERVER, PAT, machine_id="m-123", client=_client(_api_transport(log))
+    )
+    await client.post_offline()
+
+    assert log[0].url.path == "/api/sandbox/offline"
+    assert log[0].url.params.get("machine_id") == "m-123"
+    await client.close()
+
+
+async def test_post_offline_without_machine_id_omits_query():
+    log: list[httpx.Request] = []
+    client = _channel_client(_api_transport(log))
+    await client.post_offline()
+
+    assert log[0].url.params.get("machine_id") is None
+    await client.close()
