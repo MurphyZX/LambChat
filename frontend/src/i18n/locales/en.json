@@ -3622,6 +3622,10 @@
       "step2": "Open LambChat on the web, go to Settings → Preferences → Sandbox, and confirm the local sandbox shows Online.",
       "step3": "In the chat input, open the Sandbox selector and switch to Local — the Agent now executes on your machine."
     },
+    "macInstall": {
+      "title": "One-line install (recommended)",
+      "body": "Paste the command below into Terminal to download and install the latest version — Terminal installs never trigger the damaged prompt."
+    },
     "macGatekeeper": {
       "title": "macOS first launch",
       "body": "Browser-downloaded apps that are not notarized may be reported as damaged on first launch. Drag LambChat into your Applications folder, run the command below in Terminal to clear the quarantine flag, then launch it:"

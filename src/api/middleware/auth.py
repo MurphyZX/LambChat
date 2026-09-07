@@ -35,6 +35,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/offline.html",
         "/api/version",
         "/robots.txt",
+        "/install.sh",
         "/sitemap.xml",
         "/index.html",
     }

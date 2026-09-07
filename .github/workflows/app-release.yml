@@ -335,6 +335,10 @@ jobs:
             exit 1
           fi
           cp "$app_tgz" "release-assets/LambChat-${RELEASE_TAG}-macOS.app.tar.gz"
+          # 稳定名副本：一键安装脚本（frontend/public/install.sh）按
+          # releases/latest/download/LambChat-macOS-latest.app.tar.gz 直链下载，
+          # 免版本号解析、免 API 限流。带版本名原件仍保留（updater 契约不变）。
+          cp "$app_tgz" "release-assets/LambChat-macOS-latest.app.tar.gz"
           # daemon sidecar 资产：保留 triple 原名（selfupdate 按 lambchat-daemon-<triple> 前缀匹配）
           cp frontend/src-tauri/binaries/lambchat-daemon-* release-assets/
 
@@ -806,11 +810,19 @@ jobs:
           <!-- macos-gatekeeper-note -->
           ### macOS 安装提示 / macOS install note
 
-          首次打开若提示「已损坏，无法打开」：将 LambChat 拖入「应用程序」文件夹后，
-          打开「终端」执行 `xattr -cr /Applications/LambChat.app`，再启动即可。
+          推荐终端一键安装（curl 下载无隔离标记，装完直接可用）：
+          `curl -fsSL https://lambchat.com/install.sh | sh`
 
-          If macOS reports the app as damaged and cannot be opened on first launch:
-          drag LambChat into your Applications folder, run
+          浏览器下载 dmg 首次打开若提示「已损坏，无法打开」：将 LambChat 拖入
+          「应用程序」文件夹后，在「终端」执行 `xattr -cr /Applications/LambChat.app`，
+          再启动即可。
+
+          Recommended: install from Terminal with one line (curl downloads carry no
+          quarantine flag, the app just works):
+          `curl -fsSL https://lambchat.com/install.sh | sh`
+
+          If you downloaded the dmg in a browser and macOS reports the app as damaged:
+          drag LambChat into Applications, run
           `xattr -cr /Applications/LambChat.app` in Terminal, then launch it.
           NOTE
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file body.md

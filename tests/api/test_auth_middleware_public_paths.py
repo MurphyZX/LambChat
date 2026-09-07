@@ -65,3 +65,24 @@ async def test_release_asset_download_path_is_public_without_authorization() -> 
 
     assert response.status_code == 200
     assert response.json()["ok"] == "asset"
+
+
+@pytest.mark.asyncio
+async def test_install_script_path_is_public_without_authorization() -> None:
+    """一键安装脚本必须匿名可访问（curl 下载，无浏览器导航 Accept 头）。"""
+    app = FastAPI()
+    app.add_middleware(AuthMiddleware)
+
+    @app.get("/install.sh")
+    async def install_script() -> dict[str, str]:
+        return {"ok": "script"}
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/install.sh",
+            headers={"accept": "*/*"},  # curl 默认 Accept，非 text/html
+        )
+
+    assert response.status_code == 200
+    assert response.json()["ok"] == "script"
