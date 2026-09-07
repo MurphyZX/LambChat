@@ -38,6 +38,8 @@ class _FakeRedis:
         self.sets: "dict[str, set[str]]" = {}
         self.hashes: dict[str, dict[str, str]] = {}
         self.expires_at: dict[str, float] = {}
+        self.blpop_calls = 0
+        self.lpop_calls = 0
 
     def _alive(self, key: str) -> bool:
         exp = self.expires_at.get(key)
@@ -47,11 +49,21 @@ class _FakeRedis:
         self.lists.setdefault(key, []).append(value)
 
     async def lpop(self, key):
+        self.lpop_calls += 1
         items = self.lists.get(key)
         return items.pop(0) if items else None
 
     async def llen(self, key):
         return len(self.lists.get(key) or ())
+
+    async def blpop(self, key, timeout=0):
+        self.blpop_calls += 1
+        items = self.lists.get(key)
+        if items:
+            return key, items.pop(0)
+        if timeout and timeout > 0:
+            await asyncio.sleep(timeout)
+        return None
 
     async def set(self, key, value, ex=None):
         self.kv[key] = value
@@ -187,7 +199,7 @@ async def test_channel_frames_hello_then_tool_call_then_heartbeat(monkeypatch):
         "sandbox:req:u1", json.dumps({"call_id": "x", "op": "exec", "payload": {}, "timeout": 10})
     )
     registry = _FakeRegistry()
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
     stop = asyncio.Event()
     frames = []
@@ -213,7 +225,7 @@ async def test_channel_frames_returns_when_superseded(monkeypatch, superseded_by
     redis = _FakeRedis()
     await redis.rpush("sandbox:req:u1", json.dumps({"call_id": "x", "op": "exec", "payload": {}}))
     registry = _FakeRegistry()
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
     stop = asyncio.Event()
     frames = []
@@ -257,7 +269,7 @@ async def test_channel_frames_drops_stale_requests(monkeypatch):
         json.dumps({"call_id": "new", "op": "exec", "payload": {}, "ts": time.time()}),
     )
     registry = _FakeRegistry()
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     stop = asyncio.Event()
     frames = []
     async for frame in channel_frames(redis, registry, "u1", "c1", stop=stop):
@@ -542,6 +554,8 @@ async def test_channel_registers_confirm_policy_from_query(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen["confirm_policy"] = confirm_policy
         if False:  # pragma: no cover - 使其成为 async generator（空流即结束）
@@ -590,6 +604,8 @@ async def test_channel_registers_version_from_query(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen["version"] = version
         seen["platform"] = platform
@@ -635,6 +651,8 @@ async def test_channel_registers_platform_from_query(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen["platform"] = platform
         if False:  # pragma: no cover - 使其成为 async generator（空流即结束）
@@ -722,6 +740,8 @@ async def test_channel_allows_version_at_or_above_min(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen.append(version)
         if False:  # pragma: no cover - 空 async generator
@@ -752,6 +772,8 @@ async def test_channel_allows_equal_min_with_nonnumeric_suffix(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         if False:  # pragma: no cover - 空 async generator
             yield ""
@@ -1381,7 +1403,7 @@ async def test_presence_pushed_on_channel_register_and_disconnect(monkeypatch):
     published = _presence_probe(monkeypatch, registry)
     monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
     monkeypatch.setattr(sandbox_route, "_redis", lambda: _FakeRedis())
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
     monkeypatch.setattr(sandbox_route.settings, "SANDBOX_MIN_DAEMON_VERSION", "0.0.1")
 
@@ -1399,3 +1421,32 @@ async def test_presence_pushed_on_channel_register_and_disconnect(monkeypatch):
     assert chunks and "hello" in chunks[0]
     assert published == ["u1", "u1"]  # finally 注销后再推
     assert registry.unregistered  # 注销确实发生
+
+
+async def test_channel_frames_uses_blocking_pop_not_polling(monkeypatch):
+    """下发读取走 BLPOP（阻塞 1s 切片），不再 50ms LPOP 空转轮询。"""
+    from src.api.routes.sandbox import channel_frames
+
+    redis = _FakeRedis()
+    await redis.rpush(
+        "sandbox:req:u1", json.dumps({"call_id": "x", "op": "exec", "payload": {}, "timeout": 10})
+    )
+    stop = asyncio.Event()
+
+    frames: list[str] = []
+    async for frame in channel_frames(
+        redis,
+        _FakeRegistry(),
+        "u1",
+        "c1",
+        stop=stop,
+    ):
+        frames.append(frame)
+        if "tool_call" in frame:
+            break
+    stop.set()
+
+    assert any("hello" in f for f in frames)
+    assert any("tool_call" in f for f in frames)
+    assert redis.blpop_calls >= 1
+    assert redis.lpop_calls == 0

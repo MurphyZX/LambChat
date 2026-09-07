@@ -1,6 +1,7 @@
 """本地沙箱中继：daemon SSE 通道、结果回传、在线状态。"""
 
 import asyncio
+import contextlib
 import json
 import socket
 import time
@@ -21,7 +22,11 @@ from src.infra.sandbox.relay.registry import (
     parse_daemon_platform,
     parse_daemon_version,
 )
-from src.infra.storage.redis import get_binary_redis_client, get_redis_client
+from src.infra.storage.redis import (
+    create_redis_client,
+    get_binary_redis_client,
+    get_redis_client,
+)
 from src.kernel.config import settings
 from src.kernel.errors import AppError, ErrorCode
 from src.kernel.schemas.user import TokenPayload
@@ -30,7 +35,10 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
-_POLL_INTERVAL = 0.05
+#: 下发队列阻塞读超时（秒）：BLPOP 切片——空转时每秒一次 Redis 往返
+#: （替代旧的 50ms LPOP 轮询：Redis QPS 20/s → 1/s/daemon），心跳与 stop
+#: 检查随切片自然穿插。测试注入小值加速。
+_BLPOP_TIMEOUT = 1.0
 _HEARTBEAT_SECONDS = 15
 _NODE_ID = f"{socket.gethostname()}:{uuid.uuid4().hex[:8]}"
 
@@ -81,6 +89,8 @@ async def channel_frames(
     confirm_policy: str = "",
     machine_id: str = "",
     machine_name: str = "",
+    stream_redis=None,
+    blpop_timeout: float | None = None,
 ) -> AsyncIterator[str]:
     """SSE 帧生成器：hello -> (tool_call | 心跳) 循环；连接期心跳注册表。
 
@@ -104,6 +114,10 @@ async def channel_frames(
     loop = asyncio.get_event_loop()
     last_beat = loop.time()  # 首个心跳在间隔之后到点，保证 hello 后紧跟的是 tool_call
     req_key = registry.queue_key(user_id, machine_id) if machine_id else f"sandbox:req:{user_id}"
+    # 专用阻塞连接（每条 SSE 流独立池）：BLPOP 长阻塞会占住连接，不能与共享
+    # 池混用（会耗尽 50 连接的共享池）；缺省回退共享客户端（测试 Fake 无所谓）
+    blocking = stream_redis if stream_redis is not None else redis
+    timeout_slice = blpop_timeout if blpop_timeout is not None else _BLPOP_TIMEOUT
     while not stop.is_set():
         now = loop.time()
         if now - last_beat >= _HEARTBEAT_SECONDS:
@@ -130,8 +144,11 @@ async def channel_frames(
                 await redis.set(_owner_key(user_id, machine_id), client_id, ex=35)
             last_beat = now
             yield ": heartbeat\n\n"
-        raw = await redis.lpop(req_key)
-        if raw is not None:
+        # 阻塞读下发队列：超时切片返回 None → 回到心跳检查；Redis 异常上抛
+        # 终结本流，daemon 走既有退避重连（与旧轮询模型同语义）
+        item = await blocking.blpop(req_key, timeout=timeout_slice)
+        if item is not None:
+            raw = item[1]
             age = _request_age_seconds(raw)
             if age > settings.SANDBOX_LOCAL_ACK_TIMEOUT:
                 logger.debug(
@@ -143,7 +160,6 @@ async def channel_frames(
                 continue
             yield f"event: tool_call\ndata: {raw}\n\n"
             continue
-        await asyncio.sleep(_POLL_INTERVAL)
 
 
 def _version_tuple(version: str) -> tuple[int, ...]:
@@ -218,6 +234,9 @@ async def sandbox_channel(
         await _redis().set(_owner_key(user.sub, machine_id), client_id, ex=35)
     stop = asyncio.Event()
     await publish_presence(user.sub)  # 上线事件：注册成功即推，不等心跳
+    # 每条 SSE 流一个专用阻塞客户端（独立连接池）：BLPOP 长阻塞独占连接，
+    # 不能占用共享池；流关闭时 aclose 释放底层连接
+    stream_redis = create_redis_client(isolated_pool=True)
 
     async def generator():
         try:
@@ -232,9 +251,12 @@ async def sandbox_channel(
                 confirm_policy=confirm_policy,
                 machine_id=machine_id,
                 machine_name=machine_name,
+                stream_redis=stream_redis,
             ):
                 yield frame
         finally:
+            with contextlib.suppress(Exception):
+                await stream_redis.aclose()
             await registry.unregister(user.sub, client_id, machine_id=machine_id)
             await publish_presence(user.sub)  # 下线事件：断流即推（秒级感知）
 
