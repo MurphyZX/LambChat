@@ -7,6 +7,9 @@
 - ``sandbox:machname:{uid}``       hash    mid → 自定义展示名（rename 覆盖层，
   daemon 重连上报的 hostname 不会冲掉用户起的名字）；
 - ``sandbox:machdefault:{uid}``    string  用户默认机。
+- ``sandbox:machseen:{uid}``       hash    mid → JSON{ts,name,platform,version,confirm_policy}
+  机器记忆层（无 TTL）：register/heartbeat 时写入，支撑离线机保留展示
+  （include_offline）与 last_seen；forget_machine 时清除。
 
 legacy（未上报 machine_id 的 0.2.0 daemon）沿用旧 ``sandbox:clients:{uid}``
 hash + 后连踢前连语义 + ``sandbox:req:{uid}`` 队列，在机器列表中以
@@ -21,6 +24,9 @@ hash + 后连踢前连语义 + ``sandbox:req:{uid}`` 队列，在机器列表中
 - ``node_id|version|platform|confirm_policy``（服务端确认门）；
 - ``node_id|version|platform|confirm_policy|machine_name``（多机）。
 """
+
+import json
+import time
 
 from src.infra.storage.redis import get_redis_client
 
@@ -48,6 +54,41 @@ def _machname_key(user_id: str) -> str:
 
 def _machdefault_key(user_id: str) -> str:
     return f"sandbox:machdefault:{user_id}"
+
+
+def _machseen_key(user_id: str) -> str:
+    return f"sandbox:machseen:{user_id}"
+
+
+def _encode_seen_record(
+    *,
+    machine_name: str,
+    platform: str,
+    version: str,
+    confirm_policy: str,
+    ts: float | None = None,
+) -> str:
+    """machseen 记忆层 value：JSON{ts,name,platform,version,confirm_policy}。"""
+    return json.dumps(
+        {
+            "ts": ts if ts is not None else time.time(),
+            "name": machine_name,
+            "platform": platform,
+            "version": version,
+            "confirm_policy": confirm_policy,
+        }
+    )
+
+
+def _decode_seen_record(raw: str | None) -> dict | None:
+    """解析 machseen value；损坏记录按不存在处理（返回 None）。"""
+    if not raw:
+        return None
+    try:
+        record = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    return record if isinstance(record, dict) else None
 
 
 def encode_node_value(
@@ -122,6 +163,16 @@ class SandboxClientRegistry:
         if machine_id:
             await redis.sadd(_machset_key(user_id), machine_id)
             await redis.set(_machine_key(user_id, machine_id), value, ex=_TTL_SECONDS)
+            await redis.hset(
+                _machseen_key(user_id),
+                machine_id,
+                _encode_seen_record(
+                    machine_name=machine_name,
+                    platform=platform,
+                    version=version,
+                    confirm_policy=confirm_policy,
+                ),
+            )
             return
         await redis.delete(_key(user_id))  # 后连踢前连（legacy 单机语义）
         await redis.hset(_key(user_id), client_id, value)
@@ -144,6 +195,16 @@ class SandboxClientRegistry:
         if machine_id:
             await redis.sadd(_machset_key(user_id), machine_id)
             await redis.set(_machine_key(user_id, machine_id), value, ex=_TTL_SECONDS)
+            await redis.hset(
+                _machseen_key(user_id),
+                machine_id,
+                _encode_seen_record(
+                    machine_name=machine_name,
+                    platform=platform,
+                    version=version,
+                    confirm_policy=confirm_policy,
+                ),
+            )
             return
         await redis.hset(_key(user_id), client_id, value)
         await redis.expire(_key(user_id), _TTL_SECONDS)
@@ -180,21 +241,28 @@ class SandboxClientRegistry:
     # 多机：列表 / 默认 / 重命名 / 移除 / 目标解析
     # ------------------------------------------------------------------
 
-    async def list_machines(self, user_id: str) -> list[dict]:
-        """在线机器列表（TTL 过期即离线、从集合懒清理）。
+    async def list_machines(self, user_id: str, include_offline: bool = False) -> list[dict]:
+        """机器列表。
 
-        返回 [{machine_id, name, platform, version, confirm_policy, online}]，
-        ``online`` 恒 True（列表只含在册在线机；离线机 TTL 后自然消失，
-        rename 覆盖层保留、机器重连时恢复展示）。
+        默认仅返回在线机器（TTL 过期即离线、从集合懒清理），行为与历史版本
+        一致；每台附 ``last_seen``（machseen 记忆层的时间戳，无记录为 None）。
+
+        ``include_offline=True``：额外合并 machseen 记忆层里已知但当前离线的
+        机器（``online: False``），展示名取 rename 覆盖层 > 上报名，元数据取
+        记忆层快照——供选择器「离线机置灰保留」与 last_seen 展示。
         """
         redis = self._redis()
         names = await redis.hgetall(_machname_key(user_id))
+        seen_raw = await redis.hgetall(_machseen_key(user_id))
         machines: list[dict] = []
+        online_ids: set[str] = set()
         for mid in sorted(await redis.smembers(_machset_key(user_id))):
             value = await redis.get(_machine_key(user_id, mid))
             if value is None:
                 await redis.srem(_machset_key(user_id), mid)
                 continue
+            online_ids.add(mid)
+            seen = _decode_seen_record(seen_raw.get(mid))
             machines.append(
                 {
                     "machine_id": mid,
@@ -203,8 +271,27 @@ class SandboxClientRegistry:
                     "version": parse_daemon_version(value),
                     "confirm_policy": parse_confirm_policy(value),
                     "online": True,
+                    "last_seen": seen.get("ts") if seen else None,
                 }
             )
+        if include_offline:
+            for mid in sorted(seen_raw):
+                if mid in online_ids:
+                    continue
+                seen = _decode_seen_record(seen_raw.get(mid))
+                if seen is None:
+                    continue
+                machines.append(
+                    {
+                        "machine_id": mid,
+                        "name": names.get(mid) or seen.get("name") or mid,
+                        "platform": seen.get("platform", ""),
+                        "version": seen.get("version", ""),
+                        "confirm_policy": seen.get("confirm_policy", ""),
+                        "online": False,
+                        "last_seen": seen.get("ts"),
+                    }
+                )
         active = await self.get_active(user_id)
         if active is not None:
             machines.append(
@@ -215,6 +302,7 @@ class SandboxClientRegistry:
                     "version": parse_daemon_version(active[1]),
                     "confirm_policy": parse_confirm_policy(active[1]),
                     "online": True,
+                    "last_seen": None,
                 }
             )
         return machines
@@ -237,6 +325,7 @@ class SandboxClientRegistry:
             return False
         await redis.srem(_machset_key(user_id), machine_id)
         await redis.hdel(_machname_key(user_id), machine_id)
+        await redis.hdel(_machseen_key(user_id), machine_id)
         if await redis.get(_machdefault_key(user_id)) == machine_id:
             await redis.delete(_machdefault_key(user_id))
         return True
