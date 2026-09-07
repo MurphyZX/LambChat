@@ -54,14 +54,18 @@ setup_rosetta_x86_64_toolchain() {
             | tar -xz -C "$uv_dir" --strip-components=1
     fi
     export PATH="$uv_dir:$PATH"
-    # 独立的 uv-managed Python 安装目录：uv 托管解释器目录按版本而非架构
-    # 区分——不隔离会复用宿主 arm64 CPython，产物静默变 arm64（实验首跑
-    # 即被下方的 machine() 断言拦截）
+    # 独立的 uv-managed Python 安装目录 + 只用托管解释器：uv 托管目录按
+    # 版本不按架构区分，且找不到托管解释器时会回退系统 PATH（runner 预装
+    # arm64 3.12 满足版本要求即被采用，产物静默变 arm64——实验首跑即被
+    # 下方 machine() 断言拦截）。only-managed + 显式安装双保险。
     export UV_PYTHON_INSTALL_DIR="$REPO_ROOT/client/build/uv-python-x86_64"
+    export UV_PYTHON_PREFERENCE=only-managed
     # 独立 venv：与宿主 arm64 .venv 隔离（uv run 按锁文件自动同步）；
     # 落 client/build/（已 gitignore，纯构建期产物）
     export UV_PROJECT_ENVIRONMENT="$REPO_ROOT/client/build/venv-daemon-x86_64"
     echo "==> Rosetta x86_64 工具链就绪: $(command -v uv) ($(uv --version))"
+    # x86_64 uv 按自身架构下载 x86_64 PBS 构建到隔离目录
+    uv python install 3.12
     uv run python -c 'import platform; assert platform.machine() == "x86_64", platform.machine()'
 }
 

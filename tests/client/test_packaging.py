@@ -391,9 +391,12 @@ def test_build_script_cross_builds_via_rosetta_on_arm64_mac() -> None:
     # x86_64 uv 静态二进制下载（PATH 前置后 uv run/pyinstaller 全链 x86_64）
     assert "uv-x86_64-apple-darwin.tar.gz" in script
     assert "PATH=" in script
-    # uv 托管解释器目录按版本不按架构区分：不隔离会复用宿主 arm64 CPython
-    # （实验首跑：venv 里混入 arm64 解释器，产物险些静默变 arm64）
+    # uv 托管解释器目录按版本不按架构区分：不隔离会复用宿主 arm64 CPython；
+    # 且找不到托管解释器时 uv 回退系统 PATH（runner 预装 arm64 3.12 即被采用），
+    # 必须 only-managed + 显式安装双保险（实验首两跑实测）
     assert "UV_PYTHON_INSTALL_DIR" in script
+    assert "UV_PYTHON_PREFERENCE=only-managed" in script
+    assert "uv python install 3.12" in script
     # 独立 venv：不污染宿主 arm64 .venv（落 client/build/，已 gitignore）
     assert "UV_PROJECT_ENVIRONMENT" in script
     assert "venv-daemon-x86_64" in script
