@@ -655,7 +655,8 @@
     "sandboxExecFailed": "Local sandbox execution failed: {{detail}}",
     "daemonVersionUnsupported": "Daemon version {{version}} is below minimum {{min}}; please update",
     "sandboxMachineOffline": "Selected sandbox machine '{{machine}}' is offline",
-    "sandboxMachineNotFound": "Sandbox machine '{{machine}}' not found or removed"
+    "sandboxMachineNotFound": "Sandbox machine '{{machine}}' not found or removed",
+    "sandboxResultMismatch": "Result machine '{{machine}}' does not match the machine this call was dispatched to"
   },
   "categories": {
     "agent": "Agent",

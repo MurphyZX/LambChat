@@ -655,7 +655,8 @@
     "sandboxExecFailed": "本地沙箱执行失败：{{detail}}",
     "daemonVersionUnsupported": "本地沙箱守护进程版本 {{version}} 低于最低要求 {{min}}，请升级",
     "sandboxMachineOffline": "所选沙箱机器「{{machine}}」当前离线",
-    "sandboxMachineNotFound": "沙箱机器「{{machine}}」不存在或已移除"
+    "sandboxMachineNotFound": "沙箱机器「{{machine}}」不存在或已移除",
+    "sandboxResultMismatch": "回传机器「{{machine}}」与该调用的下发目标机不一致"
   },
   "categories": {
     "agent": "代理",

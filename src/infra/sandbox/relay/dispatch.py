@@ -1,4 +1,4 @@
-"""工具调用下发与结果等待：Redis list 请求 + key 轮询结果（spec §3.2，lpop 轮询替代 BLPOP）。"""
+"""工具调用下发与结果等待：Redis list 请求 + 结果队列阻塞读（BLPOP，GET 兜底旧格式）。"""
 
 import asyncio
 import json
@@ -12,9 +12,19 @@ from src.infra.storage.redis import get_binary_redis_client, get_redis_client
 from src.kernel.config import settings
 from src.kernel.errors import AppError, ErrorCode
 
-_POLL_INTERVAL = 0.05
 # 流式结果逐行消费的轮询：行粒度小、吞吐优先，比控制面轮询更密
 _STREAM_POLL_INTERVAL = 0.01
+
+#: 结果等待的阻塞读切片（秒）：BLPOP 主通道 + 每次超时后 GET 一次兜底——
+#: 滚动发布窗口内旧实例仍以 SET 写 resp key，纯队列读会永久错过。
+_BLPOP_TIMEOUT = 1.0
+
+#: 调用-机器绑定键：dispatch 入队前写目标机，results 端点校验回传者。
+_ASSIGN_PREFIX = "sandbox:callassign"
+
+
+def _assign_key(call_id: str) -> str:
+    return f"{_ASSIGN_PREFIX}:{call_id}"
 
 
 def _redis():
@@ -66,6 +76,9 @@ async def dispatch_local_call(
     }
     redis = _redis()
     resp_key = f"sandbox:resp:{call_id}"
+    # 调用-机器绑定：results 端点据此拒绝同用户其他机器冒答（call_id 难猜，
+    # 但绑定后模型上无冒答空间）；无绑定键的旧调用（兼容窗口）跳过校验
+    await redis.set(_assign_key(call_id), target, ex=120)
     await redis.rpush(registry.queue_key(user_id, target), json.dumps(req))
 
     start = time.monotonic()
@@ -74,7 +87,9 @@ async def dispatch_local_call(
     exec_deadline = start + exec_timeout
     try:
         while time.monotonic() < exec_deadline:
-            raw = await redis.get(resp_key)
+            remaining = exec_deadline - time.monotonic()
+            item = await redis.blpop(resp_key, timeout=min(_BLPOP_TIMEOUT, max(remaining, 0.01)))
+            raw = item[1] if item is not None else await redis.get(resp_key)
             resp = None
             if raw is not None:
                 resp = json.loads(raw)
@@ -105,11 +120,11 @@ async def dispatch_local_call(
                 raise AppError(
                     ErrorCode.SANDBOX_TIMEOUT, args={"seconds": settings.SANDBOX_LOCAL_ACK_TIMEOUT}
                 )
-            await asyncio.sleep(_POLL_INTERVAL)
         raise AppError(ErrorCode.SANDBOX_TIMEOUT, args={"seconds": int(exec_timeout)})
     finally:
         try:
             await redis.delete(resp_key)
+            await redis.delete(_assign_key(call_id))
         except Exception:  # noqa: BLE001 - 清理尽力而为
             pass
 
@@ -171,7 +186,13 @@ async def dispatch_local_stream(
     try:
         while time.monotonic() < exec_deadline:
             resp = None
-            raw = await redis.get(resp_key)
+            # results 端点为 RPUSH 队列（ack/done 按序）；滚动窗口内旧实例仍
+            # SET：lpop 优先、GET 兜底，两种形态都能读到
+            raw = await redis.lpop(resp_key)
+            if raw is None:
+                raw = await redis.lpop(resp_key)
+            if raw is None:
+                raw = await redis.get(resp_key)
             if raw is not None:
                 resp = json.loads(raw)
                 if resp.get("user_id") != user_id:
@@ -300,7 +321,10 @@ async def dispatch_local_stream_upload(
             await redis.rpush(blob_key, frame)
             await redis.expire(blob_key, 120)
         while time.monotonic() < deadline and done is None:
-            raw = await redis.get(resp_key)
+            # results 端点为 RPUSH 队列（ack/done 按序）；旧实例 SET 兜底
+            raw = await redis.lpop(resp_key)
+            if raw is None:
+                raw = await redis.get(resp_key)
             resp = json.loads(raw) if raw is not None else None
             if resp is not None and resp.get("user_id") == user_id:
                 if resp.get("stage") == "ack":

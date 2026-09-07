@@ -111,6 +111,11 @@ class ErrorCode(Enum):
         413,
         "Local sandbox payload exceeds limit",
     )
+    SANDBOX_RESULT_MISMATCH = (
+        "sandbox_result_mismatch",
+        409,
+        "Result submitted by machine '{{machine}}' does not match the machine this call was dispatched to",
+    )
     DAEMON_VERSION_UNSUPPORTED = (
         "daemon_version_unsupported",
         426,

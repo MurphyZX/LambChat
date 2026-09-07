@@ -290,13 +290,30 @@ async def sandbox_result(
     call_id: str,
     request: Request,
     body: SandboxResultRequest,
+    machine_id: str = "",
     user: TokenPayload = Depends(require_pat_only("sandbox:execute")),
 ):
-    # 回传 body 上限：stdout/base64 是失控大头，超限即拒绝，防止打爆 Redis 与内存
-    if len(await request.body()) > settings.SANDBOX_RESULTS_MAX_BYTES:
+    redis = _redis()
+    # 调用-机器绑定：dispatch 入队前写目标机，回传机不一致即拒（同用户 A 机
+    # 冒答 B 机）；无绑定键（旧调用/兼容窗口）或回传不带 machine_id（旧
+    # daemon）时跳过校验
+    assigned = await redis.get(f"sandbox:callassign:{call_id}")
+    if assigned and machine_id and assigned != machine_id:
+        raise AppError(ErrorCode.SANDBOX_RESULT_MISMATCH, args={"machine": machine_id})
+    # 回传 body 上限：stdout/base64 是失控大头。先查 Content-Length 头做早期
+    # 拒绝（超大请求不进内存），再在读完后二次校验（chunked 无 CL 的兜底）
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit():
+        if int(content_length) > settings.SANDBOX_RESULTS_MAX_BYTES:
+            raise AppError(ErrorCode.SANDBOX_PAYLOAD_TOO_LARGE)
+    raw_body = await request.body()
+    if len(raw_body) > settings.SANDBOX_RESULTS_MAX_BYTES:
         raise AppError(ErrorCode.SANDBOX_PAYLOAD_TOO_LARGE)
     payload = {"user_id": user.sub, **body.model_dump(exclude_none=True)}
-    await _redis().set(f"sandbox:resp:{call_id}", json.dumps(payload), ex=120)
+    # 两阶段（ack/done）依次入队：dispatch 侧 BLPOP 按序消费；EXPIRE 防孤儿滞留
+    resp_key = f"sandbox:resp:{call_id}"
+    await redis.rpush(resp_key, json.dumps(payload))
+    await redis.expire(resp_key, 120)
     return {"status": "ok"}
 
 

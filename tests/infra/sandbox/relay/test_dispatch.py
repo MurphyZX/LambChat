@@ -31,6 +31,15 @@ class _FakeRedis:
 
     async def delete(self, key: str) -> None:
         self.kv.pop(key, None)
+        self.lists.pop(key, None)
+
+    async def blpop(self, key: str, timeout: float = 0):
+        items = self.lists.get(key)
+        if items:
+            return key, items.pop(0)
+        if timeout and timeout > 0:
+            await asyncio.sleep(timeout)
+        return None
 
 
 class _FakeRegistry:
@@ -59,7 +68,7 @@ def fake(monkeypatch):
 
 
 async def test_roundtrip_ack_then_done(fake, monkeypatch):
-    monkeypatch.setattr(dispatch_module, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 5)
 
@@ -98,7 +107,7 @@ async def test_exec_done_error_status_returns_command_outcome(fake, monkeypatch)
     （stdout/stderr/exit_code）时原样回传，由 aexecute 构造 ExecuteResponse 让
     模型看到真实输出（Windows cmd.exe 上命令失败是常态，不能全部变成不透明
     AppError——生产实测模型连续 6 条命令只见 "execution failed"，无从纠错）。"""
-    monkeypatch.setattr(dispatch_module, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 5)
 
@@ -140,7 +149,7 @@ async def test_exec_done_error_status_returns_command_outcome(fake, monkeypatch)
 async def test_fs_op_done_error_status_still_raises(fake, monkeypatch):
     """fs_* op 的 status=error 是 daemon 内部异常（ExecutorError 等）：仍按
     SANDBOX_EXEC_FAILED 上抛；detail 取 error 字段（None 不落成字面 "None"）。"""
-    monkeypatch.setattr(dispatch_module, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 5)
 
@@ -163,7 +172,7 @@ async def test_fs_op_done_error_status_still_raises(fake, monkeypatch):
 
 
 async def test_ack_timeout_raises(fake, monkeypatch):
-    monkeypatch.setattr(dispatch_module, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 0.05)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 5)
     with pytest.raises(AppError) as exc:
@@ -173,7 +182,7 @@ async def test_ack_timeout_raises(fake, monkeypatch):
 
 async def test_exec_timeout_raises_after_ack(fake, monkeypatch):
     """ack 已收到但 done 始终不来：命中总超时 deadline（seconds 取 exec 超时）。"""
-    monkeypatch.setattr(dispatch_module, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 0.05)
 
@@ -217,7 +226,7 @@ async def test_dispatch_routes_to_selected_machine_queue(monkeypatch):
     redis = _FakeRedis()
     monkeypatch.setattr(dispatch_module, "_redis", lambda: redis)
     monkeypatch.setattr(dispatch_module, "_registry", lambda: _MachinesFakeRegistry("mac1"))
-    monkeypatch.setattr(dispatch_module, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
 
     async def fake_get(key):
         return json.dumps({"user_id": "u1", "stage": "done", "status": "ok"})

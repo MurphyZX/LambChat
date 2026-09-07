@@ -655,7 +655,8 @@
     "sandboxExecFailed": "ローカルサンドボックスの実行に失敗しました：{{detail}}",
     "daemonVersionUnsupported": "ローカルサンドボックスデーモンのバージョン {{version}} は最低要件 {{min}} 未満です。アップデートしてください",
     "sandboxMachineOffline": "選択したサンドボックスマシン「{{machine}}」は現在オフラインです",
-    "sandboxMachineNotFound": "サンドボックスマシン「{{machine}}」が見つからないか、削除されました"
+    "sandboxMachineNotFound": "サンドボックスマシン「{{machine}}」が見つからないか、削除されました",
+    "sandboxResultMismatch": "マシン「{{machine}}」の結果は、この呼び出しの宛先マシンと一致しません"
   },
   "categories": {
     "agent": "エージェント",

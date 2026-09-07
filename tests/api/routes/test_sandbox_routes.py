@@ -40,6 +40,7 @@ class _FakeRedis:
         self.expires_at: dict[str, float] = {}
         self.blpop_calls = 0
         self.lpop_calls = 0
+        self.expired_keys: list[str] = []
 
     def _alive(self, key: str) -> bool:
         exp = self.expires_at.get(key)
@@ -69,6 +70,11 @@ class _FakeRedis:
         self.kv[key] = value
         if ex is not None:
             self.expires_at[key] = time.monotonic() + ex
+
+    async def delete(self, key):
+        self.kv.pop(key, None)
+        self.lists.pop(key, None)
+
 
     async def get(self, key):
         if key in self.kv and self._alive(key):
@@ -104,6 +110,7 @@ class _FakeRedis:
 
     async def expire(self, key, seconds):
         self.expires_at[key] = time.monotonic() + seconds
+        self.expired_keys.append(key)
 
     async def exists(self, key):
         return (
@@ -322,8 +329,9 @@ async def test_results_endpoint_writes_resp(monkeypatch):
             json={"stage": "done", "status": "ok", "stdout": "hi"},
         )
     assert resp.status_code == 200
-    stored = json.loads(redis.kv["sandbox:resp:call-1"])
+    stored = json.loads(redis.lists["sandbox:resp:call-1"][0])
     assert stored["user_id"] == "u1" and stored["stage"] == "done"
+    assert redis.expired_keys.count("sandbox:resp:call-1") == 1
 
 
 async def test_results_rejects_oversized_body(monkeypatch):
@@ -385,7 +393,7 @@ async def test_results_accepts_body_at_exact_limit(monkeypatch):
     resp, redis = await _post_results_with_size(monkeypatch, _results_body_of_size(128))
 
     assert resp.status_code == 200
-    assert "sandbox:resp:call-1" in redis.kv
+    assert "sandbox:resp:call-1" in redis.lists
 
 
 async def test_results_rejects_body_one_byte_over_limit(monkeypatch):
@@ -881,7 +889,7 @@ async def test_results_endpoint_preserves_fs_op_result(monkeypatch):
             json={"stage": "done", "status": "ok", "result": fs_result},
         )
     assert resp.status_code == 200
-    stored = json.loads(redis.kv["sandbox:resp:call-1"])
+    stored = json.loads(redis.lists["sandbox:resp:call-1"][0])
     assert stored["user_id"] == "u1" and stored["stage"] == "done"
     assert stored["result"] == fs_result
 
