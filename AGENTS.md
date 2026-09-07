@@ -143,7 +143,7 @@ Conventional Commits + 中文描述：`类型(范围): 摘要`。
 
 **规矩：发版 tag 一律打在 `main` 的合并提交上——hotfix 或 develop 晋升合入 `main`、CI 全绿后再打 tag；禁止在 feature 分支或未晋升到 `main` 的提交上发版。**
 
-1. 打 tag 前先 bump 四处版本文件并保持一致：`frontend/package.json`、`frontend/src-tauri/tauri.conf.json`、android `versionName`/`versionCode`（数字串 = 版本去点）、iOS `MARKETING_VERSION`——app-release.yml 的 prelight 会校验 tag 与版本一致，漂移直接红。
+1. 打 tag 前先 bump 五处版本文件并保持一致：`frontend/package.json`、`frontend/src-tauri/tauri.conf.json`、android `versionName`/`versionCode`（数字串 = 版本去点）、iOS `MARKETING_VERSION`、`pyproject.toml`（服务端 `/api/version` 运行时读它，漏 bump 网页端版本号就不同步）——app-release.yml 的 preflight 会校验 tag 与版本一致，漂移直接红。
 2. 在 `main` 合并提交上打 tag 并推送，触发 `app-release.yml`：六端矩阵构建（Linux x86_64/arm64、Windows、macOS Apple Silicon/Intel）+ Android/iOS，即发即传上传 GitHub Release。
 3. 收尾由 release job 权威重生成 `latest.json`（桌面端自更新清单，版本号取自 tag）；发版完成的判据是 latest.json 五个桌面平台条目齐全（含 `darwin-x86_64`）。
 4. 重打同一 tag：先删远端 tag 与旧 run，再在新提交上重推；资产同名 `--clobber` 原地替换。
