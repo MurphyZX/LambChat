@@ -5,7 +5,9 @@ name: macOS Intel Experiment
 # PBS macos-x64 内嵌 + dmg/ad-hoc 签名。只上传 artifact，绝不触碰 Release。
 # 结论并入 app-release.yml 后本文件即删除。
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - feat/macos-intel-client
 
 permissions:
   contents: read
