@@ -30,8 +30,14 @@ test("release workflow publishes branded desktop and mobile artifacts", () => {
   expect(workflow).toMatch(/label: Linux ARM64/);
   expect(workflow).toMatch(/runner: ubuntu-24\.04-arm/);
   expect(workflow).toMatch(/bundles: appimage,deb,rpm/);
+  // macOS 双架构矩阵：两条目都在 macos-14（arm64 宿主）上构建，Intel 走
+  // rustup target 交叉编译 + daemon Rosetta 路径（矩阵变量而非字面量）
+  expect(workflow).toMatch(/runner: macos-14/);
   expect(workflow).toMatch(/target: aarch64-apple-darwin/);
-  expect(workflow).toMatch(/rustup target add aarch64-apple-darwin/);
+  expect(workflow).toMatch(/target: x86_64-apple-darwin/);
+  expect(workflow).toMatch(/rustup target add \$\{\{ matrix\.target \}\}/);
+  expect(workflow).toMatch(/asset_suffix: macOS-Apple-Silicon/);
+  expect(workflow).toMatch(/asset_suffix: macOS-Intel/);
   expect(workflow).toMatch(/frontend\/src-tauri\/target\/release\/bundle/);
   expect(workflow).toMatch(
     /LambChat-\$\{RELEASE_TAG\}-Linux-\$\{arch\}\.AppImage/,
@@ -40,8 +46,13 @@ test("release workflow publishes branded desktop and mobile artifacts", () => {
   expect(workflow).toMatch(/LambChat-\$\{RELEASE_TAG\}-Linux-\$\{arch\}\.rpm/);
   expect(workflow).toMatch(/LambChat-\$env:RELEASE_TAG-Windows\.msi/);
   expect(workflow).toMatch(/LambChat-\$env:RELEASE_TAG-Windows-Portable\.zip/);
-  expect(workflow).toMatch(/LambChat-\$\{RELEASE_TAG\}-macOS\.zip/);
-  expect(workflow).toMatch(/LambChat-\$\{RELEASE_TAG\}-macOS\.dmg/);
+  // macOS 资产名带架构段（asset_suffix 矩阵变量）：双架构产物不得同名互踩
+  expect(workflow).toMatch(
+    /LambChat-\$\{RELEASE_TAG\}-\$\{\{ matrix\.asset_suffix \}\}\.zip/,
+  );
+  expect(workflow).toMatch(
+    /LambChat-\$\{RELEASE_TAG\}-\$\{\{ matrix\.asset_suffix \}\}\.dmg/,
+  );
   expect(workflow).not.toMatch(
     /if \[ -z "\$app_path" \]; then\s+echo "No macOS \.app bundle found"\s+exit 1\s+fi/,
   );
