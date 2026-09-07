@@ -46,7 +46,7 @@ test("subagent and team tool results render member names with font-serif", () =>
   expect(subagent).toMatch(/text-13 font-medium font-serif truncate/);
   const teamItem = readComponent("chat/ChatMessage/items/TeamItem.tsx");
   expect(teamItem).toMatch(
-    /text-xs text-theme-text font-semibold font-serif truncate/,
+    /text-12 text-theme-text font-semibold font-serif truncate/,
   );
   const picker = readComponent("team/TeamPickerModal.tsx");
   expect(picker).toMatch(/scb__mini-tag font-serif/);
@@ -70,7 +70,7 @@ test("skill selectors render skill names with font-serif", () => {
   const skill = readComponent("selectors/SkillSelector.tsx");
   expect(skill).toMatch(/text-12 sm:text-13 font-medium font-serif truncate/);
   const personaEditor = readComponent("persona/PersonaEditorSkillSelector.tsx");
-  expect(personaEditor).toMatch(/text-sm font-medium font-serif truncate/);
+  expect(personaEditor).toMatch(/text-14 font-medium font-serif truncate/);
   const slash = readComponent("chat/SlashDropdownMenu.tsx");
   expect(slash).toMatch(/min-w-0 flex-1 truncate font-serif/);
 });
@@ -88,7 +88,7 @@ test("sidebar session and project titles use font-serif", () => {
 
 test("search and recent chat lists render session titles with font-serif", () => {
   const search = readComponent("panels/SearchDialog.tsx");
-  expect(search).toMatch(/block text-sm font-serif text-stone-700/);
+  expect(search).toMatch(/block text-14 font-serif text-stone-700/);
   expect(search).toMatch(/text-11 font-serif/);
   const recent = readComponent("sidebar/RecentChatsDialog.tsx");
   expect(recent).toMatch(/truncate text-13 font-serif/);

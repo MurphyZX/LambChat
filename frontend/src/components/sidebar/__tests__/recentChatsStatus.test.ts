@@ -19,10 +19,8 @@ test("recent chats renders the same task status indicators as the sidebar", () =
   expect(source).toMatch(/animate-spin/);
 });
 
-test("recent chats surfaces status labels as touch tooltips, not inline text", () => {
+test("recent chats keeps status labels reachable via long-press tooltip, never forced open by row touch", () => {
   expect(source).toMatch(/<Tooltip/);
-  expect(source).toMatch(/open=\{statusTooltipOpen\}/);
-  expect(source).toMatch(/handleRowTouchStart/);
-  expect(source).toMatch(/touchedSessionId/);
+  expect(source).not.toMatch(/statusTooltipOpen/);
   expect(source).toMatch(/sidebar\.waitingHuman/);
 });

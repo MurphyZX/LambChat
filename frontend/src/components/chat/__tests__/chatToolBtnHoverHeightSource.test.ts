@@ -28,11 +28,11 @@ test("chat-tool-btn 固定 2.25rem 高：工具栏各按钮 hover 背景同高",
 
 test("chat-tool-btn 仅保留水平 padding，垂直居中交给固定高度", () => {
   const block = ruleBlock("\\.chat-tool-btn");
-  // text-base 金额（行高 24px）+ 上下 padding 会把按钮撑到 40px；
+  // text-16 金额（行高 24px）+ 上下 padding 会把按钮撑到 40px；
   // 垂直间距改由 height + flex 居中承担，padding 只留水平方向
   expect(block).toMatch(/padding:\s*0 0\.5rem/);
 });
 
-test("用量 chip 字号保持 text-base 不缩水（高度修复在 CSS 层而非砍字号）", () => {
-  expect(usageChipSource).toMatch(/text-base font-semibold/);
+test("用量 chip 字号保持 text-16 不缩水（高度修复在 CSS 层而非砍字号）", () => {
+  expect(usageChipSource).toMatch(/text-16 font-semibold/);
 });

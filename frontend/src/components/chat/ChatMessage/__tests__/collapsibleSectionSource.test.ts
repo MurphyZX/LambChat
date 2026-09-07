@@ -58,7 +58,7 @@ test("generic tool call panel stretches the result card to fill remaining height
 
   // 面板根节点：占满 panel-body 并自身兜底滚动
   expect(toolCallItemSource).toMatch(
-    /className="relative flex h-full min-h-0 flex-col overflow-y-auto p-2 sm:p-4 \[&_pre\]:!text-sm \[&_pre\]:!max-h-none"/,
+    /className="relative flex h-full min-h-0 flex-col overflow-y-auto p-2 sm:p-4 \[&_pre\]:!text-14 \[&_pre\]:!max-h-none"/,
   );
   // 内层 flex 列承载小节，result 卡片展开时吃掉剩余空间
   expect(toolCallItemSource).toMatch(
@@ -105,7 +105,7 @@ test("tool live panel details fill the panel height while inline previews keep t
       source,
       `${item} panel result block should stretch to fill remaining height`,
     ).toMatch(
-      /group\/result relative flex-1 min-h-0 text-xs text-theme-text-secondary overflow-y-auto min-w-0/,
+      /group\/result relative flex-1 min-h-0 text-12 text-theme-text-secondary overflow-y-auto min-w-0/,
     );
   }
 });

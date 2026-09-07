@@ -222,7 +222,7 @@ function NotificationFormModal({
                   key={nt}
                   type="button"
                   onClick={() => setNotifType(nt)}
-                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                  className={`rounded-lg border px-3 py-2 text-12 font-medium transition-all ${
                     notifType === nt
                       ? nt === "info"
                         ? "border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/30 dark:text-blue-300"
@@ -267,7 +267,7 @@ function NotificationFormModal({
 
         {/* Active toggle */}
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-theme-text-secondary">
+          <span className="text-14 font-medium text-theme-text-secondary">
             {t("notification.isActive")}
           </span>
           <ToggleSwitch
@@ -413,10 +413,10 @@ export function NotificationPanel() {
             className="text-stone-400 dark:text-stone-500"
           />
         </div>
-        <p className="text-lg font-medium font-serif text-stone-700 dark:text-stone-300">
+        <p className="text-18 font-medium font-serif text-stone-700 dark:text-stone-300">
           {t("common.accessDenied")}
         </p>
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-14 text-stone-500 dark:text-stone-400">
           {t("common.permissionRequired")}
         </p>
       </div>
@@ -449,7 +449,7 @@ export function NotificationPanel() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
               <Bell size={32} className="text-stone-400 dark:text-stone-500" />
             </div>
-            <p className="text-lg font-medium font-serif text-stone-700 dark:text-stone-300">
+            <p className="text-18 font-medium font-serif text-stone-700 dark:text-stone-300">
               {t("notification.noNotifications")}
             </p>
           </div>
@@ -489,7 +489,7 @@ export function NotificationPanel() {
                               }`,
                             )}
                           </span>
-                          <p className="min-w-0 flex-1 truncate text-sm font-medium leading-6 text-stone-900 dark:text-stone-100 sm:text-15">
+                          <p className="min-w-0 flex-1 truncate text-14 font-medium leading-6 text-stone-900 dark:text-stone-100 sm:text-15">
                             {getLocalizedTitle(notification)}
                           </p>
                           <StatusBadge
@@ -497,7 +497,7 @@ export function NotificationPanel() {
                             label={t(`notification.${status}`)}
                           />
                         </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-12 text-stone-500 dark:text-stone-400">
                           {schedule && <span>{schedule}</span>}
                           <span>
                             {formatDateTimeShort(notification.created_at)}
@@ -567,7 +567,7 @@ export function NotificationPanel() {
                               : "max-h-0 opacity-0"
                           }`}
                         >
-                          <div className="w-full text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+                          <div className="w-full text-12 leading-relaxed text-stone-600 dark:text-stone-400">
                             <div className="w-full break-words whitespace-pre-wrap">
                               {content}
                             </div>

@@ -175,7 +175,7 @@ export function NotificationBanner() {
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <p
-                    className="text-sm sm:text-15 font-semibold font-serif leading-[20px] truncate tracking-[-0.01em]"
+                    className="text-14 sm:text-15 font-semibold font-serif leading-[20px] truncate tracking-[-0.01em]"
                     style={{ color: "var(--theme-text)" }}
                     title={title}
                   >
@@ -183,7 +183,7 @@ export function NotificationBanner() {
                   </p>
                   {content && (
                     <p
-                      className="text-xs sm:text-13 leading-[18px] line-clamp-1"
+                      className="text-12 sm:text-13 leading-[18px] line-clamp-1"
                       style={{ color: "var(--theme-text-secondary)" }}
                     >
                       {content}
@@ -218,14 +218,14 @@ export function NotificationBanner() {
                 <div className="min-w-0">
                   <p
                     id="notification-banner-detail-title"
-                    className="text-base font-semibold leading-tight"
+                    className="text-16 font-semibold leading-tight"
                     style={{ color: "var(--theme-text)" }}
                   >
                     {selectedNotification.title_i18n[lang] ||
                       selectedNotification.title_i18n.en}
                   </p>
                   <p
-                    className="text-xs"
+                    className="text-12"
                     style={{ color: "var(--theme-text-secondary)" }}
                   >
                     {t(
@@ -250,7 +250,7 @@ export function NotificationBanner() {
             <div className="space-y-4 px-5 py-5">
               <div className="space-y-2">
                 <p
-                  className="text-sm leading-relaxed whitespace-pre-wrap"
+                  className="text-14 leading-relaxed whitespace-pre-wrap"
                   style={{ color: "var(--theme-text)" }}
                 >
                   {selectedNotification.content_i18n[lang] ||
@@ -259,7 +259,7 @@ export function NotificationBanner() {
               </div>
 
               <div
-                className="flex flex-wrap items-center gap-3 border-t pt-4 text-xs"
+                className="flex flex-wrap items-center gap-3 border-t pt-4 text-12"
                 style={{ borderColor: "var(--theme-border)" }}
               >
                 <span

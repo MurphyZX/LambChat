@@ -12,6 +12,7 @@ import {
   updatePersistentToolPanel,
   isPersistentToolPanelOpen,
 } from "./items/persistentToolPanelState";
+import { useToolStreamingLabel } from "./items/useToolStreamingLabel";
 import {
   toolCallPanelStore,
   type ToolCallPanelData,
@@ -163,7 +164,7 @@ function ToolCallPanelContent({ toolCallId }: { toolCallId: string }) {
   const hasArgs = Object.keys(data.args).length > 0;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-y-auto p-2 sm:p-4 [&_pre]:!text-sm [&_pre]:!max-h-none">
+    <div className="relative flex h-full min-h-0 flex-col overflow-y-auto p-2 sm:p-4 [&_pre]:!text-14 [&_pre]:!max-h-none">
       <div className="flex min-h-0 flex-1 flex-col space-y-3">
         {hasArgs && (
           <CollapsibleSection title={t("chat.message.args")}>
@@ -191,7 +192,7 @@ function ToolCallPanelContent({ toolCallId }: { toolCallId: string }) {
         )}
 
         {data.isPending && (
-          <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-2 text-12 text-amber-600 dark:text-amber-400">
             {data.awaitingConfirmation ? (
               <Clock size={12} className="shrink-0 animate-none" />
             ) : (
@@ -310,7 +311,17 @@ export function ToolCallItem({
 
   const canExpand = hasArgs || hasResult;
   const pillSummary = buildToolPillSummary(displayArgs);
-  const pillLabel = pillSummary ? `${toolName} ${pillSummary}` : toolName;
+
+  // 进行中：标签学「思考中」，平滑流出正在生成的参数尾部
+  // （等待人工确认时参数已完整，不视为流式）
+  const { label, isStreamingLabel } = useToolStreamingLabel(
+    pillSummary ? `${toolName} ${pillSummary}` : toolName,
+    args,
+    {
+      isPending: !!isPending && !awaitingConfirmation,
+      result,
+    },
+  );
 
   // Build a panelKey from the tool call ID (used for persistent panel identity)
   const panelKey = useMemo(() => (id ? `tool:${id}` : undefined), [id]);
@@ -396,7 +407,7 @@ export function ToolCallItem({
       )}
 
       {isPending && (
-        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-2 text-12 text-amber-600 dark:text-amber-400">
           {awaitingConfirmation ? (
             <Clock size={12} className="shrink-0 animate-none" />
           ) : (
@@ -437,7 +448,8 @@ export function ToolCallItem({
             <Wrench size={12} className="shrink-0 opacity-50" />
           )
         }
-        label={pillLabel}
+        label={label}
+        animatedDots={isStreamingLabel}
         suffix={
           serverName ? (
             <span className="shrink-0 text-9 px-1.5 py-0.5 rounded-md bg-white/30 dark:bg-black/20 opacity-70 font-medium truncate max-w-[120px]">

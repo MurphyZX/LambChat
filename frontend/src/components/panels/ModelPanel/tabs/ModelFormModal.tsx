@@ -448,7 +448,7 @@ export const ModelFormModal = ({
 
         {/* Advanced (collapsed) */}
         <details className="group">
-          <summary className="text-xs text-theme-text-secondary cursor-pointer select-none hover:text-theme-text transition-colors py-1">
+          <summary className="text-12 text-theme-text-secondary cursor-pointer select-none hover:text-theme-text transition-colors py-1">
             {t("agentConfig.advancedConfig", "高级配置")}
           </summary>
           <div
@@ -572,7 +572,7 @@ export const ModelFormModal = ({
                 value={formRequestHeaders}
                 onChange={(e) => setFormRequestHeaders(e.target.value)}
                 placeholder={t("agentConfig.modelRequestHeadersPlaceholder")}
-                className="es-input font-mono text-xs"
+                className="es-input font-mono text-12"
                 rows={3}
                 spellCheck={false}
               />
@@ -620,7 +620,7 @@ export const ModelFormModal = ({
               </div>
             </div>
             <div className="es-field">
-              <label className="flex items-start gap-2 text-sm text-theme-text cursor-pointer">
+              <label className="flex items-start gap-2 text-14 text-theme-text cursor-pointer">
                 <Checkbox
                   checked={formSupportsVision}
                   onChange={() => setFormSupportsVision((checked) => !checked)}
@@ -637,7 +637,7 @@ export const ModelFormModal = ({
               </label>
             </div>
             <div className="es-field">
-              <label className="flex items-start gap-2 text-sm text-theme-text cursor-pointer">
+              <label className="flex items-start gap-2 text-14 text-theme-text cursor-pointer">
                 <Checkbox
                   checked={formImageUrlToBase64}
                   onChange={() =>

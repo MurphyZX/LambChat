@@ -636,7 +636,7 @@ export function MessagePartRenderer({
             onClick={() => onRecommendQuestionClick?.(question.content)}
             disabled={!onRecommendQuestionClick}
             className={clsx(
-              "mt-1 w-fit rounded-xl ring-1 ring-inset shadow-sm px-3.5 py-2 text-left text-sm leading-snug transition-all duration-200 active:scale-[0.98]",
+              "mt-1 w-fit rounded-xl ring-1 ring-inset shadow-sm px-3.5 py-2 text-left text-14 leading-snug transition-all duration-200 active:scale-[0.98]",
               "ring-theme-border bg-theme-bg-card text-theme-text-secondary hover:ring-theme-border-hover hover:shadow-[0_2px_8px_-2px_var(--theme-shadow-md)] hover:bg-theme-bg-subtle",
               !onRecommendQuestionClick && "cursor-default opacity-70",
             )}
@@ -667,7 +667,7 @@ export function MessagePartRenderer({
             type="button"
             onClick={onRetryCancelled}
             className={clsx(
-              "ml-0.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium",
+              "ml-0.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-12 font-medium",
               "bg-[var(--theme-overlay-panel)]",
               "border border-white/40 dark:border-white/10",
               "transition-all duration-150 ease-out",

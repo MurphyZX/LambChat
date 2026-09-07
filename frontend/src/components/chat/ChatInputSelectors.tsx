@@ -278,7 +278,7 @@ export function ChatInputSelectors({
                 <button
                   type="button"
                   onClick={() => navigate("/download")}
-                  className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                  className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-14 cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                   style={{ color: "var(--theme-primary)" }}
                   data-sandbox-download-entry
                 >

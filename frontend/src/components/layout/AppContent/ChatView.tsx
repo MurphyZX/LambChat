@@ -623,14 +623,14 @@ export function ChatView({
     return (
       <div className="flex justify-center py-3">
         {isLoadingOlderHistory ? (
-          <span className="text-xs text-[var(--theme-text-tertiary)]">
+          <span className="text-12 text-[var(--theme-text-tertiary)]">
             {t("chat.historyLoadingOlder", "正在加载更早的消息…")}
           </span>
         ) : (
           <button
             type="button"
             onClick={() => void onLoadOlderHistory?.()}
-            className="rounded-full border border-[var(--theme-border)] px-4 py-1.5 text-xs text-[var(--theme-text-secondary)] transition-colors hover:bg-[var(--glass-bg-subtle)]"
+            className="rounded-full border border-[var(--theme-border)] px-4 py-1.5 text-12 text-[var(--theme-text-secondary)] transition-colors hover:bg-[var(--glass-bg-subtle)]"
           >
             {t("chat.historyLoadOlder", "加载更早的消息")}
           </button>

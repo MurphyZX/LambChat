@@ -236,10 +236,10 @@ const MermaidDiagram = memo(function MermaidDiagram({
   if (error) {
     return (
       <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-        <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-2">
+        <p className="text-14 text-red-600 dark:text-red-400 font-medium mb-2">
           Mermaid Error
         </p>
-        <pre className="mt-2 text-xs text-red-500 dark:text-red-300 overflow-auto">
+        <pre className="mt-2 text-12 text-red-500 dark:text-red-300 overflow-auto">
           {error}
         </pre>
       </div>
@@ -252,7 +252,7 @@ const MermaidDiagram = memo(function MermaidDiagram({
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <button
           onClick={handleCopyCode}
-          className="flex shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-medium text-stone-600 dark:text-stone-300 transition-colors"
+          className="flex shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors"
         >
           {copied ? (
             <>
@@ -273,7 +273,7 @@ const MermaidDiagram = memo(function MermaidDiagram({
               e.stopPropagation();
               setShowDownloadMenu(!showDownloadMenu);
             }}
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-medium text-stone-600 dark:text-stone-300 transition-colors"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors"
           >
             <Download size={14} />
             <span>{t("documents.download")}</span>

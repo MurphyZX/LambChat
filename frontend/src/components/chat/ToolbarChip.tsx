@@ -50,7 +50,7 @@ export function ToolbarChip({
             空间够时完整显示；行内一挤它先收缩出 …（全链 min-w-0 传递）。
             按钮 overflow-hidden 兜底：链路再断也只裁自己，结构上杜绝重叠 */}
         <span
-          className={`min-w-0 truncate text-sm font-semibold text-blue-600 dark:text-blue-400 font-serif${
+          className={`min-w-0 truncate text-14 font-semibold text-blue-600 dark:text-blue-400 font-serif${
             labelClassName ? ` ${labelClassName}` : ""
           }`}
         >

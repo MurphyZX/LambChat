@@ -97,12 +97,12 @@ export function RoleSquare({
       </div>
       <div className="team-role-list">
         {loading && (
-          <p className="py-8 text-center text-xs text-[var(--theme-text-secondary)]">
+          <p className="py-8 text-center text-12 text-[var(--theme-text-secondary)]">
             {t("team.loadingRoles")}
           </p>
         )}
         {!loading && filtered.length === 0 && (
-          <p className="py-8 text-center text-xs text-[var(--theme-text-secondary)]">
+          <p className="py-8 text-center text-12 text-[var(--theme-text-secondary)]">
             {t("team.noRolesFound")}
           </p>
         )}

@@ -213,7 +213,7 @@ describe("RunStepsCollapse", () => {
     const span = SummaryRow().querySelector("span");
     // 与 .markdown-preview 正文一致：桌面 0.9375rem，≤640px 提升到 1rem
     expect(span?.className).toContain("text-[0.9375rem]");
-    expect(span?.className).toContain("max-sm:text-base");
+    expect(span?.className).toContain("max-sm:text-16");
   });
 
   test("summary row divider uses the full theme border color", () => {

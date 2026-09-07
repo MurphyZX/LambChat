@@ -26,6 +26,14 @@ interface TooltipProps {
 const LONG_PRESS_MS = 500;
 /** Auto-hide delay (ms) after long press tooltip appears */
 const TOUCH_AUTO_HIDE_MS = 2000;
+/** Finger travel (px) that counts as a scroll gesture and cancels long press */
+const TOUCH_MOVE_CANCEL_PX = 10;
+/**
+ * Grace period (ms) during which mouseenter is ignored after a touch: touch
+ * devices fire a synthetic mouseenter right after tap, which would pop the
+ * tooltip on a mere tap instead of a deliberate long press.
+ */
+const TOUCH_MOUSE_GATE_MS = 600;
 
 export function Tooltip({
   content,
@@ -39,6 +47,8 @@ export function Tooltip({
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const touchHideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lastTouchAtRef = useRef(0);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);
   const childElRef = useRef<HTMLElement | null>(null);
   const resolvedPlacement = useRef<"top" | "bottom">("top");
@@ -56,6 +66,8 @@ export function Tooltip({
 
   // --- Desktop: hover show/hide ---
   const handleMouseEnter = useCallback(() => {
+    // Synthetic mouseenter right after a tap is not a real hover
+    if (Date.now() - lastTouchAtRef.current < TOUCH_MOUSE_GATE_MS) return;
     clearTimeout(touchHideTimer.current);
     clearTimeout(longPressTimer.current);
     setShow(true);
@@ -66,7 +78,11 @@ export function Tooltip({
   }, []);
 
   // --- Touch: long press to show ---
-  const handleTouchStart = useCallback(() => {
+  const handleTouchStart = useCallback((e: Event) => {
+    const touch = (e as TouchEvent).touches?.[0];
+    if (touch)
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    lastTouchAtRef.current = Date.now();
     clearTimeout(hoverTimer.current);
     clearTimeout(touchHideTimer.current);
     longPressTimer.current = setTimeout(() => {
@@ -76,6 +92,19 @@ export function Tooltip({
         TOUCH_AUTO_HIDE_MS,
       );
     }, LONG_PRESS_MS);
+  }, []);
+
+  // Finger travel means the user is scrolling, not long-pressing
+  const handleTouchMove = useCallback((e: Event) => {
+    const start = touchStartPosRef.current;
+    const touch = (e as TouchEvent).touches?.[0];
+    if (!start || !touch || !longPressTimer.current) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.hypot(dx, dy) > TOUCH_MOVE_CANCEL_PX) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = undefined;
+    }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
@@ -94,6 +123,7 @@ export function Tooltip({
     el.addEventListener("mouseenter", handleMouseEnter);
     el.addEventListener("mouseleave", handleMouseLeave);
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: true });
     el.addEventListener("touchend", handleTouchEnd, { passive: true });
     el.addEventListener("touchcancel", handleTouchCancel, { passive: true });
 
@@ -101,6 +131,7 @@ export function Tooltip({
       el.removeEventListener("mouseenter", handleMouseEnter);
       el.removeEventListener("mouseleave", handleMouseLeave);
       el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
       el.removeEventListener("touchcancel", handleTouchCancel);
     };
@@ -109,6 +140,7 @@ export function Tooltip({
     handleMouseEnter,
     handleMouseLeave,
     handleTouchStart,
+    handleTouchMove,
     handleTouchEnd,
     handleTouchCancel,
   ]);
@@ -176,7 +208,7 @@ export function Tooltip({
       {visible &&
         createPortal(
           <span
-            className={`fixed max-w-[240px] w-max rounded-lg bg-stone-700 dark:bg-stone-900 px-2.5 py-1.5 text-xs leading-relaxed text-white shadow-lg whitespace-normal pointer-events-none ${
+            className={`fixed max-w-[240px] w-max rounded-lg bg-stone-700 dark:bg-stone-900 px-2.5 py-1.5 text-12 leading-relaxed text-white shadow-lg whitespace-normal pointer-events-none ${
               className ?? ""
             }`}
             style={{

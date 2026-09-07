@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { FolderOpen, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill } from "../../../common";
+import { useToolStreamingLabel } from "./useToolStreamingLabel";
 import { extractPaths, extractText } from "./toolUtils";
 import {
   openToolLivePanel,
@@ -54,7 +55,7 @@ function LsDetail({ args, result }: ToolDetailProps) {
               <div
                 key={i}
                 className={clsx(
-                  "flex items-center gap-2.5 px-4 py-2 text-sm font-mono tool-file-row",
+                  "flex items-center gap-2.5 px-4 py-2 text-14 font-mono tool-file-row",
                   "border-b border-theme-border-faint last:border-b-0",
                   "hover:bg-theme-bg-subtle transition-colors",
                 )}
@@ -85,7 +86,7 @@ function LsDetail({ args, result }: ToolDetailProps) {
           })}
         </div>
       ) : rawText.trim().length > 0 ? (
-        <pre className="group/result relative max-h-[60dvh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-theme-border bg-theme-bg p-3 text-xs text-theme-text-secondary">
+        <pre className="group/result relative max-h-[60dvh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-theme-border bg-theme-bg p-3 text-12 text-theme-text-secondary">
           <ToolHoverCopyButton
             text={rawText}
             size={14}
@@ -146,6 +147,13 @@ const LsItem = memo(function LsItem({
         ? "success"
         : "error";
 
+  // 进行中：标签学「思考中」，平滑流出正在生成的参数尾部
+  const { label, isStreamingLabel } = useToolStreamingLabel(
+    `${t("chat.message.toolLs")} ${dirPath}${pillCount}`,
+    args,
+    { isPending, result },
+  );
+
   const detailContent = canExpand && (
     <LsDetail
       args={args}
@@ -163,7 +171,8 @@ const LsItem = memo(function LsItem({
       <CollapsiblePill
         status={status}
         icon={<FolderOpen size={12} className="shrink-0 opacity-50" />}
-        label={`${t("chat.message.toolLs")} ${dirPath}${pillCount}`}
+        label={label}
+        animatedDots={isStreamingLabel}
         variant="tool"
         formatLabel={false}
         expandable={canExpand}
@@ -211,7 +220,7 @@ const LsItem = memo(function LsItem({
                     <div
                       key={i}
                       className={clsx(
-                        "flex items-center gap-2 px-3 py-1 text-xs font-mono tool-file-row",
+                        "flex items-center gap-2 px-3 py-1 text-12 font-mono tool-file-row",
                         "border-b border-theme-border-faint last:border-b-0",
                         "hover:bg-theme-bg-subtle transition-colors",
                       )}
@@ -242,7 +251,7 @@ const LsItem = memo(function LsItem({
                 })}
               </div>
             ) : (
-              <pre className="group/result relative max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-theme-border bg-theme-bg p-2 text-xs text-theme-text-secondary">
+              <pre className="group/result relative max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-theme-border bg-theme-bg p-2 text-12 text-theme-text-secondary">
                 <ToolHoverCopyButton
                   text={rawText}
                   position="resultCompact"

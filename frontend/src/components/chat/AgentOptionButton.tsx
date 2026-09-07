@@ -33,7 +33,7 @@ function AgentOptionRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left cursor-pointer active:scale-[0.98]${
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-14 transition-colors text-left cursor-pointer active:scale-[0.98]${
         option.disabled ? " opacity-50" : ""
       }`}
       style={{
@@ -54,7 +54,7 @@ function AgentOptionRow({
         : option.label || String(option.value)}
       {isActive && (
         <span
-          className="ml-auto text-xs"
+          className="ml-auto text-12"
           style={{ color: "var(--theme-primary)" }}
         >
           ✓
@@ -156,14 +156,14 @@ export const AgentOptionButton = memo(function AgentOptionButton({
                     style={{ background: "var(--theme-border)" }}
                   />
                   <div
-                    className="text-sm font-medium mb-3"
+                    className="text-14 font-medium mb-3"
                     style={{ color: "var(--theme-text)" }}
                   >
                     {description}
                   </div>
                   {note && (
                     <div
-                      className="text-xs mb-3 px-2.5 py-1.5 rounded-lg"
+                      className="text-12 mb-3 px-2.5 py-1.5 rounded-lg"
                       style={{
                         color: "var(--theme-text-secondary)",
                         background:
@@ -263,14 +263,14 @@ export const AgentOptionButton = memo(function AgentOptionButton({
                     style={{ background: "var(--theme-border)" }}
                   />
                   <div
-                    className="text-sm font-medium mb-3"
+                    className="text-14 font-medium mb-3"
                     style={{ color: "var(--theme-text)" }}
                   >
                     {description}
                   </div>
                   {note && (
                     <div
-                      className="text-xs mb-3 px-2.5 py-1.5 rounded-lg"
+                      className="text-12 mb-3 px-2.5 py-1.5 rounded-lg"
                       style={{
                         color: "var(--theme-text-secondary)",
                         background:
@@ -315,14 +315,14 @@ export const AgentOptionButton = memo(function AgentOptionButton({
                 }}
               >
                 <div
-                  className="px-2.5 py-1.5 text-xs font-medium"
+                  className="px-2.5 py-1.5 text-12 font-medium"
                   style={{ color: "var(--theme-text-secondary)" }}
                 >
                   {description}
                 </div>
                 {note && (
                   <div
-                    className="px-2.5 pb-1.5 text-xs"
+                    className="px-2.5 pb-1.5 text-12"
                     style={{ color: "var(--theme-text-secondary)" }}
                   >
                     {note}

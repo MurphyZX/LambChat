@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { FolderSearch, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill } from "../../../common";
+import { useToolStreamingLabel } from "./useToolStreamingLabel";
 import { extractPaths } from "./toolUtils";
 import {
   openToolLivePanel,
@@ -38,7 +39,7 @@ function GlobDetail({ args, result }: ToolDetailProps) {
       </ToolArgsBlock>
       {paths.length > 0 && (
         <div>
-          <div className="text-xs text-theme-text-tertiary mb-2">
+          <div className="text-12 text-theme-text-tertiary mb-2">
             {t("chat.message.toolFileCount", { count: paths.length })}
           </div>
           <div className="relative group rounded-lg border border-theme-border bg-theme-bg overflow-auto max-h-[60dvh]">
@@ -58,7 +59,7 @@ function GlobDetail({ args, result }: ToolDetailProps) {
                 <div
                   key={i}
                   className={clsx(
-                    "flex items-center gap-2.5 px-4 py-2 text-sm font-mono tool-file-row",
+                    "flex items-center gap-2.5 px-4 py-2 text-14 font-mono tool-file-row",
                     "border-b border-theme-border-faint last:border-b-0",
                     "hover:bg-theme-bg-subtle transition-colors",
                   )}
@@ -134,6 +135,15 @@ const GlobItem = memo(function GlobItem({
         ? "success"
         : "error";
 
+  // 进行中：标签学「思考中」，平滑流出正在生成的参数尾部
+  const { label, isStreamingLabel } = useToolStreamingLabel(
+    `${t("chat.message.toolGlob")} ${pattern || ""}${
+      paths.length > 0 ? ` (${paths.length})` : ""
+    }`,
+    args,
+    { isPending, result },
+  );
+
   const detailContent = canExpand && (
     <GlobDetail
       args={args}
@@ -151,9 +161,8 @@ const GlobItem = memo(function GlobItem({
       <CollapsiblePill
         status={status}
         icon={<FolderSearch size={12} className="shrink-0 opacity-50" />}
-        label={`${t("chat.message.toolGlob")} ${pattern || ""}${
-          paths.length > 0 ? ` (${paths.length})` : ""
-        }`}
+        label={label}
+        animatedDots={isStreamingLabel}
         variant="tool"
         expandable={canExpand}
         onPanelOpen={() => {
@@ -186,7 +195,7 @@ const GlobItem = memo(function GlobItem({
             </ToolArgsBlock>
             {paths.length > 0 && (
               <div>
-                <div className="text-xs text-theme-text-tertiary mb-1">
+                <div className="text-12 text-theme-text-tertiary mb-1">
                   {t("chat.message.toolFileCount", { count: paths.length })}
                 </div>
                 <div className="relative group max-h-48 overflow-y-auto rounded-md border border-theme-border bg-theme-bg">
@@ -205,7 +214,7 @@ const GlobItem = memo(function GlobItem({
                       <div
                         key={i}
                         className={clsx(
-                          "flex items-center gap-2 px-3 py-1 text-xs font-mono tool-file-row",
+                          "flex items-center gap-2 px-3 py-1 text-12 font-mono tool-file-row",
                           "border-b border-theme-border-faint last:border-b-0",
                           "hover:bg-theme-bg-subtle transition-colors",
                         )}
@@ -235,7 +244,7 @@ const GlobItem = memo(function GlobItem({
                     );
                   })}
                   {paths.length > 10 && (
-                    <div className="text-xs text-theme-text-tertiary px-3 py-1.5 border-t border-theme-border-faint">
+                    <div className="text-12 text-theme-text-tertiary px-3 py-1.5 border-t border-theme-border-faint">
                       {t("chat.message.toolMoreFiles", {
                         count: paths.length - 10,
                       })}
