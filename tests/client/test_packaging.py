@@ -402,6 +402,10 @@ def test_build_script_cross_builds_via_rosetta_on_arm64_mac() -> None:
     assert "venv-daemon-x86_64" in script
     # 防回归门禁：解释器架构现场断言（工具链退回 arm64 时立即失败）
     assert 'platform.machine() == "x86_64"' in script
+    # cryptography ≥50 无 macOS x86_64 wheel（openssl-sys 交叉必败，实验三跑
+    # 实测）：daemon 导入面仅 httpx + psutil，跳过安装 + --no-sync 防回拉
+    assert "--no-install-package cryptography" in script
+    assert "uv run --no-sync pyinstaller" in script
 
 
 def test_release_workflow_daemon_build_passes_target_triple() -> None:

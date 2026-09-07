@@ -66,7 +66,13 @@ setup_rosetta_x86_64_toolchain() {
     echo "==> Rosetta x86_64 工具链就绪: $(command -v uv) ($(uv --version))"
     # x86_64 uv 按自身架构下载 x86_64 PBS 构建到隔离目录
     uv python install 3.12
-    uv run python -c 'import platform; assert platform.machine() == "x86_64", platform.machine()'
+    # cryptography ≥50 只发 macOS arm64 wheel（上游放弃 Intel），x86_64 环境
+    # 会触发 openssl-sys 交叉编译而失败。daemon 真实依赖仅 httpx + psutil
+    # （lambchat_sandbox 导入面 xref），PyInstaller 按导入分析打包、不触及
+    # cryptography（纯服务端 pywebpush 传递依赖），跳过安装无副作用。
+    uv sync --group dev --no-install-package cryptography
+    uv run --no-sync python -c \
+        'import platform; assert platform.machine() == "x86_64", platform.machine()'
 }
 
 TRIPLE="${DAEMON_TARGET_TRIPLE:-$(detect_host_triple)}"
@@ -88,16 +94,27 @@ cd "$REPO_ROOT"
 
 # macOS arm64 宿主 × x86_64 目标：换 x86_64 工具链（Rust/Go sidecar 可交叉
 # 编译，PyInstaller 不行——这是本脚本的 Rosetta 路径存在的原因）
+CROSS_ROSETTA=0
 if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ] \
     && [ "$TRIPLE" = "x86_64-apple-darwin" ]; then
+    CROSS_ROSETTA=1
     setup_rosetta_x86_64_toolchain
 fi
 
 echo "==> PyInstaller 打包 daemon（onefile）..."
-uv run pyinstaller client/pyinstaller.spec \
-    --distpath client/dist \
-    --workpath client/build \
-    --noconfirm
+# Rosetta 路径已显式 sync（跳过 cryptography），--no-sync 防止 uv run 的
+# 自动同步把该包重新拉回（macOS x86_64 无 wheel 必然失败）
+if [ "$CROSS_ROSETTA" = 1 ]; then
+    uv run --no-sync pyinstaller client/pyinstaller.spec \
+        --distpath client/dist \
+        --workpath client/build \
+        --noconfirm
+else
+    uv run pyinstaller client/pyinstaller.spec \
+        --distpath client/dist \
+        --workpath client/build \
+        --noconfirm
+fi
 
 if [ ! -x "$DIST_ARTIFACT" ]; then
     echo "打包产物缺失或不可执行: $DIST_ARTIFACT" >&2
