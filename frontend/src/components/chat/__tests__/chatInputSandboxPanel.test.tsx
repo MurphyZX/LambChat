@@ -327,8 +327,13 @@ test("sandbox panel online hides the download entry", async () => {
   mocks.getStatus.mockResolvedValue({ online: true });
   renderSelectors("sandbox");
 
-  await screen.findByText("Local");
-  expect(screen.queryByText("Download local sandbox")).not.toBeInTheDocument();
+  // 等下载入口消失而非等"Local"出现：档位 chip 首帧即渲染，getStatus
+  // 异步落地前离线引导仍在，同步断言会竞态（CI 高负载下抖动）
+  await waitFor(() =>
+    expect(
+      screen.queryByText("Download local sandbox"),
+    ).not.toBeInTheDocument(),
+  );
 });
 
 // ---------------------------------------------------------------------------
