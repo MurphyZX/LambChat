@@ -9,9 +9,11 @@ import {
   type SandboxMachine,
   type SandboxStatus,
 } from "../services/api/sandbox";
+import { SANDBOX_ONLINE_CHANGED_EVENT } from "../components/layout/AppContent/useAgentOptions";
 
 const REFRESH_INTERVAL_MS = 10 * 1000;
 export const SANDBOX_STATUS_REFRESH_EVENT = "sandbox-status-refresh";
+export { SANDBOX_ONLINE_CHANGED_EVENT };
 
 /** 状态请求失败原因：401（会话失效）与普通失败区分，设置页据此走配对引导。 */
 export type SandboxStatusError = "unauthorized" | "failed" | null;
@@ -103,10 +105,24 @@ export function useSandboxStatus(options?: UseSandboxStatusOptions): {
     };
   }, [fetchStatus, fetchMachines, enabled]);
 
+  // 双保险在线判定：/status 只看 legacy hash（旧后端/多机 daemon 场景报 false），
+  // 机器列表里任一机器在线即视为本地可用
+  const online =
+    !!status?.online || machines.some((m) => m.online !== false);
+
+  // 离线→在线翻转派发上线事件：默认本地档逻辑（useAgentOptions）据此自动切本地
+  const wasOnlineRef = useRef(false);
+  useEffect(() => {
+    if (online && !wasOnlineRef.current) {
+      window.dispatchEvent(new Event(SANDBOX_ONLINE_CHANGED_EVENT));
+    }
+    wasOnlineRef.current = online;
+  }, [online]);
+
   return {
     status,
     statusError,
-    online: !!status?.online,
+    online,
     machines,
     defaultMachineId,
     refresh: fetchStatus,

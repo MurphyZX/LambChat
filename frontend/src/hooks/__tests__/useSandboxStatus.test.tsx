@@ -5,10 +5,12 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getStatus: vi.fn(),
+  listMachines: vi.fn(),
 }));
 
 vi.mock("../../services/api/sandbox", () => ({
   sandboxApi: { getStatus: mocks.getStatus },
+  sandboxApiMachines: { listMachines: mocks.listMachines },
 }));
 
 import {
@@ -17,14 +19,17 @@ import {
 } from "../useSandboxStatus";
 
 function Probe() {
-  const { status, statusError } = useSandboxStatus();
+  const { status, statusError, online, machines } = useSandboxStatus();
   return (
-    <div data-testid="probe">{JSON.stringify({ status, statusError })}</div>
+    <div data-testid="probe">
+      {JSON.stringify({ status, statusError, online, machines })}
+    </div>
   );
 }
 
 beforeEach(() => {
   mocks.getStatus.mockReset();
+  mocks.listMachines.mockReset();
 });
 
 test("fetches status on mount and refetches on the refresh event", async () => {
@@ -133,4 +138,42 @@ test("enabled toggles polling on and picks up immediately on open", async () => 
   });
   expect(mocks.getStatus).toHaveBeenCalledTimes(1);
   view.unmount();
+});
+
+test("derives online from machines when status endpoint is stale or legacy-blind", async () => {
+  // 双保险：/status 只看 legacy hash 时（旧后端/多机 daemon），机器列表里
+  // 任一机器在线即视为本地可用
+  mocks.getStatus.mockResolvedValue({ online: false });
+  mocks.listMachines.mockResolvedValue({
+    machines: [
+      {
+        machine_id: "m1",
+        name: "MacBook",
+        platform: "darwin",
+        version: "0.4.0",
+        confirm_policy: "all",
+        online: true,
+      },
+    ],
+    default_machine_id: null,
+  });
+
+  const view = render(<Probe />);
+  await waitFor(() =>
+    expect(view.getByTestId("probe").textContent).toContain('"online":true'),
+  );
+});
+
+test("stays offline when both status and machines report nothing online", async () => {
+  mocks.getStatus.mockResolvedValue({ online: false });
+  mocks.listMachines.mockResolvedValue({
+    machines: [],
+    default_machine_id: null,
+  });
+
+  const view = render(<Probe />);
+  await waitFor(() => expect(mocks.getStatus).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(view.getByTestId("probe").textContent).toContain('"online":false'),
+  );
 });
