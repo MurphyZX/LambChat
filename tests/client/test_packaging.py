@@ -251,6 +251,9 @@ def test_release_workflow_guards_version_drift_and_manifest_version_from_tag() -
         # 服务端版本（/api/version 运行时读 pyproject.toml）同入门禁：
         # 漏 bump 会让网页端展示的版本与客户端发版不同步
         assert "pyproject.toml=$pyproject" in preflight["run"], job
+        # daemon 版本（lambchat_sandbox.__version__，自 2.8.6 起随发版统一
+        # 递增）：漏 bump 会让 daemon self-update 比版本无变化、永不更新
+        assert "daemon __version__=$daemon" in preflight["run"], job
 
     # 闸 2：增量合并的 manifest.version 取自 tag（不再读 tauri.conf.json）
     merge_step = next(
