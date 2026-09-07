@@ -298,6 +298,44 @@ def test_release_workflow_appends_macos_gatekeeper_note() -> None:
     assert "macos-gatekeeper-note" in note["run"]
 
 
+# ---------------------------------------------------------------------------
+# macOS 一键安装脚本：curl 下载无隔离标记 → 解包即用（绕开 Gatekeeper）
+# ---------------------------------------------------------------------------
+
+
+def test_install_script_exists_with_macos_arm64_gate() -> None:
+    """install.sh 随前端 public/ 分发（/install.sh），必须带 Darwin + arm64
+    门禁（当前安装包仅 Apple Silicon；Intel 属 M5 universal 计划）。"""
+    script = _source("frontend/public/install.sh")
+
+    assert script, "frontend/public/install.sh 不存在"
+    assert '(uname -s)" = "Darwin"' in script
+    assert "arm64)" in script
+    assert "x86_64" in script
+    assert "set -euo pipefail" in script
+
+
+def test_install_script_downloads_stable_named_release_asset() -> None:
+    """脚本从 GitHub「最新 release 稳定名」资产下载（免 API 解析、免限流），
+    解包目标 /Applications，并兜底清除隔离标记。"""
+    script = _source("frontend/public/install.sh")
+
+    assert "releases/latest/download/" in script
+    assert "LambChat-macOS-latest.app.tar.gz" in script
+    assert "tar -xzf" in script
+    assert "/Applications" in script or "APP_DIR" in script
+    assert "com.apple.quarantine" in script
+
+
+def test_release_workflow_collects_stable_named_macos_asset() -> None:
+    """macOS 收集步骤把 .app.tar.gz 以稳定名额外拷贝一份：一键安装脚本按
+    releases/latest/download/<稳定名> 直链下载，不解析版本号。"""
+    collect = next(
+        s for s in _desktop_job()["steps"] if s["name"] == "Collect macOS desktop artifacts"
+    )
+    assert "LambChat-macOS-latest.app.tar.gz" in collect["run"]
+
+
 def test_build_script_appends_exe_suffix_on_windows_sidecar() -> None:
     script = _source("client/scripts/build-daemon.sh")
 
