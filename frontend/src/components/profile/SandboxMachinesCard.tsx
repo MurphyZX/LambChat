@@ -11,11 +11,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-hot-toast";
-import { Check, Laptop, Link2, Pencil, Star, X } from "lucide-react";
-import {
-  useSandboxStatus,
-  notifySandboxStatusRefresh,
-} from "../../hooks/useSandboxStatus";
 import { Check, Laptop, Link2, Pencil, Star, Trash2, X } from "lucide-react";
 import { useSandboxStatus, notifySandboxStatusRefresh } from "../../hooks/useSandboxStatus";
 import {

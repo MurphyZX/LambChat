@@ -120,12 +120,9 @@ export function buildSandboxMachineOption(
     type: "string",
     default:
       defaultMachineId &&
-      machines.some((m) => m.machine_id === defaultMachineId)
+      onlineMachines.some((m) => m.machine_id === defaultMachineId)
         ? defaultMachineId
-        : machines[0].machine_id,
-    default: defaultMachineId && onlineMachines.some((m) => m.machine_id === defaultMachineId)
-      ? defaultMachineId
-      : onlineMachines[0]?.machine_id ?? machines[0].machine_id,
+        : onlineMachines[0]?.machine_id ?? machines[0].machine_id,
     label: t("agentOptions.sandboxMachine.label"),
     label_key: "agentOptions.sandboxMachine.label",
     description: t("agentOptions.sandboxMachine.description"),

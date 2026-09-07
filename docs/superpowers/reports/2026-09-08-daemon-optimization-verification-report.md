@@ -1,5 +1,13 @@
 # Daemon 连接优化：三平台全流程验证报告
 
+> **2026-09-08 更新（v2，基于最新 develop 重放）**：本特性已按 develop 新基线
+> （含 5161fd12 /status 多机判定、bb3cd54d result 透传、2caad89a 二进制安全帧通道）
+> 重新重放为 16 个提交；与 develop 已有修复重复的两项（/status 多机、result 字段）
+> 已剔除。桌面端 Windows 进程管理改用 command-group 开源方案（Unix 进程组 /
+> Windows Job Object）。最终验证：后端 pytest 4327+500、前端 vitest 531 文件
+> 2573 用例、构建 0 错误、ruff/mypy 通过、cargo check 双 target（linux +
+> x86_64-pc-windows-gnu）通过、cargo test 9 通过。
+
 - 日期：2026-09-08
 - 分支：`feat/daemon-connection-optimization`（17 个提交）
 - 相关文档：`docs/superpowers/specs/2026-09-07-daemon-connection-optimization-design.md`（设计规范）、`docs/superpowers/plans/2026-09-07-daemon-connection-optimization.md`（实施计划）

@@ -71,11 +71,6 @@ class _FakeRedis:
         if ex is not None:
             self.expires_at[key] = time.monotonic() + ex
 
-    async def delete(self, key):
-        self.kv.pop(key, None)
-        self.lists.pop(key, None)
-
-
     async def get(self, key):
         if key in self.kv and self._alive(key):
             return self.kv[key]
