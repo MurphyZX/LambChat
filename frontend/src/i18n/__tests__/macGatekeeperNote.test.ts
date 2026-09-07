@@ -16,3 +16,14 @@ test("all locales describe the macOS Gatekeeper first-launch note", () => {
     expect(messages.download.macGatekeeper.body).toBeTruthy();
   }
 });
+
+test("all locales describe the macOS one-line install command", () => {
+  for (const locale of locales) {
+    const messages = JSON.parse(
+      readFileSync(resolve(localesDir, `${locale}.json`), "utf8"),
+    ) as { download: { macInstall: Record<string, string> } };
+
+    expect(messages.download.macInstall.title).toBeTruthy();
+    expect(messages.download.macInstall.body).toBeTruthy();
+  }
+});

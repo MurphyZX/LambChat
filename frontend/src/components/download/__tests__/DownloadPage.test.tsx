@@ -131,7 +131,23 @@ test("macOS card shows the Gatekeeper first-launch note with the xattr command",
   expect(
     screen.getByText(/xattr -cr \/Applications\/LambChat\.app/),
   ).toBeInTheDocument();
-  expect(screen.getByText(/damaged/i)).toBeInTheDocument();
+  // 「已损坏」说明同时出现在一键安装与 xattr 兜底两段文案里
+  expect(screen.getAllByText(/damaged/i).length).toBeGreaterThanOrEqual(1);
+});
+
+test("macOS card promotes the one-line install script command", async () => {
+  // curl 下载不带隔离标记，装完直接可开——无需 xattr 的推荐安装路径
+  mocks.get.mockResolvedValue({
+    app_version: "2.8.1",
+    release_assets: ASSETS,
+  });
+
+  render(<DownloadPage />);
+
+  await screen.findByText("macOS");
+  expect(
+    screen.getByText(/curl -fsSL https:\/\/lambchat\.com\/install\.sh \| sh/),
+  ).toBeInTheDocument();
 });
 
 test("daemon section shows the login and run commands", async () => {
