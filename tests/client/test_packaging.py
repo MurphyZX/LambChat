@@ -111,25 +111,36 @@ def _desktop_job() -> dict:
 
 def test_release_workflow_matrix_covers_three_platforms() -> None:
     matrix = _desktop_job()["strategy"]["matrix"]["include"]
-    by_runner = {entry["runner"]: entry for entry in matrix}
-    # M3 下线的 Windows/macOS 条目已恢复；macOS M4 裁决为 arm64 单架构
-    assert set(by_runner) == {
-        "ubuntu-latest",
-        "ubuntu-24.04-arm",
-        "windows-2022",
-        "macos-14",
+    by_label = {entry["label"]: entry for entry in matrix}
+    # M3 下线的 Windows/macOS 条目已恢复；macOS 双架构（M4 裁决的 arm64
+    # 单架构在 M5 升级）：两条目都在 macos-14（arm64）上构建——Rust 侧
+    # 交叉编译 x86_64，daemon 侧由 build-daemon.sh 走 Rosetta 路径
+    assert set(by_label) == {
+        "Linux x86_64",
+        "Linux ARM64",
+        "Windows",
+        "macOS Apple Silicon",
+        "macOS Intel",
     }
-    assert by_runner["macos-14"]["target"] == "aarch64-apple-darwin"
+    assert by_label["macOS Apple Silicon"]["runner"] == "macos-14"
+    assert by_label["macOS Intel"]["runner"] == "macos-14"
+    assert by_label["macOS Apple Silicon"]["target"] == "aarch64-apple-darwin"
+    assert by_label["macOS Intel"]["target"] == "x86_64-apple-darwin"
     # dmg 仅首装；app bundle 产出 .app.tar.gz 供 Tauri updater 增量更新
-    assert by_runner["macos-14"]["bundles"] == "dmg,app"
-    assert by_runner["windows-2022"]["bundles"] == "msi"
+    assert by_label["macOS Apple Silicon"]["bundles"] == "dmg,app"
+    assert by_label["macOS Intel"]["bundles"] == "dmg,app"
+    assert by_label["Windows"]["bundles"] == "msi"
     # PBS 平台标签与 fetch-pbs.py 的 PLATFORM_TRIPLES 键一致
     assert {entry["pbs_platform"] for entry in matrix} == {
         "linux-x86_64",
         "linux-aarch64",
         "windows-x86_64",
         "macos-arm64",
+        "macos-x64",
     }
+    # 资产名带架构后缀：双 mac 构建产物不得同名互踩
+    assert by_label["macOS Apple Silicon"]["asset_suffix"] == "macOS-Apple-Silicon"
+    assert by_label["macOS Intel"]["asset_suffix"] == "macOS-Intel"
 
 
 def test_release_workflow_daemon_steps_run_on_all_platforms() -> None:
@@ -193,10 +204,16 @@ def test_release_workflow_publishes_assets_immediately_per_platform() -> None:
     assert by_label["Linux x86_64"]["updater_key"] == "linux-x86_64"
     assert by_label["Linux ARM64"]["updater_key"] == "linux-aarch64"
     assert by_label["Windows"]["updater_key"] == "windows-x86_64"
-    # macOS updater 走 .app.tar.gz（dmg 不能原地更新）
-    assert by_label["macOS"]["updater_key"] == "darwin-aarch64"
-    assert by_label["macOS"]["updater_sig"] == "*.app.tar.gz.sig"
-    assert by_label["macOS"]["updater_asset_suffix"] == "macOS.app.tar.gz"
+    # macOS updater 走 .app.tar.gz（dmg 不能原地更新）；双架构各有平台键，
+    # sig 按 Tauri updater 产物名的 arch 段区分（_aarch64 / _x64）
+    assert by_label["macOS Apple Silicon"]["updater_key"] == "darwin-aarch64"
+    assert by_label["macOS Apple Silicon"]["updater_sig"] == "*_aarch64.app.tar.gz.sig"
+    assert by_label["macOS Apple Silicon"]["updater_asset_suffix"] == (
+        "macOS-Apple-Silicon.app.tar.gz"
+    )
+    assert by_label["macOS Intel"]["updater_key"] == "darwin-x86_64"
+    assert by_label["macOS Intel"]["updater_sig"] == "*_x64.app.tar.gz.sig"
+    assert by_label["macOS Intel"]["updater_asset_suffix"] == "macOS-Intel.app.tar.gz"
     merge_step = next(
         s
         for s in _desktop_job()["steps"]
@@ -242,7 +259,7 @@ def test_release_workflow_guards_version_drift_and_manifest_version_from_tag() -
     # 不再从 tauri.conf.json 读版本（漂移源）
     assert 'readFileSync("frontend/src-tauri/tauri.conf.json")' not in merge_step["run"]
 
-    # 闸 3：权威重生成同样从 tag 取版本，且包含 darwin-aarch64 条目
+    # 闸 3：权威重生成同样从 tag 取版本，且双 darwin 架构条目齐全
     regen = next(
         s
         for s in workflow["jobs"]["release"]["steps"]
@@ -250,17 +267,21 @@ def test_release_workflow_guards_version_drift_and_manifest_version_from_tag() -
     )
     assert 'version = tag.lstrip("v")' in regen["run"]
     assert "read_text()" not in regen["run"] or "tauri.conf" not in regen["run"]
-    assert '("darwin-aarch64", "*.app.tar.gz.sig"' in regen["run"]
+    assert '("darwin-aarch64", "*_aarch64.app.tar.gz.sig"' in regen["run"]
+    assert '("darwin-x86_64", "*_x64.app.tar.gz.sig"' in regen["run"]
 
 
 def test_release_workflow_macos_collect_requires_app_tar_gz() -> None:
     """macOS 收集步骤必须上传 .app.tar.gz updater 产物且缺失即失败：
-    静默跳过会让 darwin-aarch64 条目被略过、mac 永远收不到更新。"""
+    静默跳过会让 darwin 平台条目被略过、mac 永远收不到更新。双 mac 构建
+    产物名一律走 matrix.asset_suffix（带架构后缀），不得共享无后缀的
+    ``-macOS.*`` 名（两架构互踩 clobber）。"""
     collect = next(
         s for s in _desktop_job()["steps"] if s["name"] == "Collect macOS desktop artifacts"
     )
     assert "*.app.tar.gz" in collect["run"]
-    assert "macOS.app.tar.gz" in collect["run"]
+    assert "${{ matrix.asset_suffix }}" in collect["run"]
+    assert "LambChat-${RELEASE_TAG}-macOS" not in collect["run"]
     assert "exit 1" in collect["run"]
 
 
@@ -304,36 +325,39 @@ def test_release_workflow_appends_macos_gatekeeper_note() -> None:
 
 
 def test_install_script_exists_with_macos_arm64_gate() -> None:
-    """install.sh 随前端 public/ 分发（/install.sh），必须带 Darwin + arm64
-    门禁（当前安装包仅 Apple Silicon；Intel 属 M5 universal 计划）。"""
+    """install.sh 随前端 public/ 分发（/install.sh），必须带 Darwin 门禁并
+    双架构路由：arm64 / x86_64 各取对应稳定名资产（M5 起 Intel 同步支持）。"""
     script = _source("frontend/public/install.sh")
 
     assert script, "frontend/public/install.sh 不存在"
     assert '(uname -s)" = "Darwin"' in script
     assert "arm64)" in script
-    assert "x86_64" in script
+    assert "x86_64)" in script
     assert "set -euo pipefail" in script
 
 
 def test_install_script_downloads_stable_named_release_asset() -> None:
     """脚本从 GitHub「最新 release 稳定名」资产下载（免 API 解析、免限流），
-    解包目标 /Applications，并兜底清除隔离标记。"""
+    按架构路由资产名，解包目标 /Applications，并兜底清除隔离标记。"""
     script = _source("frontend/public/install.sh")
 
     assert "releases/latest/download/" in script
-    assert "LambChat-macOS-latest.app.tar.gz" in script
+    assert "LambChat-macOS-Apple-Silicon-latest.app.tar.gz" in script
+    assert "LambChat-macOS-Intel-latest.app.tar.gz" in script
     assert "tar -xzf" in script
     assert "/Applications" in script or "APP_DIR" in script
     assert "com.apple.quarantine" in script
 
 
 def test_release_workflow_collects_stable_named_macos_asset() -> None:
-    """macOS 收集步骤把 .app.tar.gz 以稳定名额外拷贝一份：一键安装脚本按
+    """macOS 收集步骤把 .app.tar.gz 以稳定名额外拷贝一份（双架构各一，
+    经 matrix.asset_suffix 插值 → LambChat-macOS-Apple-Silicon-latest /
+    LambChat-macOS-Intel-latest）：一键安装脚本按
     releases/latest/download/<稳定名> 直链下载，不解析版本号。"""
     collect = next(
         s for s in _desktop_job()["steps"] if s["name"] == "Collect macOS desktop artifacts"
     )
-    assert "LambChat-macOS-latest.app.tar.gz" in collect["run"]
+    assert "LambChat-${{ matrix.asset_suffix }}-latest.app.tar.gz" in collect["run"]
 
 
 def test_build_script_appends_exe_suffix_on_windows_sidecar() -> None:
@@ -345,6 +369,60 @@ def test_build_script_appends_exe_suffix_on_windows_sidecar() -> None:
     assert 'EXE_SUFFIX=""' in script
     assert "lambchat-daemon${EXE_SUFFIX}" in script
     assert "lambchat-daemon-${TRIPLE}${EXE_SUFFIX}" in script
+
+
+def test_build_script_honors_target_triple_override() -> None:
+    """DAEMON_TARGET_TRIPLE 覆盖：CI 在 arm64 宿主上产 x86_64 sidecar 时
+    注入（与 Tauri --target 对齐）；缺省仍探测宿主 triple。"""
+    script = _source("client/scripts/build-daemon.sh")
+
+    assert "DAEMON_TARGET_TRIPLE" in script
+    assert "${DAEMON_TARGET_TRIPLE:-$(detect_host_triple)}" in script
+
+
+def test_build_script_cross_builds_via_rosetta_on_arm64_mac() -> None:
+    """arm64 宿主 × x86_64 目标 = Rosetta 路径：PyInstaller 不支持交叉编译，
+    必须整套换 x86_64 工具链（x86_64 uv 静态二进制由 Rosetta 自动接手），
+    且用独立 venv 隔离宿主 arm64 环境。"""
+    script = _source("client/scripts/build-daemon.sh")
+
+    # Rosetta 存在性保障（GH arm64 runner 预装，本地兜底自装）
+    assert "install-rosetta" in script
+    # x86_64 uv 静态二进制下载（PATH 前置后 uv run/pyinstaller 全链 x86_64）
+    assert "uv-x86_64-apple-darwin.tar.gz" in script
+    assert "PATH=" in script
+    # uv 托管解释器目录按版本不按架构区分：不隔离会复用宿主 arm64 CPython；
+    # 且找不到托管解释器时 uv 回退系统 PATH（runner 预装 arm64 3.12 即被采用），
+    # 必须 only-managed + 显式安装双保险（实验首两跑实测）
+    assert "UV_PYTHON_INSTALL_DIR" in script
+    assert "UV_PYTHON_PREFERENCE=only-managed" in script
+    assert "uv python install 3.12" in script
+    # 独立 venv：不污染宿主 arm64 .venv（落 client/build/，已 gitignore）
+    assert "UV_PROJECT_ENVIRONMENT" in script
+    assert "venv-daemon-x86_64" in script
+    # 防回归门禁：解释器架构现场断言（工具链退回 arm64 时立即失败）
+    assert 'platform.machine() == "x86_64"' in script
+    # cryptography ≥50 无 macOS x86_64 wheel（openssl-sys 交叉必败，实验三跑
+    # 实测）：daemon 导入面仅 httpx + psutil，跳过安装 + --no-sync 防回拉
+    assert "--no-install-package cryptography" in script
+    assert "uv run --no-sync pyinstaller" in script
+
+
+def test_release_workflow_daemon_build_passes_target_triple() -> None:
+    """daemon 构建步骤必须把 matrix.target 透传为 DAEMON_TARGET_TRIPLE，
+    否则 Intel 条目的 sidecar 仍按宿主（arm64）triple 命名、externalBin 落空。"""
+    steps = {step["name"]: step for step in _desktop_job()["steps"]}
+    daemon_step = steps["Build sandbox daemon sidecar (PyInstaller)"]
+    env = daemon_step.get("env", {})
+    assert env.get("DAEMON_TARGET_TRIPLE") == "${{ matrix.target || '' }}"
+
+
+def test_release_workflow_rustup_target_follows_matrix() -> None:
+    """rustup target 步骤必须用 matrix.target（原 aarch64 硬编码会让 Intel
+    条目缺 x86_64 编译目标直接失败）。"""
+    steps = {step["name"]: step for step in _desktop_job()["steps"]}
+    rustup = steps["Add macOS Rust target"]
+    assert "rustup target add ${{ matrix.target }}" in rustup["run"]
 
 
 def test_release_workflow_collect_steps_publish_daemon_sidecar_assets() -> None:
