@@ -22,6 +22,26 @@ use tauri_plugin_shell::ShellExt;
 /// 意外退出后的自动重启次数上限。
 const MAX_RESTARTS: u8 = 3;
 
+/// 稳定运行阈值：这代进程稳定运行超过该时长后意外退出，重启预算恢复
+/// （cloudflared 模式：早夭连崩有上限，稳定运行过的不受早夭计数牵连——
+/// 否则 daemon 早期连不上服务器连崩 3 次后就永久放弃，需重启客户端）。
+const STABLE_RESET: Duration = Duration::from_secs(300);
+
+/// 稳定运行时长是否应恢复重启预算（纯函数，便于单测）。
+fn should_reset_restart_budget(uptime: Duration) -> bool {
+    uptime >= STABLE_RESET
+}
+
+/// 第 N 次（0-based）重启前的退避间隔：1s、2s、4s、8s、16s，封顶 30s
+/// （纯函数，便于单测；防抖避免崩溃风暴打满 CPU/日志）。
+fn restart_backoff(restarts_before: u8) -> Duration {
+    let shift = restarts_before.min(5) as u32;
+    Duration::from_secs(1u64 << shift).min(Duration::from_secs(30))
+}
+
+/// daemon 托管状态变化事件名（Tauri event，前端订阅替代轮询）。
+pub const STATUS_EVENT: &str = "sandbox-daemon-status";
+
 /// 监视线轮询间隔（env 直启 try_wait / sidecar kill(pid,0) 探活共用）。
 const ENV_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -50,6 +70,8 @@ enum DaemonChild {
 /// daemon 生命周期状态（挂到 Tauri managed state）。
 pub struct DaemonManager {
     child: Mutex<Option<DaemonChild>>,
+    /// 当前代进程的启动时刻（稳定运行判定用；槽位空时为 None）。
+    started_at: Mutex<Option<std::time::Instant>>,
     /// 意外退出后的已重启次数。
     restarts: AtomicU8,
     /// 每次 start/stop 递增（**一律持有 `child` 锁**，stop 亦然——递增点
@@ -66,6 +88,7 @@ impl Default for DaemonManager {
     fn default() -> Self {
         Self {
             child: Mutex::new(None),
+            started_at: Mutex::new(None),
             restarts: AtomicU8::new(0),
             generation: AtomicU64::new(0),
             unsupported: AtomicBool::new(false),
@@ -128,7 +151,9 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
                 );
                 *slot = Some(DaemonChild::Env(child));
                 manager.unsupported.store(false, Ordering::SeqCst);
+                *manager.started_at.lock().unwrap() = Some(std::time::Instant::now());
                 spawn_env_monitor(app.clone(), generation);
+                emit_status(app);
                 Ok(())
             }
             Err(e) => {
@@ -161,6 +186,7 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
     let pid = child.pid();
     *slot = Some(DaemonChild::Sidecar(child));
     manager.unsupported.store(false, Ordering::SeqCst);
+    *manager.started_at.lock().unwrap() = Some(std::time::Instant::now());
 
     // 退出检测不走插件事件通道（原因见 spawn_sidecar_monitor 注释）。
     spawn_sidecar_monitor(app.clone(), generation, pid);
@@ -170,7 +196,27 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn(async move {
         while (rx.recv().await).is_some() {}
     });
+    emit_status(app);
     Ok(())
+}
+
+/// 托管状态变化事件：前端订阅（替代 10s 轮询 daemon_process_status），
+/// 载荷 {running, unsupported, generation, restarts}。发送失败仅告警——
+/// 事件是加速信号，前端仍有初始 invoke 兜底。emit_status 必须在
+/// started_at/child 状态落定后调用。
+fn emit_status(app: &AppHandle) {
+    use tauri::Emitter;
+    let manager = app.state::<DaemonManager>();
+    let running = manager.child.lock().unwrap().is_some();
+    let payload = serde_json::json!({
+        "running": running,
+        "unsupported": manager.unsupported.load(Ordering::SeqCst),
+        "generation": manager.generation.load(Ordering::SeqCst),
+        "restarts": manager.restarts.load(Ordering::SeqCst),
+    });
+    if let Err(e) = app.emit(STATUS_EVENT, payload) {
+        warn_log!("failed to emit {STATUS_EVENT}: {e}");
+    }
 }
 
 /// 停止 daemon：SIGTERM 优雅终止（宽限 [`STOP_GRACE`]）→ 仍存活再 SIGKILL
@@ -228,6 +274,8 @@ pub fn stop(app: &AppHandle) {
         None => {}
     }
     manager.restarts.store(0, Ordering::SeqCst);
+    *manager.started_at.lock().unwrap() = None;
+    emit_status(app);
 }
 
 /// sidecar 形态的优雅终止：SIGTERM → 宽限内 `kill(pid, 0)` 探活。
@@ -264,9 +312,37 @@ fn graceful_terminate_sidecar(pid: u32) {
     }
     #[cfg(not(unix))]
     {
-        // TODO(M4): Windows 侧优雅终止（GenerateConsoleCtrlEvent / taskkill）；
-        // win/mac 已恢复发布矩阵且 daemon 步已接，暂直落调用方的 kill 兜底。
-        let _ = pid;
+        // Windows：无 POSIX 信号。先 `taskkill /T`（向进程树发关闭请求，控制台
+        // 进程若装了 CTRL 处理器有一次优雅机会），宽限内仍存活再 `/T /F` 强杀
+        // 进程树。强杀路径 daemon 无法 post_offline——由服务端 SSE 断流 →
+        // unregister + presence 推送兜底，前端感知仍为秒级。
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let graceful = std::process::Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        if let Err(e) = graceful {
+            warn_log!("taskkill (graceful) failed for pid {pid}: {e}");
+        }
+        let deadline = std::time::Instant::now() + STOP_GRACE;
+        while std::time::Instant::now() < deadline {
+            if !process_alive(pid) {
+                return;
+            }
+            std::thread::sleep(STOP_POLL_INTERVAL);
+        }
+        warn_log!(
+            "daemon sidecar (pid {pid}) still alive {}s after taskkill; force-killing tree",
+            STOP_GRACE.as_secs()
+        );
+        let forced = std::process::Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        if let Err(e) = forced {
+            warn_log!("taskkill /F failed for pid {pid}: {e}");
+        }
     }
 }
 
@@ -349,9 +425,20 @@ fn process_alive(pid: u32) -> bool {
     }
     #[cfg(not(unix))]
     {
-        // TODO(M4): Windows 用 OpenProcess 探活；当前发布矩阵仅 unix。
-        let _ = pid;
-        true
+        // Windows：无 kill(pid,0) 等价物，用 tasklist 按 PID 过滤探活（仅监视线
+        // 每 500ms 调用一次，查询进程的开销可接受）。查询失败按存活处理——
+        // 宁可多等一次宽限，也不误判退出触发无谓重启。
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let output = std::process::Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+        match output {
+            // 无匹配时 tasklist 输出 "INFO: No tasks are running..."（不含 pid）
+            Ok(out) => String::from_utf8_lossy(&out.stdout).contains(&pid.to_string()),
+            Err(_) => true,
+        }
     }
 }
 
@@ -366,7 +453,22 @@ fn handle_exit(app: &AppHandle, generation: u64) {
     if manager.take_if_current(generation).is_none() {
         return; // 已被 stop() 或新一轮 start() 接管（或同代槽位已处理过），交由新逻辑负责
     }
+    let uptime = manager
+        .started_at
+        .lock()
+        .unwrap()
+        .map(|started| started.elapsed())
+        .unwrap_or_default();
+    *manager.started_at.lock().unwrap() = None;
+    emit_status(app); // 槽位已空：先广播 stopped，重启成功后会再广播 running
 
+    if should_reset_restart_budget(uptime) {
+        warn_log!(
+            "daemon ran stably for {}s before exit; restart budget restored",
+            uptime.as_secs()
+        );
+        manager.restarts.store(0, Ordering::SeqCst);
+    }
     let restarts = manager.restarts.fetch_add(1, Ordering::SeqCst);
     if restarts >= MAX_RESTARTS {
         warn_log!(
@@ -374,10 +476,17 @@ fn handle_exit(app: &AppHandle, generation: u64) {
         );
         return;
     }
+    let backoff = restart_backoff(restarts);
     warn_log!(
-        "daemon exited unexpectedly; restarting ({}/{MAX_RESTARTS})",
+        "daemon exited unexpectedly; restarting in {:?} ({}/{MAX_RESTARTS})",
+        backoff,
         restarts + 1
     );
+    if !backoff.is_zero() {
+        // 监视线（spawn_blocking）上睡：退避窗口内用户手动 restart_daemon 会
+        // 先装满槽位，随后的 start() 幂等 no-op，不会双实例
+        std::thread::sleep(backoff);
+    }
     if let Err(e) = start(app) {
         warn_log!("daemon restart failed: {e}");
     }
@@ -698,6 +807,27 @@ pub fn open_local_path(app: AppHandle, path: String) -> Result<(), String> {
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    /// 稳定运行 ≥ 5 分钟后预算恢复；不足则维持（cloudflald 模式的恢复窗口）。
+    #[test]
+    fn restart_budget_resets_after_stable_run() {
+        assert!(!should_reset_restart_budget(Duration::from_secs(0)));
+        assert!(!should_reset_restart_budget(Duration::from_secs(299)));
+        assert!(should_reset_restart_budget(Duration::from_secs(300)));
+        assert!(should_reset_restart_budget(Duration::from_secs(3600)));
+    }
+
+    /// 重启退避：1s 起步按 2 的幂增长，封顶 30s。
+    #[test]
+    fn restart_backoff_grows_then_caps() {
+        assert_eq!(restart_backoff(0), Duration::from_secs(1));
+        assert_eq!(restart_backoff(1), Duration::from_secs(2));
+        assert_eq!(restart_backoff(2), Duration::from_secs(4));
+        assert_eq!(restart_backoff(3), Duration::from_secs(8));
+        assert_eq!(restart_backoff(4), Duration::from_secs(16));
+        assert_eq!(restart_backoff(5), Duration::from_secs(30));
+        assert_eq!(restart_backoff(200), Duration::from_secs(30));
+    }
 
     /// 配对文件生命周期：save_pairing 落盘 pat_id → 策略独立写保留其余字段
     /// → clear_pairing 删 pat 文件并移除 pat_id 键（M4 T7）。

@@ -9,8 +9,10 @@ import {
 } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import i18n from "../../../i18n";
+import { _resetSandboxStatusStoreForTests } from "../../../stores/sandboxStatusStore";
 
 const mocks = vi.hoisted(() => ({
+  subscribeDaemonStatus: vi.fn(),
   isShellAvailable: vi.fn(),
   daemonProcessStatus: vi.fn(),
   savePairing: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock("../../../services/api/tokenManager", () => ({
 
 vi.mock("../../../services/tauri/sandboxShell", () => ({
   isShellAvailable: mocks.isShellAvailable,
+  subscribeDaemonStatus: mocks.subscribeDaemonStatus,
   daemonProcessStatus: mocks.daemonProcessStatus,
   savePairing: mocks.savePairing,
   restartDaemon: mocks.restartDaemon,
@@ -61,7 +64,6 @@ vi.mock("../../../services/api/sandbox", () => ({
     listMachines: mocks.listMachines,
   },
   machinePlatformLabel: (platform: string) => platform,
-  sandboxApiMachines: { listMachines: mocks.listMachines },
 }));
 
 vi.mock("react-hot-toast", () => ({
@@ -72,20 +74,18 @@ import {
   AUTO_PAIR_RETRY_DELAY_MS,
   LocalSandboxSection,
 } from "../LocalSandboxSection";
-import { LocalSandboxSection } from "../LocalSandboxSection";
-import { _resetSandboxStatusStoreForTests } from "../../../stores/sandboxStatusStore";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
   vi.clearAllMocks();
+  // 默认：非事件模式（resolve null → 组件回退轮询，与旧行为同构）
+  mocks.subscribeDaemonStatus.mockImplementation(() => Promise.resolve(null));
   window.localStorage.clear();
+  _resetSandboxStatusStoreForTests();
   mocks.listMachines.mockResolvedValue({
     machines: [],
     default_machine_id: null,
   });
-  mocks.listMachines.mockResolvedValue({ machines: [], default_machine_id: null });
-  // useSandboxStatus 现在是全局单例 store 的薄壳：跨用例隔离状态
-  _resetSandboxStatusStoreForTests();
 });
 
 test("pure web offline renders the pairing guidance with a download CTA", async () => {
@@ -553,4 +553,58 @@ test("one-click pairing surfaces an error toast when signed out", async () => {
   await waitFor(() => expect(toast.error).toHaveBeenCalled());
   expect(mocks.createPairingPat).not.toHaveBeenCalled();
   expect(mocks.savePairing).not.toHaveBeenCalled();
+});
+
+test("daemon process status follows shell status events instead of polling", async () => {
+  // 壳推送模式：订阅成功后不再起 10s 轮询，状态随事件翻转
+  let eventListener: ((event: {
+    running: boolean;
+    unsupported: boolean;
+    generation: number;
+    restarts: number;
+  }) => void) | null = null;
+  mocks.isShellAvailable.mockReturnValue(true);
+  mocks.daemonProcessStatus.mockResolvedValue("stopped");
+  mocks.subscribeDaemonStatus.mockImplementation(
+    (_listener: unknown) =>
+      new Promise<() => void>((resolve) => {
+        eventListener = _listener as typeof eventListener;
+        resolve(() => {});
+      }),
+    );
+  mocks.getStatus.mockResolvedValue({ online: true, daemon_version: "0.1.0" });
+
+  render(<LocalSandboxSection />);
+  // 初始对账一次（stopped → 配对表单）
+  await waitFor(() =>
+    expect(mocks.daemonProcessStatus).toHaveBeenCalledTimes(1),
+  );
+
+  // 事件：daemon 拉起 → 配对视图出现（策略行等在线控制项）
+  act(() => {
+    eventListener?.({
+      running: true,
+      unsupported: false,
+      generation: 1,
+      restarts: 0,
+    });
+  });
+  await waitFor(() =>
+    expect(screen.getByText("Online")).toBeInTheDocument(),
+  );
+
+  // 事件：daemon 退出 → 回到配对表单（服务端在线徽章仍在，进程态翻为 Stopped）
+  act(() => {
+    eventListener?.({
+      running: false,
+      unsupported: false,
+      generation: 2,
+      restarts: 1,
+    });
+  });
+  await waitFor(() =>
+    expect(screen.getByText("Stopped")).toBeInTheDocument(),
+  );
+  // 事件模式下不追加轮询（仅初始对账那一次）
+  expect(mocks.daemonProcessStatus).toHaveBeenCalledTimes(1);
 });
