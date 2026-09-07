@@ -141,8 +141,7 @@ export function SandboxMachinesCard() {
           return (
             <div
               key={machine.machine_id}
-              className="flex items-center gap-2 rounded-lg px-1.5 py-2 transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-700/40"
-              className={`flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-700/40 ${
+              className={`flex items-center gap-2 rounded-lg px-1.5 py-2 transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-700/40 ${
                 machineOnline ? "" : "opacity-60"
               }`}
               data-sandbox-machine={machine.machine_id}
@@ -200,13 +199,13 @@ export function SandboxMachinesCard() {
                         {t("profile.localSandbox.offlineBadge")}
                       </span>
                     )}
-                    <span className="ml-1.5 text-xs text-stone-500 dark:text-stone-400">
+                    <span className="ml-1.5 text-11 text-stone-500 dark:text-stone-400">
                       {machinePlatformLabel(machine.platform, t)}
                       {machine.version ? ` · v${machine.version}` : ""}
                     </span>
                     {!machineOnline && lastSeenKey && (
                       <span
-                        className="ml-1.5 text-xs text-stone-400 dark:text-stone-500"
+                        className="ml-1.5 text-11 text-stone-400 dark:text-stone-500"
                         data-testid={`last-seen-${machine.machine_id}`}
                       >
                         {t(`profile.localSandbox.lastSeen.${lastSeenKey}`, {
