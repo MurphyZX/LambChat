@@ -1,10 +1,11 @@
 /**
- * 本地沙箱机器管理卡（多机 daemon）：在线机器列表 + 默认机/重命名管理 +
- * 当前连接的服务器地址展示。
+ * 本地沙箱机器管理卡（多机 daemon）：机器列表（含离线机置灰保留）+
+ * 默认机/重命名/忘记管理 + 当前连接的服务器地址展示。
  *
- * 机器列表只含在线机（注册表 TTL 判活，离线机自然消失；rename 覆盖层在
- * 机器重连时自动恢复展示）。默认机是无会话级选择时的执行目标（服务端
- * resolve：默认机 → 唯一在线 → legacy）。
+ * 离线机由服务端记忆层保留（online=False + last_seen）：灰点置灰展示 +
+ * 相对最近在线时间 + 忘记按钮（在线机不可忘记，先断连）；在线机绿点。
+ * 默认机是无会话级选择时的执行目标（服务端 resolve：默认机 → 唯一在线
+ * → legacy）。
  */
 
 import { useState } from "react";
@@ -15,12 +16,27 @@ import {
   useSandboxStatus,
   notifySandboxStatusRefresh,
 } from "../../hooks/useSandboxStatus";
+import { Check, Laptop, Link2, Pencil, Star, Trash2, X } from "lucide-react";
+import { useSandboxStatus, notifySandboxStatusRefresh } from "../../hooks/useSandboxStatus";
 import {
   machinePlatformLabel,
   sandboxApiMachines,
   type SandboxMachine,
 } from "../../services/api/sandbox";
 import { effectiveApiBase } from "../../services/api/serverConfig";
+
+/** 相对最近在线时间：分钟/小时/天三档（i18n key 后缀分档）。 */
+function relativeLastSeenKey(lastSeen: number | null | undefined): string {
+  if (!lastSeen) return "";
+  const elapsed = Math.max(0, Date.now() / 1000 - lastSeen);
+  if (elapsed < 3600) return "minutes";
+  if (elapsed < 86400) return "hours";
+  return "days";
+}
+
+function isMachineOnline(machine: SandboxMachine): boolean {
+  return machine.online !== false;
+}
 
 export function SandboxMachinesCard() {
   const { t } = useTranslation();
@@ -57,6 +73,22 @@ export function SandboxMachinesCard() {
     try {
       await sandboxApiMachines.renameMachine(renamingId, name);
       setRenamingId(null);
+      notifySandboxStatusRefresh();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleForget = async (machine: SandboxMachine) => {
+    if (busy) return;
+    if (!window.confirm(t("profile.localSandbox.forgetMachineConfirm", { name: machine.name }))) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await sandboxApiMachines.forgetMachine(machine.machine_id);
       notifySandboxStatusRefresh();
     } catch (err) {
       toast.error((err as Error).message);
@@ -103,14 +135,23 @@ export function SandboxMachinesCard() {
         )}
         {machines.map((machine) => {
           const isDefault = machine.machine_id === defaultMachineId;
+          const machineOnline = isMachineOnline(machine);
           const renaming = renamingId === machine.machine_id;
+          const lastSeenKey = relativeLastSeenKey(machine.last_seen);
           return (
             <div
               key={machine.machine_id}
               className="flex items-center gap-2 rounded-lg px-1.5 py-2 transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-700/40"
+              className={`flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-700/40 ${
+                machineOnline ? "" : "opacity-60"
+              }`}
               data-sandbox-machine={machine.machine_id}
             >
-              <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  machineOnline ? "bg-green-500" : "bg-stone-300 dark:bg-stone-600"
+                }`}
+              />
               {renaming ? (
                 <span className="flex min-w-0 flex-1 items-center gap-1.5">
                   <input
@@ -154,8 +195,56 @@ export function SandboxMachinesCard() {
                   <span className="shrink-0 whitespace-nowrap text-12 text-stone-500 dark:text-stone-400">
                     {machinePlatformLabel(machine.platform, t)}
                     {machine.version ? ` · v${machine.version}` : ""}
+                    {!machineOnline && (
+                      <span className="ml-1.5 rounded-full bg-stone-200 dark:bg-stone-700 px-1.5 py-0.5 text-10 font-medium text-stone-500 dark:text-stone-400">
+                        {t("profile.localSandbox.offlineBadge")}
+                      </span>
+                    )}
+                    <span className="ml-1.5 text-xs text-stone-500 dark:text-stone-400">
+                      {machinePlatformLabel(machine.platform, t)}
+                      {machine.version ? ` · v${machine.version}` : ""}
+                    </span>
+                    {!machineOnline && lastSeenKey && (
+                      <span
+                        className="ml-1.5 text-xs text-stone-400 dark:text-stone-500"
+                        data-testid={`last-seen-${machine.machine_id}`}
+                      >
+                        {t(`profile.localSandbox.lastSeen.${lastSeenKey}`, {
+                          minutes: Math.max(
+                            1,
+                            Math.round(
+                              (Date.now() / 1000 - (machine.last_seen ?? 0)) / 60,
+                            ),
+                          ),
+                          hours: Math.max(
+                            1,
+                            Math.round(
+                              (Date.now() / 1000 - (machine.last_seen ?? 0)) / 3600,
+                            ),
+                          ),
+                          days: Math.max(
+                            1,
+                            Math.round(
+                              (Date.now() / 1000 - (machine.last_seen ?? 0)) / 86400,
+                            ),
+                          ),
+                        })}
+                      </span>
+                    )}
                   </span>
-                  {!isDefault && (
+                  {!machineOnline && (
+                    <button
+                      type="button"
+                      onClick={() => void handleForget(machine)}
+                      disabled={busy}
+                      className="rounded-md p-1 text-stone-400 dark:text-stone-500 transition-colors hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                      title={t("profile.localSandbox.forgetMachine")}
+                      data-testid={`forget-${machine.machine_id}`}
+                    >
+                      <Trash2 size={12} className="opacity-70" />
+                    </button>
+                  )}
+                  {machineOnline && !isDefault && (
                     <button
                       type="button"
                       onClick={() => void handleSetDefault(machine.machine_id)}
@@ -176,6 +265,17 @@ export function SandboxMachinesCard() {
                   >
                     <Pencil size={12} />
                   </button>
+                  {machineOnline && (
+                    <button
+                      type="button"
+                      onClick={() => startRename(machine)}
+                      disabled={busy}
+                      className="rounded-md p-1 text-stone-500 dark:text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-300 disabled:opacity-50"
+                      title={t("profile.localSandbox.rename")}
+                    >
+                      <Pencil size={12} className="opacity-70" />
+                    </button>
+                  )}
                 </>
               )}
             </div>

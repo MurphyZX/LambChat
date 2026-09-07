@@ -258,7 +258,8 @@
     "sandboxMachine": {
       "label": "Machine",
       "description": "Choose which machine runs local sandbox commands",
-      "auto": "Auto (default)"
+      "auto": "Auto (default)",
+      "offline": "offline"
     }
   },
   "agents": {
@@ -655,8 +656,7 @@
     "sandboxExecFailed": "Local sandbox execution failed: {{detail}}",
     "daemonVersionUnsupported": "Daemon version {{version}} is below minimum {{min}}; please update",
     "sandboxMachineOffline": "Selected sandbox machine '{{machine}}' is offline",
-    "sandboxMachineNotFound": "Sandbox machine '{{machine}}' not found or removed",
-    "sandboxResultMismatch": "Result machine '{{machine}}' does not match the machine this call was dispatched to"
+    "sandboxMachineNotFound": "Sandbox machine '{{machine}}' not found or removed"
   },
   "categories": {
     "agent": "Agent",
@@ -2202,7 +2202,15 @@
         "linux": "Linux",
         "unknown": "Unknown"
       },
-      "downloadCta": "Download local sandbox"
+      "downloadCta": "Download local sandbox",
+      "offlineBadge": "Offline",
+      "lastSeen": {
+        "minutes": "last seen {{minutes}}m ago",
+        "hours": "last seen {{hours}}h ago",
+        "days": "last seen {{days}}d ago"
+      },
+      "forgetMachine": "Forget this machine",
+      "forgetMachineConfirm": "Forget \"{{name}}\"? Its name and default-machine setting will be removed."
     },
     "maxPinnedModels": "Pin up to {{max}} models",
     "memoryToggle": "Cross-session memory",

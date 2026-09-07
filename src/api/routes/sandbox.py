@@ -429,8 +429,9 @@ async def sandbox_upload_stream(
 
 @router.get("/machines")
 async def sandbox_machines(user: TokenPayload = Depends(get_current_user_pat_or_jwt)):
-    """在线机器列表（多机 daemon）：machine_id/name/platform/version/policy。"""
-    machines = await _registry().list_machines(user.sub)
+    """机器列表（多机 daemon）：含已知离线机（记忆层保留，online=False +
+    last_seen），前端选择器据此置灰展示而非直接消失。"""
+    machines = await _registry().list_machines(user.sub, include_offline=True)
     default = await _registry().get_default_machine(user.sub)
     return {"machines": machines, "default_machine_id": default}
 

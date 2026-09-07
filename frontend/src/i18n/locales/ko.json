@@ -258,7 +258,8 @@
     "sandboxMachine": {
       "label": "머신",
       "description": "로컬 샌드박스 명령을 실행할 머신 선택",
-      "auto": "자동 (기본)"
+      "auto": "자동 (기본)",
+      "offline": "오프라인"
     }
   },
   "agents": {
@@ -655,8 +656,7 @@
     "sandboxExecFailed": "로컬 샌드박스 실행 실패: {{detail}}",
     "daemonVersionUnsupported": "로컬 샌드박스 데몬 버전 {{version}}이(가) 최소 요구 사항 {{min}} 미만입니다. 업데이트해 주세요",
     "sandboxMachineOffline": "선택한 샌드박스 머신 '{{machine}}'이(가) 오프라인 상태입니다",
-    "sandboxMachineNotFound": "샌드박스 머신 '{{machine}}'을(를) 찾을 수 없거나 제거되었습니다",
-    "sandboxResultMismatch": "머신 '{{machine}}'의 결과가 이 호출이 전달된 대상 머신과 일치하지 않습니다"
+    "sandboxMachineNotFound": "샌드박스 머신 '{{machine}}'을(를) 찾을 수 없거나 제거되었습니다"
   },
   "categories": {
     "agent": "에이전트",
@@ -2202,7 +2202,15 @@
         "linux": "Linux",
         "unknown": "알 수 없음"
       },
-      "downloadCta": "로컬 샌드박스 다운로드"
+      "downloadCta": "로컬 샌드박스 다운로드",
+      "offlineBadge": "오프라인",
+      "lastSeen": {
+        "minutes": "{{minutes}}분 전 접속",
+        "hours": "{{hours}}시간 전 접속",
+        "days": "{{days}}일 전 접속"
+      },
+      "forgetMachine": "이 머신 잊기",
+      "forgetMachineConfirm": "\"{{name}}\"을(를) 잊으시겠습니까? 이름과 기본 머신 설정이 삭제됩니다."
     },
     "maxPinnedModels": "최대 {{max}}개 모델을 고정할 수 있습니다",
     "memoryToggle": "세션 간 메모리",

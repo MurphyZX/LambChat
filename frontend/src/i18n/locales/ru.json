@@ -258,7 +258,8 @@
     "sandboxMachine": {
       "label": "Машина",
       "description": "Выберите машину для локальных команд песочницы",
-      "auto": "Авто (по умолчанию)"
+      "auto": "Авто (по умолчанию)",
+      "offline": "офлайн"
     }
   },
   "agents": {
@@ -655,8 +656,7 @@
     "sandboxExecFailed": "Ошибка выполнения локального sandbox: {{detail}}",
     "daemonVersionUnsupported": "Версия локального sandbox-демона {{version}} ниже минимальной {{min}}, обновите его",
     "sandboxMachineOffline": "Выбранная машина песочницы «{{machine}}» сейчас не в сети",
-    "sandboxMachineNotFound": "Машина песочницы «{{machine}}» не найдена или удалена",
-    "sandboxResultMismatch": "Результат от машины '{{machine}}' не совпадает с машиной, которой был направлен вызов"
+    "sandboxMachineNotFound": "Машина песочницы «{{machine}}» не найдена или удалена"
   },
   "categories": {
     "agent": "Агент",
@@ -2202,7 +2202,15 @@
         "linux": "Linux",
         "unknown": "Неизвестно"
       },
-      "downloadCta": "Скачать локальную песочницу"
+      "downloadCta": "Скачать локальную песочницу",
+      "offlineBadge": "офлайн",
+      "lastSeen": {
+        "minutes": "был(а) {{minutes}} мин назад",
+        "hours": "был(а) {{hours}} ч назад",
+        "days": "был(а) {{days}} дн назад"
+      },
+      "forgetMachine": "Забыть эту машину",
+      "forgetMachineConfirm": "Забыть «{{name}}»? Её имя и настройки машины по умолчанию будут удалены."
     },
     "maxPinnedModels": "Можно закрепить до {{max}} моделей",
     "memoryToggle": "Межсессионная память",

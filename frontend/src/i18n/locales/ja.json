@@ -258,7 +258,8 @@
     "sandboxMachine": {
       "label": "マシン",
       "description": "ローカルサンドボックスコマンドの実行マシンを選択",
-      "auto": "自動（デフォルト）"
+      "auto": "自動（デフォルト）",
+      "offline": "オフライン"
     }
   },
   "agents": {
@@ -655,8 +656,7 @@
     "sandboxExecFailed": "ローカルサンドボックスの実行に失敗しました：{{detail}}",
     "daemonVersionUnsupported": "ローカルサンドボックスデーモンのバージョン {{version}} は最低要件 {{min}} 未満です。アップデートしてください",
     "sandboxMachineOffline": "選択したサンドボックスマシン「{{machine}}」は現在オフラインです",
-    "sandboxMachineNotFound": "サンドボックスマシン「{{machine}}」が見つからないか、削除されました",
-    "sandboxResultMismatch": "マシン「{{machine}}」の結果は、この呼び出しの宛先マシンと一致しません"
+    "sandboxMachineNotFound": "サンドボックスマシン「{{machine}}」が見つからないか、削除されました"
   },
   "categories": {
     "agent": "エージェント",
@@ -2202,7 +2202,15 @@
         "linux": "Linux",
         "unknown": "不明"
       },
-      "downloadCta": "ローカルサンドボックスをダウンロード"
+      "downloadCta": "ローカルサンドボックスをダウンロード",
+      "offlineBadge": "オフライン",
+      "lastSeen": {
+        "minutes": "{{minutes}}分前にオンライン",
+        "hours": "{{hours}}時間前にオンライン",
+        "days": "{{days}}日前にオンライン"
+      },
+      "forgetMachine": "このマシンを削除",
+      "forgetMachineConfirm": "「{{name}}」を削除しますか？名前とデフォルト設定が消去されます。"
     },
     "maxPinnedModels": "最大{{max}}個のモデルをピン留めできます",
     "memoryToggle": "セッション横断メモリ",

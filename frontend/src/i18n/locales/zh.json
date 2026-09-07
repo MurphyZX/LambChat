@@ -258,7 +258,8 @@
     "sandboxMachine": {
       "label": "机器",
       "description": "选择本地沙箱命令的执行机器",
-      "auto": "自动（默认机）"
+      "auto": "自动（默认机）",
+      "offline": "离线"
     }
   },
   "agents": {
@@ -655,8 +656,7 @@
     "sandboxExecFailed": "本地沙箱执行失败：{{detail}}",
     "daemonVersionUnsupported": "本地沙箱守护进程版本 {{version}} 低于最低要求 {{min}}，请升级",
     "sandboxMachineOffline": "所选沙箱机器「{{machine}}」当前离线",
-    "sandboxMachineNotFound": "沙箱机器「{{machine}}」不存在或已移除",
-    "sandboxResultMismatch": "回传机器「{{machine}}」与该调用的下发目标机不一致"
+    "sandboxMachineNotFound": "沙箱机器「{{machine}}」不存在或已移除"
   },
   "categories": {
     "agent": "代理",
@@ -2202,7 +2202,15 @@
         "linux": "Linux",
         "unknown": "未知平台"
       },
-      "downloadCta": "下载本地沙箱"
+      "downloadCta": "下载本地沙箱",
+      "offlineBadge": "离线",
+      "lastSeen": {
+        "minutes": "{{minutes}} 分钟前在线",
+        "hours": "{{hours}} 小时前在线",
+        "days": "{{days}} 天前在线"
+      },
+      "forgetMachine": "忘记这台机器",
+      "forgetMachineConfirm": "确定忘记「{{name}}」？将清除它的名称与默认机设置。"
     },
     "maxPinnedModels": "最多置顶 {{max}} 个模型",
     "memoryToggle": "跨会话记忆",

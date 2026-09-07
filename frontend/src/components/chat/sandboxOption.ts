@@ -74,17 +74,24 @@ import type { SandboxMachine } from "../../services/api/sandbox";
 /** 会话选机键：与后端 agent_options.sandbox_machine_id 契约一致。 */
 export const SANDBOX_MACHINE_AGENT_OPTION_KEY = "sandbox_machine_id";
 
-/** 机器选择器只在「本地档 + 至少一台在线机」时有意义。 */
+/** 机器选择器只在「本地档 + 至少一台在线机」时有意义（离线机保留置灰展示）。 */
 export function shouldShowSandboxMachineOption(
   sandboxValue: boolean | string | number,
   machines: SandboxMachine[],
 ): boolean {
-  return sandboxValue === SANDBOX_LOCAL_VALUE && machines.length > 0;
+  return sandboxValue === SANDBOX_LOCAL_VALUE && machines.some((m) => m.online !== false);
+}
+
+/** 机器在线判定：缺省（旧后端无该字段）按在线处理，兼容迁移窗口。 */
+export function isMachineOnline(machine: SandboxMachine): boolean {
+  return machine.online !== false;
 }
 
 /**
- * 由在线机器动态构建选择器选项：首档「自动」（后端默认解析：默认机→
- * 唯一在线→legacy），其余按机器列出。default 取用户默认机（无则首台），
+ * 由机器列表动态构建选择器选项：首档「自动」（后端默认解析：默认机→
+ * 唯一在线→legacy），其余按「默认机置顶 → 在线机 → 离线机」排序；离线机
+ * 置灰（disabled）并在名称后标注离线——保留展示让用户知道机器存在，但
+ * 明确当前不可选为目标。default 取用户默认机（无则首台在线机），
  * 已存会话值不受影响（与 sandbox 档位同规则：只裁剪显示，不篡改存储）。
  */
 export function buildSandboxMachineOption(
@@ -92,12 +99,21 @@ export function buildSandboxMachineOption(
   defaultMachineId: string | null,
   t: (key: string) => string,
 ): AgentOption | null {
+  const onlineMachines = machines.filter(isMachineOnline);
   if (machines.length === 0) return null;
+  const ordered = [
+    ...onlineMachines.filter((m) => m.machine_id === defaultMachineId),
+    ...onlineMachines.filter((m) => m.machine_id !== defaultMachineId),
+    ...machines.filter((m) => !isMachineOnline(m)),
+  ];
   const options = [
     { value: "", label_key: "agentOptions.sandboxMachine.auto" },
-    ...machines.map((m) => ({
+    ...ordered.map((m) => ({
       value: m.machine_id,
-      label: m.name || m.machine_id,
+      label: isMachineOnline(m)
+        ? m.name || m.machine_id
+        : `${m.name || m.machine_id} · ${t("agentOptions.sandboxMachine.offline")}`,
+      disabled: !isMachineOnline(m) || undefined,
     })),
   ];
   return {
@@ -107,6 +123,9 @@ export function buildSandboxMachineOption(
       machines.some((m) => m.machine_id === defaultMachineId)
         ? defaultMachineId
         : machines[0].machine_id,
+    default: defaultMachineId && onlineMachines.some((m) => m.machine_id === defaultMachineId)
+      ? defaultMachineId
+      : onlineMachines[0]?.machine_id ?? machines[0].machine_id,
     label: t("agentOptions.sandboxMachine.label"),
     label_key: "agentOptions.sandboxMachine.label",
     description: t("agentOptions.sandboxMachine.description"),

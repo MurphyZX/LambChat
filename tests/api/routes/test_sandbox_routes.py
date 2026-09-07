@@ -1458,3 +1458,45 @@ async def test_channel_frames_uses_blocking_pop_not_polling(monkeypatch):
     assert any("tool_call" in f for f in frames)
     assert redis.blpop_calls >= 1
     assert redis.lpop_calls == 0
+
+
+async def test_machines_endpoint_includes_offline(monkeypatch):
+    """机器列表含离线机（online=False + last_seen）：选择器置灰展示而非消失。"""
+    registry = _MachinesFakeRegistry()
+
+    async def list_machines(user_id, include_offline=False):
+        registry.include_offline_seen = include_offline
+        return [
+            {
+                "machine_id": "srv1",
+                "name": "SRV",
+                "platform": "linux",
+                "version": "0.4.0",
+                "confirm_policy": "all",
+                "online": True,
+                "last_seen": 1700_000_000.0,
+            },
+            {
+                "machine_id": "pc1",
+                "name": "PC",
+                "platform": "win32",
+                "version": "0.4.0",
+                "confirm_policy": "all",
+                "online": False,
+                "last_seen": 1699_000_000.0,
+            },
+        ]
+
+    registry.list_machines = list_machines  # type: ignore[method-assign]
+    app = _machines_app(monkeypatch, registry)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        resp = await client.get("/api/sandbox/machines")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert registry.include_offline_seen is True
+    by_id = {m["machine_id"]: m for m in data["machines"]}
+    assert by_id["srv1"]["online"] is True
+    assert by_id["pc1"]["online"] is False
+    assert by_id["pc1"]["last_seen"] == 1699_000_000.0
