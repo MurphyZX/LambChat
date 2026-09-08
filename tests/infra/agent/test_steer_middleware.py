@@ -170,6 +170,112 @@ async def test_clean_history_injects_without_full_rewrite() -> None:
     assert [m.content for m in update["messages"]] == ["插话"]
 
 
+def _reorder(messages: list) -> list | None:
+    from src.infra.agent.middleware.steer import _reorder_tool_response_adjacency
+
+    return _reorder_tool_response_adjacency(messages)
+
+
+def test_reorder_multi_tool_calls_keep_all_responses_adjacent() -> None:
+    """一条 AI 消息带多个 tool_calls：全部响应必须紧跟其后，夹层消息后移。"""
+    reordered = _reorder(
+        [
+            HumanMessage(content="原消息"),
+            AIMessage(
+                content="",
+                tool_calls=[_tool_call("c1"), _tool_call("c2", "grep")],
+            ),
+            HumanMessage(content="夹层插话"),
+            ToolMessage(content="r1", name="ls", tool_call_id="c1"),
+            ToolMessage(content="r2", name="grep", tool_call_id="c2"),
+        ]
+    )
+
+    assert reordered is not None
+    assert [type(m).__name__ for m in reordered] == [
+        "HumanMessage",
+        "AIMessage",
+        "ToolMessage",
+        "ToolMessage",
+        "HumanMessage",
+    ]
+    assert reordered[4].content == "夹层插话"
+
+
+def test_reorder_holds_messages_between_partial_tool_responses() -> None:
+    """多响应之间也夹了消息：响应聚合完之前不得放行夹层。"""
+    reordered = _reorder(
+        [
+            AIMessage(content="", tool_calls=[_tool_call("c1"), _tool_call("c2", "grep")]),
+            ToolMessage(content="r1", name="ls", tool_call_id="c1"),
+            HumanMessage(content="夹层"),
+            ToolMessage(content="r2", name="grep", tool_call_id="c2"),
+        ]
+    )
+
+    assert reordered is not None
+    assert [type(m).__name__ for m in reordered] == [
+        "AIMessage",
+        "ToolMessage",
+        "ToolMessage",
+        "HumanMessage",
+    ]
+
+
+def test_reorder_dangling_tool_calls_left_untouched() -> None:
+    """悬空 tool_calls（始终无响应）不重排：留给 PatchToolCallsMiddleware 补合成响应。"""
+    messages = [
+        HumanMessage(content="原消息"),
+        AIMessage(content="", tool_calls=[_tool_call("c-never")]),
+        HumanMessage(content="插话A"),
+        AIMessage(content="done"),
+    ]
+
+    assert _reorder(messages) is None
+
+
+def test_reorder_ai_without_tool_calls_does_not_hold() -> None:
+    """无 tool_calls 的 AI 消息不开启响应等待，后续消息顺序原样保留。"""
+    messages = [
+        HumanMessage(content="问题"),
+        AIMessage(content="回答"),
+        HumanMessage(content="追问"),
+        AIMessage(content="", tool_calls=[_tool_call("c9")]),
+        ToolMessage(content="ok", name="ls", tool_call_id="c9"),
+    ]
+
+    assert _reorder(messages) is None
+
+
+def test_reorder_consecutive_broken_pairs_all_healed() -> None:
+    """多处乱序一次全部修复，且原始相对顺序（除后移外）保持稳定。"""
+    reordered = _reorder(
+        [
+            HumanMessage(content="q1"),
+            AIMessage(content="", tool_calls=[_tool_call("a1")]),
+            HumanMessage(content="s1"),
+            ToolMessage(content="r1", name="ls", tool_call_id="a1"),
+            HumanMessage(content="q2"),
+            AIMessage(content="", tool_calls=[_tool_call("a2")]),
+            HumanMessage(content="s2"),
+            ToolMessage(content="r2", name="ls", tool_call_id="a2"),
+        ]
+    )
+
+    assert reordered is not None
+    assert [(type(m).__name__, m.content) for m in reordered] == [
+        ("HumanMessage", "q1"),
+        ("AIMessage", ""),
+        ("ToolMessage", "r1"),
+        ("HumanMessage", "s1"),
+        ("HumanMessage", "q2"),
+        ("AIMessage", ""),
+        ("ToolMessage", "r2"),
+        ("HumanMessage", "s2"),
+    ]
+    assert _tool_response_adjacent(reordered)
+
+
 async def test_steer_event_persisted_before_model_call_runs() -> None:
     """steer:message 事件在注入时写出（before_model 节点先于模型节点执行）。"""
     from src.infra.task.steer import get_steer_queue

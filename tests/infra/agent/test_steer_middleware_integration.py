@@ -7,6 +7,7 @@ assistant 消息后紧跟对应 ToolMessage），以及存量乱序会话的自�
 
 from typing import Any
 
+import pytest
 from langchain.agents import create_agent
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
@@ -160,3 +161,165 @@ async def test_previously_broken_thread_is_healed_on_next_run() -> None:
     assert types == ["human", "ai", "tool", "human", "human"]
     assert received[3].content == "旧插话"
     assert received[4].content == "新插话"
+
+
+async def test_failed_model_call_after_injection_resumes_without_duplicate() -> None:
+    """注入后模型调用失败：新 run 从 state 续跑，插话恰好送达一次。
+
+    before_model 更新已随 checkpoint 提交（drain 即送达），失败后插话仍在
+    图状态里；再次 ainvoke（模拟新 run）不得重复注入、序列仍协议合法。
+    """
+    from src.infra.task.steer import get_steer_queue
+
+    session_id = "integration-fail-resume"
+    queue = get_steer_queue()
+
+    class _FlakyModel(_RecordingModel):
+        """第一次调用抛错，之后恢复正常（模拟模型故障后新 run 恢复）。"""
+
+        fail_first: bool = True
+
+        def _generate(self, messages, stop=None, run_manager=None, **kwargs: Any):
+            if self.fail_first:
+                self.fail_first = False
+                raise RuntimeError("model down")
+            return super()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+
+    model = _FlakyModel(
+        responses=[AIMessage(content="恢复完成")],
+    )
+    graph = create_agent(
+        model,
+        tools=[],
+        middleware=[SteerMiddleware(session_id=session_id, presenter=_SilentPresenter())],
+        checkpointer=MemorySaver(),
+    )
+    config = {"configurable": {"thread_id": "t-fail-resume"}}
+
+    # 模拟用户在模型故障前插话，注入成功但模型调用失败
+    await queue.enqueue(session_id, "故障前插话")
+    with pytest.raises(RuntimeError, match="model down"):
+        await graph.ainvoke({"messages": [HumanMessage(content="原消息")]}, config=config)
+
+    # 故障后不回队（drain 即送达），队列视角干净
+    assert await queue.list_items(session_id) == []
+
+    # 新 run 续跑：插话仍在 state，恰好一次；序列协议合法
+    result = await graph.ainvoke({"messages": []}, config=config)
+
+    assert "恢复完成" in str(result["messages"][-1].content)
+    # 故障调用不计入 received（父类只在成功路径记录）；续跑调用恰好一次
+    assert len(model.received) == 1
+    for received in model.received:
+        _assert_tool_response_adjacent(received)
+    humans = [m.content for m in model.received[0] if isinstance(m, HumanMessage)]
+    assert humans == ["原消息", "故障前插话"]
+
+
+async def test_multiple_steers_across_model_calls_each_injected_once() -> None:
+    """两次不同时点的插话，分别注入各自的下一次模型调用，顺序与协议都合法。"""
+    from src.infra.task.steer import get_steer_queue
+
+    session_id = "integration-multi-steer"
+    queue = get_steer_queue()
+
+    async def steer_one() -> str:
+        "用户第一段插话"
+        await queue.enqueue(session_id, "插话一")
+        return "ok"
+
+    async def steer_two() -> str:
+        "用户第二段插话"
+        await queue.enqueue(session_id, "插话二")
+        return "ok"
+
+    model = _RecordingModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "steer_one", "args": {}, "id": "c1", "type": "tool_call"}],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "steer_two", "args": {}, "id": "c2", "type": "tool_call"}],
+            ),
+            AIMessage(content="两段插话都已处理"),
+        ]
+    )
+    graph = create_agent(
+        model,
+        tools=[steer_one, steer_two],
+        middleware=[SteerMiddleware(session_id=session_id, presenter=_SilentPresenter())],
+        checkpointer=MemorySaver(),
+    )
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="原消息")]},
+        config={"configurable": {"thread_id": "t-multi"}},
+    )
+
+    assert "两段插话都已处理" in str(result["messages"][-1].content)
+    assert len(model.received) == 3
+    for received in model.received:
+        _assert_tool_response_adjacent(received)
+        humans = [m.content for m in received if isinstance(m, HumanMessage)]
+        assert humans.count("插话一") <= 1 and humans.count("插话二") <= 1
+    # 第二次调用看到插话一、第三次调用看到插话一+插话二（state 累积）
+    assert [m.content for m in model.received[1] if isinstance(m, HumanMessage)] == [
+        "原消息",
+        "插话一",
+    ]
+    assert [m.content for m in model.received[2] if isinstance(m, HumanMessage)] == [
+        "原消息",
+        "插话一",
+        "插话二",
+    ]
+
+
+async def test_deepagents_graph_mid_run_steer_keeps_protocol() -> None:
+    """生产栈形态（deepagents create_deep_agent，Fast Agent 同款）下的插话回归。
+
+    deepagents 在 langchain create_agent 外再包了 filesystem/subagents 等
+    中间件与自带的 messages reducer；插话注入与乱序自愈必须在该栈下同样
+    成立（协议不变量 + 插话先于响应）。
+    """
+    from deepagents import create_deep_agent
+
+    from src.infra.task.steer import get_steer_queue
+
+    session_id = "integration-deepagents"
+    queue = get_steer_queue()
+
+    async def enqueue_steer() -> str:
+        "用户在工具执行期间插话"
+        await queue.enqueue(session_id, "deepagents 栈下的插话")
+        return "ok"
+
+    model = _RecordingModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "enqueue_steer", "args": {}, "id": "d1", "type": "tool_call"}],
+            ),
+            AIMessage(content="deepagents 栈处理完成"),
+        ]
+    )
+    graph = create_deep_agent(
+        model,
+        [enqueue_steer],
+        system_prompt="You are a test agent.",
+        middleware=[SteerMiddleware(session_id=session_id, presenter=_SilentPresenter())],
+        checkpointer=MemorySaver(),
+    )
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="原消息")]},
+        config={"configurable": {"thread_id": "t-deepagents"}},
+    )
+
+    assert "deepagents 栈处理完成" in str(result["messages"][-1].content)
+    assert len(model.received) == 2
+    for received in model.received:
+        _assert_tool_response_adjacent(received)
+    humans = [m.content for m in model.received[1] if isinstance(m, HumanMessage)]
+    assert humans == ["原消息", "deepagents 栈下的插话"]

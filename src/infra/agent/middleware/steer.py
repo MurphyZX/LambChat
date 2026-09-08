@@ -152,6 +152,19 @@ class SteerMiddleware(AgentMiddleware):
                 self._session_id, pending, presenter=self._presenter
             )
 
+        # drain 即送达，随之释放 Redis lease 并清 inflight：否则 run 终态的
+        # emit_undelivered_steer_events（list_items 读 pending+inflight）会把
+        # 已送达的插话误报 steer:undelivered，前端补发流程会重复投递。ack
+        # 失败只记日志——注入语义已由下方 state 更新保证，不因清理失败而中断。
+        try:
+            await queue.ack_items(self._session_id)
+        except Exception:
+            logger.warning(
+                "[Steer] session=%s failed to ack drained steer items after injection",
+                self._session_id,
+                exc_info=True,
+            )
+
         # 更新经 before_model 节点提交 checkpoint（先于模型节点），插话即
         # 持久化送达；随后模型调用失败也不回队——新 run 从 state 续跑仍能
         # 看到插话，回队反而会重复注入。
