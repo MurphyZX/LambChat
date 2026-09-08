@@ -259,7 +259,8 @@
       "label": "Machine",
       "description": "Choose which machine runs local sandbox commands",
       "auto": "Auto (default)",
-      "offline": "offline"
+      "offline": "offline",
+      "offlineHint": "That computer is offline and can't be selected as the execution target"
     }
   },
   "agents": {

@@ -258,8 +258,9 @@
     "sandboxMachine": {
       "label": "マシン",
       "description": "ローカルサンドボックスコマンドの実行マシンを選択",
-      "auto": "自動（デフォルト）",
-      "offline": "オフライン"
+      "auto": "自動（デフォルトマシン）",
+      "offline": "オフライン",
+      "offlineHint": "そのPCは現在オフラインのため、実行マシンとして選択できません"
     }
   },
   "agents": {

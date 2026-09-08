@@ -267,6 +267,46 @@ test("machine panel renders only the machine modal with online machines", async 
   expect(screen.queryByText(SANDBOX_DESCRIPTION)).not.toBeInTheDocument();
 });
 
+test("machine panel blocks selecting an offline machine with a hint", async () => {
+  mocks.listMachines.mockResolvedValue({
+    machines: [
+      ...MACHINES,
+      {
+        machine_id: "pc1",
+        name: "Old PC",
+        platform: "win32",
+        version: "0.3.0",
+        confirm_policy: "all",
+        online: false,
+      },
+    ],
+    default_machine_id: "mac1",
+  });
+  const onToggleAgentOption = vi.fn();
+  render(
+    <ChatInputSelectors
+      activePanel="machine"
+      onActivePanelChange={() => {}}
+      agentOptions={buildAgentOptions()}
+      agentOptionValues={{ sandbox: "local" }}
+      onToggleAgentOption={onToggleAgentOption}
+    />,
+  );
+
+  // 离线机置灰保留展示：点击只提示，不落选为目标机
+  const offlineRow = await screen.findByText(/Old PC · offline/);
+  fireEvent.click(offlineRow);
+  const { toast } = await import("react-hot-toast");
+  expect(toast.error).toHaveBeenCalledWith(
+    "That computer is offline and can't be selected as the execution target",
+  );
+  expect(onToggleAgentOption).not.toHaveBeenCalled();
+
+  // 在线机正常可选
+  fireEvent.click(screen.getByText("MacBook"));
+  expect(onToggleAgentOption).toHaveBeenCalledWith("sandbox_machine_id", "mac1");
+});
+
 test("thinking panel does not stack the machine selector modal", async () => {
   // 回归防护：机器选项注入后不得再挂在 thinking 面板上同帧双开
   mocks.listMachines.mockResolvedValue({
