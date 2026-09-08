@@ -6,6 +6,8 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 
+from redis.exceptions import ResponseError
+
 from src.infra.sandbox.relay import _frames as _frames_codec
 from src.infra.sandbox.relay.registry import SandboxClientRegistry
 from src.infra.storage.redis import get_binary_redis_client, get_redis_client
@@ -15,8 +17,9 @@ from src.kernel.errors import AppError, ErrorCode
 # 流式结果逐行消费的轮询：行粒度小、吞吐优先，比控制面轮询更密
 _STREAM_POLL_INTERVAL = 0.01
 
-#: 结果等待的阻塞读切片（秒）：BLPOP 主通道 + 每次超时后 GET 一次兜底——
-#: 滚动发布窗口内旧实例仍以 SET 写 resp key，纯队列读会永久错过。
+#: 结果等待的阻塞读切片（秒）：BLPOP 主通道——滚动发布窗口内旧实例仍以
+#: SET（string）写 resp key，此时 BLPOP/LPOP 抛 WRONGTYPE（真 Redis 语义，
+#: 并非返回 None），由 :func:`_pop_resp` 捕获后回落 GET 读旧格式。
 _BLPOP_TIMEOUT = 1.0
 
 #: 调用-机器绑定键：dispatch 入队前写目标机，results 端点校验回传者。
@@ -39,6 +42,32 @@ def _binary_redis():
 
 def _registry() -> SandboxClientRegistry:
     return SandboxClientRegistry()
+
+
+#: 旧格式（SET string）回传的轮询节拍：WRONGTYPE 兜底分支专用——老格式 key
+#: 上 BLPOP 即抛即返，不加节拍会退化成对 Redis 的高频空转（比改造前的
+#: 50ms 轮询更糟）；对测试 fake 而言这也是让出事件循环的点。
+_LEGACY_POLL_INTERVAL = 0.05
+
+
+async def _pop_resp(redis, key: str, *, timeout: float | None = None):
+    """读一条回传结果：新格式 RPUSH 队列优先（timeout 给出则 BLPOP 阻塞）。
+
+    兼容旧格式：resp key 被滚动窗口内的旧实例 SET 成 string 时，真 Redis 对
+    LPOP/BLPOP 抛 WRONGTYPE 而非返回 None——捕获后按旧节拍轮询 GET。GET 只
+    在这一分支执行：key 为 list 时 GET 同样抛 WRONGTYPE，不能作常规兜底。
+    """
+    try:
+        if timeout is None:
+            return await redis.lpop(key)
+        item = await redis.blpop(key, timeout=timeout)
+        return item[1] if item is not None else None
+    except ResponseError as exc:
+        if "WRONGTYPE" not in str(exc):
+            raise
+        raw = await redis.get(key)
+        await asyncio.sleep(_LEGACY_POLL_INTERVAL)
+        return raw
 
 
 async def dispatch_local_call(
@@ -88,8 +117,9 @@ async def dispatch_local_call(
     try:
         while time.monotonic() < exec_deadline:
             remaining = exec_deadline - time.monotonic()
-            item = await redis.blpop(resp_key, timeout=min(_BLPOP_TIMEOUT, max(remaining, 0.01)))
-            raw = item[1] if item is not None else await redis.get(resp_key)
+            raw = await _pop_resp(
+                redis, resp_key, timeout=min(_BLPOP_TIMEOUT, max(remaining, 0.01))
+            )
             resp = None
             if raw is not None:
                 resp = json.loads(raw)
@@ -187,12 +217,8 @@ async def dispatch_local_stream(
         while time.monotonic() < exec_deadline:
             resp = None
             # results 端点为 RPUSH 队列（ack/done 按序）；滚动窗口内旧实例仍
-            # SET：lpop 优先、GET 兜底，两种形态都能读到
-            raw = await redis.lpop(resp_key)
-            if raw is None:
-                raw = await redis.lpop(resp_key)
-            if raw is None:
-                raw = await redis.get(resp_key)
+            # SET（string）：_pop_resp 捕获 WRONGTYPE 后回落 GET
+            raw = await _pop_resp(redis, resp_key)
             if raw is not None:
                 resp = json.loads(raw)
                 if resp.get("user_id") != user_id:
@@ -200,7 +226,8 @@ async def dispatch_local_stream(
             if resp is not None:
                 if resp.get("stage") == "ack":
                     acked = True
-                    await redis.delete(resp_key)
+                    # 不 delete：队列语义下 ack 出队即消费，残留的 delete 会把
+                    # 已入队的 done 连带清掉（背靠背回传时错误结局退化为超时）
                     resp = None
                 elif resp.get("stage") == "done":
                     await redis.delete(resp_key)
@@ -321,15 +348,14 @@ async def dispatch_local_stream_upload(
             await redis.rpush(blob_key, frame)
             await redis.expire(blob_key, 120)
         while time.monotonic() < deadline and done is None:
-            # results 端点为 RPUSH 队列（ack/done 按序）；旧实例 SET 兜底
-            raw = await redis.lpop(resp_key)
-            if raw is None:
-                raw = await redis.get(resp_key)
+            # results 端点为 RPUSH 队列（ack/done 按序）；旧实例 SET（string）
+            # 由 _pop_resp 捕获 WRONGTYPE 后回落 GET
+            raw = await _pop_resp(redis, resp_key)
             resp = json.loads(raw) if raw is not None else None
             if resp is not None and resp.get("user_id") == user_id:
                 if resp.get("stage") == "ack":
                     acked = True
-                    await redis.delete(resp_key)
+                    # 同 stream 路径：不 delete，防背靠背 done 被连带清掉
                 elif resp.get("stage") == "done":
                     done = resp
                     await redis.delete(resp_key)

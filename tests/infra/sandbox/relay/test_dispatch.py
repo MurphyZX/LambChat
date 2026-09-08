@@ -5,6 +5,7 @@ import json
 import time
 
 import pytest
+from redis.exceptions import ResponseError
 
 from src.infra.sandbox.relay import dispatch as dispatch_module
 from src.infra.sandbox.relay.dispatch import dispatch_local_call
@@ -12,14 +13,23 @@ from src.kernel.errors import AppError, ErrorCode
 
 
 class _FakeRedis:
+    """string/list 双库 fake。LPOP/BLPOP 命中 string key 时按真 Redis 语义
+    抛 WRONGTYPE ResponseError（而非静默返回 None）——dispatch 的旧格式
+    GET 兜底必须真实捕获该错误才能通过。"""
+
     def __init__(self):
         self.lists: dict[str, list[str]] = {}
         self.kv: dict[str, str] = {}
+
+    def _wrongtype(self, key: str):
+        if key in self.kv:
+            raise ResponseError("WRONGTYPE Operation against a key holding the wrong kind of value")
 
     async def rpush(self, key: str, value: str) -> None:
         self.lists.setdefault(key, []).append(value)
 
     async def lpop(self, key: str) -> str | None:
+        self._wrongtype(key)
         items = self.lists.get(key)
         return items.pop(0) if items else None
 
@@ -34,6 +44,7 @@ class _FakeRedis:
         self.lists.pop(key, None)
 
     async def blpop(self, key: str, timeout: float = 0):
+        self._wrongtype(key)
         items = self.lists.get(key)
         if items:
             return key, items.pop(0)
@@ -357,6 +368,28 @@ async def test_stream_old_daemon_unsupported_op_raises_with_detail(fake, monkeyp
     assert "unsupported op" in str(exc.value.args_data.get("detail"))
 
 
+async def test_old_format_set_resp_falls_back_to_get(fake, monkeypatch):
+    """滚动发布窗口：旧实例仍以 SET（string）写 resp key——真 Redis 对
+    string key 执行 BLPOP/LPOP 抛 WRONGTYPE 而非返回 None，dispatch 必须
+    捕获并回落 GET，不能把兼容路径变成未处理异常。"""
+    monkeypatch.setattr(dispatch_module, "_BLPOP_TIMEOUT", 0.01)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 5)
+
+    async def daemon():
+        await asyncio.sleep(0.02)
+        req = json.loads(await fake.lpop("sandbox:req:u1"))
+        await fake.set(
+            f"sandbox:resp:{req['call_id']}",
+            json.dumps({"user_id": "u1", "stage": "done", "status": "ok", "stdout": "old"}),
+        )
+
+    task = asyncio.create_task(daemon())
+    result = await dispatch_local_call("u1", "exec", {"command": "echo old"})
+    await task
+    assert result["stdout"] == "old"
+
+
 async def test_stream_ack_timeout_raises(fake, monkeypatch):
     monkeypatch.setattr(dispatch_module, "_STREAM_POLL_INTERVAL", 0.01)
     monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 0.05)
@@ -463,3 +496,31 @@ async def test_stream_binary_frames_need_binary_client(monkeypatch):
     await task
     assert chunks == [png]
     assert not store.kv  # resp 键消费完即清
+
+
+async def test_stream_ack_and_error_done_back_to_back(fake, monkeypatch):
+    """ack 与 error done 背靠背入队（daemon 秒败/网络延迟聚合的形态）：
+    消费 ack 后不得清空 resp 队列——旧 SET 语义的 delete 残留会把已入队的
+    done 连带删掉，错误结局退化成等满 exec 超时。"""
+    monkeypatch.setattr(dispatch_module, "_STREAM_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 2)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_STREAM_TIMEOUT", 2)
+
+    async def daemon():
+        req = json.loads(await fake.lpop("sandbox:req:u1"))
+        resp_key = f"sandbox:resp:{req['call_id']}"
+        await fake.rpush(resp_key, json.dumps({"user_id": "u1", "stage": "ack"}))
+        await fake.rpush(
+            resp_key,
+            json.dumps({"user_id": "u1", "stage": "done", "status": "error", "error": "boom"}),
+        )
+
+    task = asyncio.create_task(daemon())
+    with pytest.raises(AppError) as exc:
+        async for _ in dispatch_module.dispatch_local_stream(
+            "u1", "fs_download_stream", {"cwd": "/w", "path": "f"}
+        ):
+            pass
+    await task
+    assert exc.value.error_code == ErrorCode.SANDBOX_EXEC_FAILED
+    assert "boom" in str(exc.value.args_data.get("detail"))

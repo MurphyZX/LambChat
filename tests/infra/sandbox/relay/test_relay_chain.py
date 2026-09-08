@@ -9,6 +9,7 @@ import asyncio
 import json
 
 import pytest
+from redis.exceptions import ResponseError
 
 from src.api.routes import sandbox as sandbox_route
 from src.infra.sandbox.relay import dispatch as dispatch_module
@@ -17,17 +18,25 @@ from src.kernel.errors import AppError, ErrorCode
 
 
 class _FakeRedis:
-    """string/list/hash 内存 Redis：TTL 忽略（本文件不测过期）。"""
+    """string/list/hash 内存 Redis：TTL 忽略（本文件不测过期）。
+
+    LPOP/BLPOP 命中 string key 按真 Redis 语义抛 WRONGTYPE（对齐
+    test_dispatch 的 fake——旧格式兜底路径必须真实捕获该错误）。"""
 
     def __init__(self):
         self.lists: dict[str, list[str]] = {}
         self.kv: dict[str, str] = {}
         self.expires: list[str] = []
 
+    def _wrongtype(self, key):
+        if key in self.kv:
+            raise ResponseError("WRONGTYPE Operation against a key holding the wrong kind of value")
+
     async def rpush(self, key, value):
         self.lists.setdefault(key, []).append(value)
 
     async def blpop(self, key, timeout=0):
+        self._wrongtype(key)
         items = self.lists.get(key)
         if items:
             return key, items.pop(0)
@@ -36,6 +45,7 @@ class _FakeRedis:
         return None
 
     async def lpop(self, key):
+        self._wrongtype(key)
         items = self.lists.get(key)
         return items.pop(0) if items else None
 
