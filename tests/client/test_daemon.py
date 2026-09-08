@@ -831,6 +831,73 @@ async def test_fs_read_executes_under_commands_policy(tmp_path):
     assert client.posted[1][1]["status"] == "ok"
 
 
+class _UploadStreamClient(FakeClient):
+    """get_stream 替身：脚本化帧字节分片（fs_upload_stream 的服务端拉流侧）。"""
+
+    def __init__(self, chunks: list[bytes], **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._stream_chunks = chunks
+
+    def get_stream(self, call_id: str, *, deadline_s: float):
+        chunks = self._stream_chunks
+
+        class _Ctx:
+            async def __aenter__(self):
+                async def gen():
+                    for c in chunks:
+                        yield c
+
+                return gen()
+
+            async def __aexit__(self, *exc):
+                return False
+
+        return _Ctx()
+
+
+async def test_fs_upload_stream_dispatches_to_stream_handler_and_writes_file(tmp_path):
+    """fs_upload_stream 必须路由进流式处理器并真实落盘。
+
+    bb3cd54d 加入上传流式时漏把该 op 加进 fsops.STREAM_OPS——daemon 分发
+    条件 ``call.op in STREAM_OPS`` 永不命中，上传快路径整条从未生效（回
+    unsupported op，生产端粘滞降级到分块 base64）。本用例钉住路由：ack →
+    单 GET 拉帧 → 写盘 → done(written)。"""
+    from lambchat_sandbox.frames import FRAME_DATA, FRAME_EOF, encode_frame
+
+    (tmp_path / "s1").mkdir()
+    frames = b"".join(
+        [
+            encode_frame(FRAME_DATA, b"hello "),
+            encode_frame(FRAME_DATA, b"world"),
+            encode_frame(FRAME_EOF),
+        ]
+    )
+    client = _UploadStreamClient(
+        chunks=[frames[:5], frames[5:]],
+        calls=[
+            _fs_call(
+                op="fs_upload_stream",
+                payload={"path": "up.bin", "cwd": "/workspace/s1", "max_bytes": 1024},
+            )
+        ],
+    )
+    auditor = MemoryAuditor()
+
+    await _run(
+        _cfg("none", data_root=tmp_path),
+        FakeFactory([client, _terminator()]),
+        executor=FakeExecutor(),
+        auditor=auditor,
+    )
+
+    assert client.posted == [
+        ("c1", {"stage": "ack"}),
+        ("c1", {"stage": "done", "status": "ok", "result": {"written": 11}}),
+    ]
+    assert (tmp_path / "s1" / "up.bin").read_bytes() == b"hello world"
+    assert [e["event"] for e in auditor.records["s1"]] == ["received", "allowed", "executed"]
+
+
 async def test_fs_download_stream_ack_then_single_stream_post(tmp_path):
     """fs_download_stream：ack 照常，整个文件走一个流式 POST（行=fsops 流生成器）。"""
 

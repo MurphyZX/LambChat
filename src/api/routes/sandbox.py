@@ -414,9 +414,12 @@ async def sandbox_upload_stream(
     """
     redis = _binary_redis()  # lpop 裸二进制帧，解码客户端读取即抛 UnicodeDecodeError
     key = f"sandbox:upblob:{user.sub}:{call_id}"
+    resp_key = f"sandbox:resp:{call_id}"
     deadline = time.monotonic() + float(settings.SANDBOX_LOCAL_STREAM_TIMEOUT) + 10.0
+    saw_eof = False
 
     async def _frame_stream():
+        nonlocal saw_eof
         try:
             while time.monotonic() < deadline:
                 item = await redis.lpop(key)
@@ -428,12 +431,42 @@ async def sandbox_upload_stream(
                 yield item
                 parsed = _frames.try_parse_frame(item)
                 if parsed is not None and parsed[0] == _frames.FRAME_EOF:
+                    saw_eof = True
                     return
         finally:
-            try:
-                await redis.delete(key)
-            except Exception:  # noqa: BLE001 - 清理尽力而为
-                pass
+            # daemon 拉流中途断开（SIGKILL/断网）：向 resp 队列推 error done，
+            # dispatch 快速显式失败——否则干等满 SANDBOX_LOCAL_STREAM_TIMEOUT。
+            # 正常 EOF 收尾不推（daemon 自会回真实 done）。断流时本生成器运行在
+            # 取消域内，裸 await 立即再抛 CancelledError——必须 shield 后台任务
+            # 完成推送（与 sandbox_channel._finalize_stream 同款语义）。
+            async def _push_interrupt_sentinel() -> None:
+                try:
+                    await redis.rpush(
+                        resp_key,
+                        json.dumps(
+                            {
+                                "user_id": user.sub,
+                                "stage": "done",
+                                "status": "error",
+                                "error": "stream_interrupted",
+                            }
+                        ),
+                    )
+                    await redis.expire(resp_key, 120)
+                except Exception:  # noqa: BLE001 - 哨兵尽力而为
+                    pass
+
+            async def _cleanup_upblob() -> None:
+                try:
+                    await redis.delete(key)
+                except Exception:  # noqa: BLE001 - 清理尽力而为
+                    pass
+
+            finalize = asyncio.create_task(
+                _push_interrupt_sentinel() if not saw_eof else _cleanup_upblob()
+            )
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(finalize)
 
     return StreamingResponse(
         _frame_stream(),

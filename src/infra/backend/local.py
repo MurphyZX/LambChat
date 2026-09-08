@@ -146,7 +146,8 @@ class LocalSandboxBackend(LocalFsTransferMixin, BaseSandbox):
         self.work_dir = f"/workspace/{session_id}"
         # 会话级选机（多机 daemon）：None = 注册表默认解析（默认机→唯一在线→legacy）
         self._machine_id = machine_id
-        self._exec_timeout = exec_timeout or settings.SANDBOX_LOCAL_EXEC_TIMEOUT
+        # None = 跟随设置（调用时读取，前端可动态更新）；显式值 = 会话级固定覆盖
+        self._exec_timeout = exec_timeout
         # 显式平台提示（构造期已知 daemon 平台的 wiring/测试用）；None = 每次
         # 文件操作前经注册表查当前活跃 daemon 的平台（一次 redis 读）。
         self._platform_hint = platform_hint
@@ -191,6 +192,10 @@ class LocalSandboxBackend(LocalFsTransferMixin, BaseSandbox):
     # Command execution（BaseSandbox 的抽象成员，其余文件操作由此自动继承）
     # =========================================================================
 
+    def _exec_timeout_now(self) -> int:
+        """当前执行超时：显式构造覆盖 > 设置值（前端面板可动态改，调用时读取）。"""
+        return self._exec_timeout or settings.SANDBOX_LOCAL_EXEC_TIMEOUT
+
     async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
         payload: dict[str, Any] = {"command": command, "cwd": self.work_dir}
         if self.env_vars:
@@ -202,7 +207,7 @@ class LocalSandboxBackend(LocalFsTransferMixin, BaseSandbox):
             self._user_id,
             "exec",
             payload,
-            timeout=float(timeout or self._exec_timeout),
+            timeout=float(timeout or self._exec_timeout_now()),
             machine_id=self._machine_id,
         )
         stdout = result.get("stdout") or ""
@@ -384,7 +389,7 @@ class LocalSandboxBackend(LocalFsTransferMixin, BaseSandbox):
                 "command": self._download_size_command(path, platform=platform),
                 "cwd": self.work_dir,
             },
-            timeout=float(self._exec_timeout),
+            timeout=float(self._exec_timeout_now()),
             machine_id=self._machine_id,
         )
         if size_result.get("exit_code") != 0:
@@ -424,7 +429,7 @@ class LocalSandboxBackend(LocalFsTransferMixin, BaseSandbox):
                     ),
                     "cwd": self.work_dir,
                 },
-                timeout=float(self._exec_timeout),
+                timeout=float(self._exec_timeout_now()),
                 machine_id=self._machine_id,
             )
             response = self._download_response(path, result)
@@ -557,7 +562,7 @@ class WorkspaceAliasBackend(WorkspaceAliasTransferMixin, LocalSandboxBackend):
             self._user_id,
             op,
             {**rebased, "cwd": rebased.get("cwd", self.work_dir)},
-            timeout=float(self._exec_timeout),
+            timeout=float(self._exec_timeout_now()),
             machine_id=self._machine_id,
         )
         result = resp.get("result")

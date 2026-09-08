@@ -39,6 +39,12 @@ class _FakeRedis:
     async def get(self, key: str) -> str | None:
         return self.kv.get(key)
 
+    async def llen(self, key: str) -> int:
+        return len(self.lists.get(key) or ())
+
+    async def expire(self, key: str, seconds: int) -> None:
+        pass  # TTL 语义本用例不测
+
     async def delete(self, key: str) -> None:
         self.kv.pop(key, None)
         self.lists.pop(key, None)
@@ -524,3 +530,44 @@ async def test_stream_ack_and_error_done_back_to_back(fake, monkeypatch):
     await task
     assert exc.value.error_code == ErrorCode.SANDBOX_EXEC_FAILED
     assert "boom" in str(exc.value.args_data.get("detail"))
+
+
+async def test_upload_stream_window_wait_aborts_on_interrupt_sentinel(fake, monkeypatch):
+    """上传窗口等待期收到中断哨兵（daemon 断开时 /upload 端点推入的 error
+    done）必须快速失败——否则 daemon 死后窗口永不腾空，生产者干等满
+    SANDBOX_LOCAL_STREAM_TIMEOUT（600s，E2E 上传中断档实测）。"""
+    monkeypatch.setattr(dispatch_module, "_STREAM_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module, "_UPBLOB_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_ACK_TIMEOUT", 30)
+    monkeypatch.setattr(dispatch_module.settings, "SANDBOX_LOCAL_STREAM_TIMEOUT", 600)
+
+    # 生产者还没推满窗口时，哨兵先行到达（模拟 daemon 秒断：端点 finally 推
+    # error done 进 resp，upblob 无人消费）
+    async def daemon():
+        await asyncio.sleep(0.05)
+        req = json.loads(await fake.lpop("sandbox:req:u1"))
+        assert req["op"] == "fs_upload_stream"
+        await fake.rpush(
+            f"sandbox:resp:{req['call_id']}",
+            json.dumps(
+                {"user_id": "u1", "stage": "done", "status": "error", "error": "stream_interrupted"}
+            ),
+        )
+
+    task = asyncio.create_task(daemon())
+    import time as time_mod
+
+    t0 = time_mod.monotonic()
+    with pytest.raises(AppError) as exc:
+        # 4MiB×(窗口+2) 帧：推满窗口后进入等待，哨兵应令其快速失败
+        content = b"x" * (
+            dispatch_module._UPBLOB_CHUNK_BYTES * (dispatch_module._UPBLOB_WINDOW + 2)
+        )
+        await dispatch_module.dispatch_local_stream_upload(
+            "u1", {"cwd": "/workspace/s1", "path": "big.bin", "max_bytes": 10**9}, content
+        )
+    dt = time_mod.monotonic() - t0
+    await task
+    assert exc.value.error_code == ErrorCode.SANDBOX_EXEC_FAILED
+    assert "stream_interrupted" in str(exc.value.args_data.get("detail"))
+    assert dt < 5, f"窗口等待未消费中断哨兵，耗时 {dt:.1f}s"

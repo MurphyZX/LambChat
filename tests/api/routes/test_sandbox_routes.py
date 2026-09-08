@@ -1496,3 +1496,25 @@ async def test_machines_endpoint_includes_offline(monkeypatch):
     assert by_id["srv1"]["online"] is True
     assert by_id["pc1"]["online"] is False
     assert by_id["pc1"]["last_seen"] == 1699_000_000.0
+
+
+async def test_upload_stream_client_disconnect_pushes_error_done(monkeypatch):
+    """daemon 拉流中途断开（SIGKILL/断网）：上传端点必须把 error done 推进
+    resp 队列，让 dispatch 快速显式失败——否则干等满 SANDBOX_LOCAL_STREAM_TIMEOUT
+    （600s，E2E 上传中断档实测）。正常 EOF 收尾不推（daemon 自会回 done）。"""
+    from src.api.routes import sandbox as sandbox_route
+    from src.infra.sandbox.relay import _frames
+
+    redis = _FakeRedis()
+    monkeypatch.setattr(sandbox_route, "_binary_redis", lambda: redis)
+    await redis.rpush("sandbox:upblob:u1:c1", _frames.encode_frame(_frames.FRAME_DATA, b"partial"))
+    await redis.rpush("sandbox:upblob:u1:c1", _frames.encode_frame(_frames.FRAME_EOF))
+
+    resp = await sandbox_route.sandbox_upload_stream("c1", user=_fake_user())
+    agen = resp.body_iterator
+    async for _ in agen:  # 只消费首块即断开（客户端中途断流）
+        break
+    await agen.aclose()
+
+    queued = redis.lists.get("sandbox:resp:c1") or []
+    assert queued and "stream_interrupted" in queued[0], f"resp 队列: {queued}"

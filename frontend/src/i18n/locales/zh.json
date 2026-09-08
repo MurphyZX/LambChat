@@ -2784,6 +2784,7 @@
     "S3_REGION": "S3 区域",
     "S3_SECRET_KEY": "S3 秘密密钥",
     "SANDBOX_GREP_TIMEOUT": "沙箱 grep 命令超时时间（秒）",
+    "SANDBOX_LOCAL_EXEC_TIMEOUT": "本地沙箱命令执行超时（秒）：卡死命令到点自动击杀，改动即时生效于后续命令。",
     "SANDBOX_PLATFORM": "使用的沙箱平台",
     "SESSION_EVENT_CHUNK_DUAL_WRITE_LEGACY": "将分片 trace 事件同时写入旧 events 数组",
     "SESSION_EVENT_CHUNK_SIZE": "每个 trace event chunk 文档保存的最大事件数",

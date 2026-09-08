@@ -2784,6 +2784,7 @@
     "S3_REGION": "S3リージョン",
     "S3_SECRET_KEY": "S3シークレットキー",
     "SANDBOX_GREP_TIMEOUT": "サンドボックスgrepコマンドのタイムアウト（秒）",
+    "SANDBOX_LOCAL_EXEC_TIMEOUT": "ローカルサンドボックスのコマンド実行タイムアウト（秒）。ハングしたコマンドは期限で強制終了され、変更は以降のコマンドに即時反映されます。",
     "SANDBOX_PLATFORM": "使用するサンドボックスプラットフォーム",
     "SESSION_EVENT_CHUNK_DUAL_WRITE_LEGACY": "分割保存した trace イベントを従来の events 配列にも書き込む",
     "SESSION_EVENT_CHUNK_SIZE": "各 trace event chunk ドキュメントに保存する最大イベント数",

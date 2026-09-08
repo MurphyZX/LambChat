@@ -342,6 +342,17 @@ async def dispatch_local_stream_upload(
             while time.monotonic() < deadline:
                 if await redis.llen(blob_key) < _UPBLOB_WINDOW:
                     break
+                # 窗口等待期也要消费中断哨兵：daemon 拉流中断开时 /upload 端点
+                # 会向 resp 队列推 error done——不检查就会干等满 exec_timeout
+                # （窗口永不腾空，2026-09-08 E2E 上传中断档实测 600s）
+                raw = await _pop_resp(redis, resp_key)
+                if raw is not None:
+                    resp = json.loads(raw)
+                    if resp.get("user_id") == user_id and resp.get("stage") == "done":
+                        raise AppError(
+                            ErrorCode.SANDBOX_EXEC_FAILED,
+                            args={"detail": str(resp.get("error") or "upload stream failed")},
+                        )
                 await asyncio.sleep(_UPBLOB_POLL_INTERVAL)
             else:
                 raise AppError(ErrorCode.SANDBOX_TIMEOUT, args={"seconds": int(exec_timeout)})
