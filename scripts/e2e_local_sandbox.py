@@ -578,6 +578,254 @@ async def crash_recovery(user_id: str, pat: str, machine_id: str, holder: dict) 
     )
 
 
+async def comprehensive(user_id: str, pat: str, machine_id: str, holder: dict) -> None:
+    """全方位段：fs op 全覆盖、多机并存定向分发、legacy daemon 混跑、上传中断哨兵。"""
+    from src.infra.sandbox.relay.dispatch import dispatch_local_call
+    from src.kernel.errors import AppError
+
+    async def fs(op: str, payload: dict) -> dict:
+        r = await dispatch_local_call(user_id, op, payload, machine_id=machine_id)
+        return r.get("result") or {}
+
+    # F1. fs_ls：目录列举
+    r = await fs("fs_ls", {"cwd": "/workspace/e2e", "path": "."})
+    names = " ".join(str(e.get("path", "")) for e in (r.get("entries") or []))
+    check("fs_ls 目录列举", "edge" in names and "imgs" in names, names[:60])
+
+    # F2. fs_glob：通配匹配（含中文文件名）
+    r = await fs("fs_glob", {"cwd": "/workspace/e2e", "pattern": "edge/*.txt"})
+    paths = " ".join(str(m.get("path", "")) for m in (r.get("matches") or []))
+    check("fs_glob 通配匹配", "笔记" in paths, paths[:80])
+
+    # F3. fs_grep：内容检索
+    r = await fs("fs_grep", {"cwd": "/workspace/e2e", "pattern": "secret", "path": "."})
+    check("fs_grep 内容检索", "error" not in r and bool(r.get("matches")), str(r)[:60])
+
+    # F4. fs_edit：替换后读回
+    import base64 as b64mod
+
+    b64 = lambda t: b64mod.b64encode(t.encode()).decode()  # noqa: E731
+    await fs(
+        "fs_write",
+        {"cwd": "/workspace/e2e", "path": "edge/edit.txt", "content_b64": b64("alpha beta gamma")},
+    )
+    r = await fs(
+        "fs_edit",
+        {
+            "cwd": "/workspace/e2e",
+            "path": "edge/edit.txt",
+            "old_str_b64": b64("beta"),
+            "new_str_b64": b64("BETA"),
+        },
+    )
+    r2 = await fs("fs_read", {"cwd": "/workspace/e2e", "path": "edge/edit.txt"})
+    check(
+        "fs_edit 替换生效",
+        "error" not in r and r2.get("content") == "alpha BETA gamma",
+        str(r.get("error", r2.get("content")))[:40],
+    )
+
+    # F5. fs_delete：删除后读必 file_not_found
+    await fs("fs_delete", {"cwd": "/workspace/e2e", "path": "edge/edit.txt"})
+    r = await fs("fs_read", {"cwd": "/workspace/e2e", "path": "edge/edit.txt"})
+    check("fs_delete 删除生效", r.get("error") == "file_not_found")
+
+    # M1. 多机并存：第二台上线，双机在线 + 定向分发互不干扰
+    machine_b = machine_id + "-b"
+    daemon_b = spawn_daemon(pat, machine_b)
+    try:
+        _, machines = http_json("GET", "/api/sandbox/machines", token=pat)
+        online_ids = {m["machine_id"] for m in machines["machines"] if m["online"]}
+        rb = await dispatch_local_call(
+            user_id,
+            "exec",
+            {"command": "echo from-b", "cwd": "/workspace/e2e"},
+            machine_id=machine_b,
+        )
+        ra = await dispatch_local_call(
+            user_id,
+            "exec",
+            {"command": "echo from-a", "cwd": "/workspace/e2e"},
+            machine_id=machine_id,
+        )
+        check(
+            "多机并存 + 定向分发",
+            machine_id in online_ids
+            and machine_b in online_ids
+            and rb.get("stdout", "").strip() == "from-b"
+            and ra.get("stdout", "").strip() == "from-a",
+        )
+    finally:
+        daemon_b.terminate()
+        daemon_b.wait(timeout=10)
+
+    # M2. B 下线后 A 不受影响（5s 内 B 翻转离线）
+    offline_b = False
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        _, machines = http_json("GET", "/api/sandbox/machines", token=pat)
+        mb = next((m for m in machines["machines"] if m["machine_id"] == machine_b), None)
+        if mb and not mb["online"]:
+            offline_b = True
+            break
+        time.sleep(0.3)
+    ra = await dispatch_local_call(
+        user_id,
+        "exec",
+        {"command": "echo a-still-ok", "cwd": "/workspace/e2e"},
+        machine_id=machine_id,
+    )
+    check("单机下线不连坐", offline_b and ra.get("stdout", "").strip() == "a-still-ok")
+
+    # U1. 上传中断哨兵：大文件上传中 SIGKILL daemon → 调用方快速显式失败
+    from src.infra.sandbox.relay.dispatch import dispatch_local_stream_upload
+
+    big = secrets.token_bytes(400 * 1024 * 1024)
+    t0 = time.monotonic()
+    task = asyncio.create_task(
+        dispatch_local_stream_upload(
+            user_id,
+            {
+                "cwd": "/workspace/e2e",
+                "path": "edge/interrupted.bin",
+                "max_bytes": 200 * 1024 * 1024,
+            },
+            big,
+            machine_id=machine_id,
+        )
+    )
+    await asyncio.sleep(0.4)  # 帧已在途（回环 ~300MB/s，400MB 约 1.3s 传完）
+    holder["proc"].kill()
+    holder["proc"].wait(timeout=5)
+    code_u, err_u = None, None
+    try:
+        await task
+        code_u = "unexpectedly-succeeded"
+    except AppError as exc:
+        code_u = getattr(exc.error_code, "code", str(exc.error_code))
+        err_u = str(getattr(exc, "args_data", {}).get("detail") or "")[:60]
+    dt_u = time.monotonic() - t0
+    check(
+        "上传中断快速显式失败",
+        code_u in ("sandbox_exec_failed", "sandbox_timeout"),
+        f"code={code_u} {err_u} 用时{dt_u:.1f}s",
+    )
+
+    # 崩溃后同身份重启恢复（供后续 stress / 优雅下线继续）
+    holder["proc"] = spawn_daemon(pat, machine_id)
+    ra = await dispatch_local_call(
+        user_id,
+        "exec",
+        {"command": "echo post-crash", "cwd": "/workspace/e2e"},
+        machine_id=machine_id,
+    )
+    check("上传崩溃后重启恢复", ra.get("stdout", "").strip() == "post-crash")
+
+
+async def agent_tools_battery(user_id: str, pat: str, machine_id: str) -> None:
+    """agent 工具层（WorkspaceAliasBackend 生产链路）：别名路径映射、错误分类、
+    动态超时（前端设置 PUT → 调用时读取 → 卡死命令到点击杀）。"""
+    from src.infra.backend.local import WorkspaceAliasBackend
+
+    # 生产同款：agent 一律传 /workspace/<sid>/x 别名路径，别名层剥离翻译
+    backend = WorkspaceAliasBackend(user_id=user_id, session_id="agent-e2e", machine_id=machine_id)
+
+    # A1. awrite/aread：别名路径往返（剥离 → cwd 映射 → 结果回填别名）
+    await backend.awrite("/workspace/agent-e2e/agent/hi.txt", "hello agent")
+    rd = await backend.aread("/workspace/agent-e2e/agent/hi.txt")
+    fd1 = getattr(rd, "file_data", None)
+    content1 = fd1.get("content") if isinstance(fd1, dict) else getattr(fd1, "content", None)
+    check(
+        "agent awrite/aread 别名路径",
+        content1 == "hello agent",
+        f"content={str(content1)[:30]!r} err={getattr(rd, 'error', None)}",
+    )
+
+    # A2. aedit：替换生效
+    er = await backend.aedit("/workspace/agent-e2e/agent/hi.txt", "hello", "HELLO")
+    rd = await backend.aread("/workspace/agent-e2e/agent/hi.txt")
+    fd2 = getattr(rd, "file_data", None)
+    content2 = fd2.get("content") if isinstance(fd2, dict) else getattr(fd2, "content", None)
+    check(
+        "agent aedit 替换",
+        content2 == "HELLO agent",
+        f"content={content2!r} err={getattr(er, 'error', None)}",
+    )
+
+    # A3. aglob：通配（matches 为 dict 列表）
+    gr = await backend.aglob("agent/*.txt", "/workspace/agent-e2e")
+    matches3 = getattr(gr, "matches", None) or []
+    globs = [
+        m.get("path", str(m)) if isinstance(m, dict) else getattr(m, "path", str(m))
+        for m in matches3
+    ]
+    check("agent aglob 通配", any("hi.txt" in g for g in globs), ",".join(globs)[:60])
+
+    # A4. agrep：检索
+    pr = await backend.agrep("HELLO", "/workspace/agent-e2e/agent")
+    check("agent agrep 检索", bool(getattr(pr, "matches", None)), str(pr)[:60])
+
+    # A5. aexecute：正常命令 + 失败命令的错误可见性（agent 可自纠）
+    ok5 = await backend.aexecute("echo agent-ok")
+    bad5 = await backend.aexecute("cat /workspace/agent-e2e/definitely-missing.txt")
+    check(
+        "agent aexecute 正常+失败错误可见",
+        "agent-ok" in (ok5.output or "")
+        and bad5.exit_code != 0
+        and ("No such file" in (bad5.output or "")),
+        f"exit={bad5.exit_code} out={(bad5.output or '')[:60]!r}",
+    )
+
+    # A6. 动态超时：管理员 PUT 设置 → 存量 backend 调用时读取 → 卡死命令到点击杀
+    import pymongo
+
+    env = _env_map()
+    client = pymongo.MongoClient(
+        env.get("MONGODB_URL", "mongodb://localhost:27017"),
+        username=env.get("MONGODB_USERNAME") or None,
+        password=env.get("MONGODB_PASSWORD") or None,
+        authSource=env.get("MONGODB_AUTH_SOURCE", "admin"),
+        serverSelectionTimeoutMS=3000,
+    )
+    client[env.get("MONGODB_DB", "agent_state")].users.update_one(
+        {"_id": pymongo.ObjectId(user_id)}, {"$set": {"roles": ["admin", "user"]}}
+    )
+    # 等价链路：写 DB 后调用 refresh_settings——前端 PUT /api/settings 落库后
+    # 触发的就是这同一个函数（E2E 用户 PAT 无 settings:manage，不走 HTTP 面）。
+    from src.kernel.config.service import refresh_settings
+
+    db = client[env.get("MONGODB_DB", "agent_state")]
+    db.system_settings.update_one(
+        {"key": "SANDBOX_LOCAL_EXEC_TIMEOUT"},
+        {
+            "$set": {"value": 4, "updated_by": "e2e"},
+            "$setOnInsert": {
+                "key": "SANDBOX_LOCAL_EXEC_TIMEOUT",
+                "category": "sandbox",
+                "type": "number",
+                "default_value": 120,
+                "description": "settingDesc.SANDBOX_LOCAL_EXEC_TIMEOUT",
+            },
+        },
+        upsert=True,
+    )
+    await refresh_settings("SANDBOX_LOCAL_EXEC_TIMEOUT")
+    from src.kernel.config import settings as live_settings
+
+    t0 = time.monotonic()
+    resp6 = await backend.aexecute("sleep 999")  # 卡死命令：无显式超时，走动态设置
+    dt6 = time.monotonic() - t0
+    timed_out = "timeout" in (resp6.output or "").lower() and resp6.exit_code is None
+    check(
+        "卡死命令按动态设置自动击杀",
+        timed_out and dt6 < 15,
+        f"exit={resp6.exit_code} 用时{dt6:.1f}s out={(resp6.output or '')[:50]!r}",
+    )
+    db.system_settings.update_one({"key": "SANDBOX_LOCAL_EXEC_TIMEOUT"}, {"$set": {"value": 120}})
+    await refresh_settings("SANDBOX_LOCAL_EXEC_TIMEOUT")
+    assert live_settings.SANDBOX_LOCAL_EXEC_TIMEOUT == 120
+
+
 async def stress(user_id: str, machine_id: str) -> None:
     import random
 
@@ -693,6 +941,8 @@ def main() -> int:
             await battery(user_id, pat, machine_id)
             await edge_cases(user_id, machine_id)
             await crash_recovery(user_id, pat, machine_id, holder)
+            await comprehensive(user_id, pat, machine_id, holder)
+            await agent_tools_battery(user_id, pat, machine_id)
             if args.stress:
                 await stress(user_id, machine_id)
 

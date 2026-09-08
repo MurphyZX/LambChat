@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import base64
 import re
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from src.infra.backend._local_compat import _run_coro_sync
@@ -98,7 +99,8 @@ class LocalFsTransferMixin:
 
     _user_id: str
     _machine_id: str | None
-    _exec_timeout: int
+    _exec_timeout: int | None
+    _exec_timeout_now: "Callable[[], int]"
     _fs_transfer_supported: bool | None
     # 流式通道（fs_download_stream）能力位：None = 未探测，False = 老 daemon
     # 不支持（粘滞走分块 fs_download）。见 FsStreamUnsupportedError。
@@ -111,7 +113,7 @@ class LocalFsTransferMixin:
                 self._user_id,
                 op,
                 payload,
-                timeout=float(self._exec_timeout),
+                timeout=float(self._exec_timeout_now()),
                 machine_id=self._machine_id,
             )
         except AppError as exc:

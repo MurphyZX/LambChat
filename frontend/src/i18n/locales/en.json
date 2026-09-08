@@ -2784,6 +2784,7 @@
     "S3_REGION": "S3 region",
     "S3_SECRET_KEY": "S3 secret key",
     "SANDBOX_GREP_TIMEOUT": "Sandbox grep command timeout in seconds",
+    "SANDBOX_LOCAL_EXEC_TIMEOUT": "Local sandbox command execution timeout (seconds): hung commands are killed at the deadline; changes apply to subsequent commands immediately.",
     "SANDBOX_PLATFORM": "Sandbox platform to use",
     "SESSION_EVENT_CHUNK_DUAL_WRITE_LEGACY": "Also write chunked trace events to the legacy events array",
     "SESSION_EVENT_CHUNK_SIZE": "Maximum events stored in each trace event chunk document",
