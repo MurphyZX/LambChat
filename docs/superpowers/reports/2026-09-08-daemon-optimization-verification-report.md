@@ -105,6 +105,21 @@ presence 上线推送实测：daemon 进程启动后 2.2s 收到 `sandbox:presen
 
 异常时按 §3 的诊断方法定位（先分清：进程死没死 / offline POST 到没到 / Redis 键是删了还是在倒数）。
 
-## 8. 环境备注
+## 8. 多架构支持矩阵（与发布管线对齐）
+
+发布矩阵（app-release.yml）共 5 个 target，`sidecar_binary_path` 的 triple 映射与 `client/scripts/fetch-pbs.py` 的 `PLATFORM_TRIPLES`、`build-daemon.sh` 的 host-triple 探测**逐项一致**：
+
+| 发布 target | triple | Rust 全量编译 | 进程管理依赖面编译 | 说明 |
+|---|---|---|---|---|
+| Linux x86_64 | x86_64-unknown-linux-gnu | ✅ cargo check + test | ✅ | 真机全流程冒烟 |
+| Linux ARM64 | aarch64-unknown-linux-gnu | CI 原生（ubuntu-24.04-arm） | ✅ 本机交叉 | 全量编译卡 libdbus-sys 需 aarch64 系统库（CI ARM runner 原生覆盖） |
+| Windows x86_64 | x86_64-pc-windows-msvc | ✅ x86_64-pc-windows-gnu 全量交叉 | ✅ | gnu/msvc 对本仓代码 API 面等价 |
+| macOS Apple Silicon | aarch64-apple-darwin | CI 原生（macos-14） | ✅ 本机交叉 | 整壳卡 tauri objc2 需 macOS SDK |
+| macOS Intel | x86_64-apple-darwin | CI 原生（Rosetta sidecar） | ✅ 本机交叉 | 同上 |
+
+- daemon.rs / tray.rs **零 `target_arch` 运行时代码**（进程管理只有 OS 级 cfg(unix)/windows）；lib.rs 的 5 处 target_arch 均在 `#[cfg(test)]` 的 PBS 标签单测内，与 fetch-pbs.py 五键一一对应
+- command-group（纯 Rust + nix）与 Python daemon 均架构无关；PBS 归档按平台（非架构单独）分发，五键全覆盖
+
+## 9. 环境备注
 
 - 为 Windows 交叉检查安装了 `mingw-w64`（系统级，rustup targets：x86_64-pc-windows-gnu/msvc、aarch64/x86_64-apple-darwin）；本机占位文件（src-tauri/binaries/*、icons/*、resources/python/）均为 gitignored 开发产物，未入库。
