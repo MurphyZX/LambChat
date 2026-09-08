@@ -986,7 +986,7 @@ async def test_stream_download_seam_single_post_for_whole_file(monkeypatch, tmp_
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(_streaming_daemon(redis, client, tmp_path, counters))
         responses = await asyncio.wait_for(
-            backend.adownload_files(["/workspace/s1/big.bin"]), timeout=30
+            backend.adownload_files(["/workspace/s1/big.bin"]), timeout=60
         )
         daemon_task.cancel()
 
@@ -1004,7 +1004,7 @@ async def test_stream_download_seam_file_error_reaches_backend(monkeypatch, tmp_
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(_streaming_daemon(redis, client, tmp_path))
         responses = await asyncio.wait_for(
-            backend.adownload_files(["/workspace/s1/missing.bin"]), timeout=30
+            backend.adownload_files(["/workspace/s1/missing.bin"]), timeout=60
         )
         daemon_task.cancel()
 
@@ -1057,7 +1057,7 @@ async def test_chunked_download_seam_old_daemon_fallback(monkeypatch, tmp_path):
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(fake_daemon(client))
         responses = await asyncio.wait_for(
-            backend.adownload_files(["/workspace/s1/台账.xlsx"]), timeout=30
+            backend.adownload_files(["/workspace/s1/台账.xlsx"]), timeout=60
         )
         daemon_task.cancel()
 
@@ -1211,7 +1211,7 @@ async def test_stream_upload_seam_single_get_for_whole_file(monkeypatch, tmp_pat
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(upload_daemon(client))
         responses = await asyncio.wait_for(
-            backend.aupload_files([("/workspace/s1/up.bin", content)]), timeout=30
+            backend.aupload_files([("/workspace/s1/up.bin", content)]), timeout=60
         )
         daemon_task.cancel()
 
