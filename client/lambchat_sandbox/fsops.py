@@ -704,7 +704,9 @@ def _fs_download(payload: dict, workspace: Path) -> dict:
 #: 之间取中——单帧上限（FRAME_PAYLOAD_MAX=8MiB）留一倍拒绝余量
 FS_STREAM_FRAME_BYTES = 4 * 1024 * 1024
 
-STREAM_OPS = frozenset({"fs_download_stream"})
+# fs_upload_stream 必须在列：daemon 按 `op in STREAM_OPS` 分发到流式处理器，
+# 漏列会让上传快路径整体退化为 unsupported op（生产粘滞降级到分块 base64）。
+STREAM_OPS = frozenset({"fs_download_stream", "fs_upload_stream"})
 """流式传输 op（daemon.py 据此分发到 handle_fs_stream）。"""
 
 
