@@ -19,7 +19,7 @@
 |---|---|---|
 | Linux | 真机全流程冒烟（双 daemon 隔离 HOME + 独立后端 8001 + WS 监听器） | ✅ 8 项全过（见 §2） |
 | Windows | mingw + `cargo check --target x86_64-pc-windows-gnu` 全量交叉编译（所有依赖 + 壳代码） | ✅ 通过——taskkill 停止链、tasklist 探活、CREATE_NO_WINDOW 等 `#[cfg(windows)]` 分支在真实 Windows API 表面上完成类型检查 |
-| macOS | 代码审查 + 交叉检查 | ⚠️ 无阻塞：本次改动零 macOS 专属新代码（mac 走与 Linux 相同的 `#[cfg(unix)]` 分支，已编译+真机验证）；darwin 交叉编译卡在 `objc2-exception-helper` 需要 macOS SDK（环境限制、非本项目代码），运行时由 CI 发布矩阵覆盖 |
+| macOS | command-group 开源方案（unix 实现）+ darwin 双架构交叉编译 | ✅ 通过：daemon 进程管理与 Linux 同走 command-group 的 `cfg(unix)` 实现（进程组 setpgid + killpg，底层开源 nix crate），零 apple 专属手搓代码；daemon.rs 依赖面（group_spawn/SIGTERM/try_wait/kill/wait + libc sigaction）在 aarch64-apple-darwin 与 x86_64-apple-darwin 双 target 交叉编译通过；整壳 darwin 编译仍卡 tauri 的 objc2-exception-helper 需 macOS SDK（环境限制、非本项目代码，CI macOS runner 真机编译覆盖）；PBS shim 为 posix `#!/bin/sh`，darwin updater 签名修复已在 develop（dba5534c） |
 
 ## 2. Linux 真机全流程明细（8 项）
 
