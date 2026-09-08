@@ -243,11 +243,11 @@ test("resolveSandboxPresentation reports presence and the stored tier label", ()
   // 已存 local：badge 显示本地档 label
   expect(
     resolveSandboxPresentation(options, { sandbox: "local" }, i18n.t),
-  ).toEqual({ has: true, label: "Local" });
+  ).toEqual({ has: true, label: "Local computer" });
   // 未存值：回落 default（cloud）
   expect(resolveSandboxPresentation(options, {}, i18n.t)).toEqual({
     has: true,
-    label: "Cloud",
+    label: "Cloud computer",
   });
 });
 
@@ -316,7 +316,7 @@ test("sandbox panel on offline web keeps the local tier visible with a download 
   mocks.getStatus.mockResolvedValue({ online: false });
   renderSelectors("sandbox");
 
-  const localRow = await screen.findByText("Local");
+  const localRow = await screen.findByText("Local computer");
   expect(localRow).toBeInTheDocument();
 
   const downloadEntry = await screen.findByText("Download local sandbox");
@@ -347,8 +347,8 @@ test("toolbar shows a sandbox chip with the current tier that opens the sandbox 
   renderToolbar(onActivePanelChange);
 
   // 默认云端档：chip 标签直接显示当前档位，无需打开任何浮层
-  const chip = screen.getByTitle("Sandbox · Cloud");
-  expect(chip).toHaveTextContent("Cloud");
+  const chip = screen.getByTitle("Sandbox · Cloud computer");
+  expect(chip).toHaveTextContent("Cloud computer");
 
   fireEvent.click(chip);
   expect(onActivePanelChange).toHaveBeenCalledTimes(1);
@@ -358,20 +358,20 @@ test("toolbar shows a sandbox chip with the current tier that opens the sandbox 
 test("sandbox chip reflects the stored local tier in the label", () => {
   renderToolbar(vi.fn(), { sandbox: "local" });
 
-  expect(screen.getByTitle("Sandbox · Local")).toHaveTextContent("Local");
+  expect(screen.getByTitle("Sandbox · Local computer")).toHaveTextContent("Local computer");
 });
 
 test("sandbox chip swaps to a cloud icon on the cloud tier and a monitor icon on the local tier", () => {
   // 手机端档位文字隐藏，仅靠图标区分档位：云端=云图标，本地=显示器图标
   renderToolbar(vi.fn(), { sandbox: "cloud" });
   expect(
-    screen.getByTitle("Sandbox · Cloud").querySelector("svg.lucide-cloud"),
+    screen.getByTitle("Sandbox · Cloud computer").querySelector("svg.lucide-cloud"),
   ).not.toBeNull();
 
   cleanup();
   renderToolbar(vi.fn(), { sandbox: "local" });
   expect(
-    screen.getByTitle("Sandbox · Local").querySelector("svg.lucide-monitor"),
+    screen.getByTitle("Sandbox · Local computer").querySelector("svg.lucide-monitor"),
   ).not.toBeNull();
 });
 

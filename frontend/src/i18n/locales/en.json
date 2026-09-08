@@ -249,10 +249,10 @@
       "label": "Sandbox",
       "description": "Choose where sandboxed commands run",
       "options": {
-        "cloud": "Cloud",
-        "local": "Local"
+        "cloud": "Cloud computer",
+        "local": "Local computer"
       },
-      "offlineHint": "Local sandbox is offline: download and start it to use the local tier",
+      "offlineHint": "Local sandbox is offline: download and start it to use the local computer",
       "downloadEntry": "Download local sandbox"
     },
     "sandboxMachine": {

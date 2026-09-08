@@ -22,7 +22,8 @@ vi.mock("../../../services/api/sandbox", () => ({
     renameMachine: mocks.renameMachine,
     forgetMachine: mocks.forgetMachine,
   },
-  machinePlatformLabel: (_platform: string) => "Linux",
+  machinePlatformLabel: (platform: string) =>
+    ({ win32: "Windows", linux: "Linux" })[platform] ?? platform,
 }));
 
 vi.mock("react-hot-toast", () => ({
@@ -82,6 +83,22 @@ test("online machines show green dot, offline machines greyed with last-seen and
   // 离线机提供忘记按钮，在线机没有
   expect(screen.getByTestId("forget-pc1")).toBeInTheDocument();
   expect(screen.queryByTestId("forget-srv1")).not.toBeInTheDocument();
+});
+
+test("each machine row renders exactly one rename button and one platform label", async () => {
+  render(<SandboxMachinesCard />);
+  await waitFor(() =>
+    expect(screen.getByText("PrimaryServer")).toBeInTheDocument(),
+  );
+
+  for (const [name, platform] of [
+    ["PrimaryServer", "Linux"],
+    ["Old PC", "Windows"],
+  ] as const) {
+    const row = screen.getByText(name).closest("div");
+    expect(row?.textContent?.match(new RegExp(platform, "g"))?.length).toBe(1);
+    expect(row?.querySelectorAll('button[title="Rename"]').length).toBe(1);
+  }
 });
 
 test("forget calls the API then refreshes presence state", async () => {

@@ -194,10 +194,6 @@ export function SandboxMachinesCard() {
                         {t("profile.localSandbox.offlineBadge")}
                       </span>
                     )}
-                    <span className="ml-1.5 text-11 text-stone-500 dark:text-stone-400">
-                      {machinePlatformLabel(machine.platform, t)}
-                      {machine.version ? ` · v${machine.version}` : ""}
-                    </span>
                     {!machineOnline && lastSeenKey && (
                       <span
                         className="ml-1.5 text-11 text-stone-400 dark:text-stone-500"
@@ -257,19 +253,8 @@ export function SandboxMachinesCard() {
                     className="shrink-0 rounded-md p-1 text-stone-400 dark:text-stone-500 transition-colors hover:bg-stone-200/70 dark:hover:bg-stone-700/60 hover:text-stone-700 dark:hover:text-stone-200 disabled:opacity-50"
                     title={t("profile.localSandbox.rename")}
                   >
-                    <Pencil size={12} />
+                    <Pencil size={12} className="opacity-70" />
                   </button>
-                  {machineOnline && (
-                    <button
-                      type="button"
-                      onClick={() => startRename(machine)}
-                      disabled={busy}
-                      className="rounded-md p-1 text-stone-500 dark:text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-300 disabled:opacity-50"
-                      title={t("profile.localSandbox.rename")}
-                    >
-                      <Pencil size={12} className="opacity-70" />
-                    </button>
-                  )}
                 </>
               )}
             </div>

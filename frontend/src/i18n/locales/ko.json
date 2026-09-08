@@ -249,8 +249,8 @@
       "label": "샌드박스",
       "description": "샌드박스 명령 실행 위치를 선택합니다",
       "options": {
-        "cloud": "클라우드",
-        "local": "로컬"
+        "cloud": "클라우드 PC",
+        "local": "로컬 PC"
       },
       "offlineHint": "로컬 샌드박스가 오프라인 상태입니다: 다운로드 후 실행하면 사용할 수 있어요",
       "downloadEntry": "로컬 샌드박스 다운로드"

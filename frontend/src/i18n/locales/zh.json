@@ -249,10 +249,10 @@
       "label": "沙箱",
       "description": "选择代码沙箱的运行位置",
       "options": {
-        "cloud": "云端",
-        "local": "本地"
+        "cloud": "云端电脑",
+        "local": "本地电脑"
       },
-      "offlineHint": "本地沙箱离线：下载并启动后即可使用本地档",
+      "offlineHint": "本地沙箱离线：下载并启动后即可使用本地电脑",
       "downloadEntry": "下载本地沙箱"
     },
     "sandboxMachine": {
