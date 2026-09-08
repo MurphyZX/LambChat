@@ -1258,6 +1258,7 @@ async def test_channel_break_logs_exception_type(capsys):
     """空消息异常（httpx.ReadTimeout/ConnectTimeout 的 str 为空串）断联时，
     日志必须带异常类型：『通道断开: ReadTimeout: 』而非『通道断开: 』——
     盲日志是 2026-09-09 断联排查的硬伤。"""
+
     class _EmptyTimeoutError(Exception):
         """str() 为空的异常替身（httpx 超时族的形态）。"""
 
