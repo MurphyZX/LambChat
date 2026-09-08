@@ -834,7 +834,9 @@ class StreamUploadWriter:
     """流式上传的落盘端：首个数据帧截断创建（建父目录），累计字节超限即拒。
 
     与分块 fs_upload 的 truncate/offset 语义对齐到「整文件单流」形态：一次
-    open 贯穿整个 GET 流，无需 per-chunk 定位。
+    open 贯穿整个 GET 流，无需 per-chunk 定位。空文件（零 DATA 帧）在
+    close 时创建 0 字节文件——对齐分块路径「空文件也发首块」的契约，否则
+    上传报成功但文件从不落盘、后续读取 file_not_found。
     """
 
     def __init__(self, path: Path, max_bytes: int) -> None:
@@ -860,6 +862,10 @@ class StreamUploadWriter:
         if self._fh is not None:
             fh, self._fh = self._fh, None
             fh.close()
+        elif self.written == 0:
+            # 零 DATA 帧（空文件）：truncate 创建，与分块路径首块语义对齐
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._path.touch()
 
 
 def make_stream_upload_writer(payload: dict, data_root: Path) -> StreamUploadWriter:
