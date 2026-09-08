@@ -2,8 +2,8 @@
 //!
 //! 启动优先级：
 //! 1. 环境变量 `LAMBCHAT_DAEMON_BIN` 指向的外部可执行（dev 回退路径）；
-//! 2. 打包内 sidecar（`binaries/lambchat-daemon-<target-triple>`，由
-//!    `tauri.conf.json` 的 `bundle.externalBin` 打入）。
+//! 2. 打包内 sidecar（`bundle.externalBin` 落位在主程序同目录、名去 triple，
+//!    见 [`sidecar_candidates`]）。
 //!
 //! 两者皆不可用时壳照常运行（仅告警），前端通过 `daemon_process_status`
 //! 展示"未运行"引导。意外退出自动重启，上限 [`MAX_RESTARTS`] 次；
@@ -139,9 +139,10 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
 
     // 统一经 command-group 组启动（Unix 进程组 / Windows Job Object）：
     // 1. dev 回退：LAMBCHAT_DAEMON_BIN 外部可执行；
-    // 2. 常规：随包分发的 sidecar（bundle 资源目录内 binaries/lambchat-daemon-<triple>）。
-    //    不再经 plugin-shell spawn——插件句柄无进程组语义，Windows 只能退化为
-    //    taskkill；组启动让停止/整树清理由 command-group 跨平台完成。
+    // 2. 常规：随包分发的 sidecar（主程序同目录，externalBin 打包落位，
+    //    见 [`sidecar_candidates`]）。不再经 plugin-shell spawn——插件句柄
+    //    无进程组语义，Windows 只能退化为 taskkill；组启动让停止/整树清理
+    //    由 command-group 跨平台完成。
     let mut command = if let Some(env_bin) = std::env::var_os("LAMBCHAT_DAEMON_BIN") {
         warn_log!(
             "daemon from LAMBCHAT_DAEMON_BIN={}",
@@ -206,21 +207,56 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// sidecar 可执行路径：bundle 资源目录 `binaries/lambchat-daemon-<target-triple>`
-/// （与 tauri-plugin-shell 的 sidecar 解析同约定；dev 无 bundle 资源时返回 None）。
+/// 当前平台 target triple（与 build-daemon.sh / fetch-pbs.py 分发词汇表对齐）。
+fn current_target_triple() -> Option<&'static str> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => Some("x86_64-unknown-linux-gnu"),
+        ("linux", "aarch64") => Some("aarch64-unknown-linux-gnu"),
+        ("macos", "x86_64") => Some("x86_64-apple-darwin"),
+        ("macos", "aarch64") => Some("aarch64-apple-darwin"),
+        ("windows", "x86_64") => Some("x86_64-pc-windows-msvc"),
+        _ => None,
+    }
+}
+
+/// sidecar 可执行后缀（Windows 为 .exe）。
+fn sidecar_exe_suffix() -> &'static str {
+    if cfg!(windows) {
+        ".exe"
+    } else {
+        ""
+    }
+}
+
+/// sidecar 候选路径（按优先级，纯函数便于单测）：
+/// 1. 主程序同目录 `lambchat-daemon`——`bundle.externalBin` 打包的**真实
+///    落位**（deb/rpm/AppImage/MSI/macOS .app 一致：与主程序同级，triple
+///    后缀被打包剥掉）。v2.9.0 曾误找 `resource_dir/binaries/
+///    lambchat-daemon-<triple>`（目录与文件名双双不中），打包产物里
+///    restartDaemon 必败、配对全挂——本候选是防回归锚点。
+/// 2. 主程序同目录带 triple（未剥后缀的手工放位兼容）。
+/// 3. `resource_dir/binaries/lambchat-daemon-<triple>`（旧约定兜底）。
+fn sidecar_candidates(exe_dir: &Path, resource_dir: Option<&Path>) -> Vec<PathBuf> {
+    let exe = sidecar_exe_suffix();
+    let mut candidates = vec![exe_dir.join(format!("lambchat-daemon{exe}"))];
+    if let Some(triple) = current_target_triple() {
+        candidates.push(exe_dir.join(format!("lambchat-daemon-{triple}{exe}")));
+        if let Some(res) = resource_dir {
+            candidates
+                .push(res.join("binaries").join(format!("lambchat-daemon-{triple}{exe}")));
+        }
+    }
+    candidates
+}
+
+/// sidecar 可执行路径：按 [`sidecar_candidates`] 顺序取第一个存在的文件。
+/// 主程序目录来自 `current_exe`（AppImage 挂载点/macOS .app 内均正确）。
 fn sidecar_binary_path(app: &AppHandle) -> Option<PathBuf> {
-    let resource_dir = app.path().resource_dir().ok()?;
-    let exe = if cfg!(windows) { ".exe" } else { "" };
-    let triple = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
-        ("linux", "aarch64") => "aarch64-unknown-linux-gnu",
-        ("macos", "x86_64") => "x86_64-apple-darwin",
-        ("macos", "aarch64") => "aarch64-apple-darwin",
-        ("windows", "x86_64") => "x86_64-pc-windows-msvc",
-        _ => return None,
-    };
-    let path = resource_dir.join("binaries").join(format!("lambchat-daemon-{triple}{exe}"));
-    path.is_file().then_some(path)
+    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let resource_dir = app.path().resource_dir().ok();
+    sidecar_candidates(&exe_dir, resource_dir.as_deref())
+        .into_iter()
+        .find(|p| p.is_file())
 }
 
 /// 托管状态变化事件：前端订阅（替代 10s 轮询 daemon_process_status），
@@ -710,6 +746,76 @@ mod tests {
         assert_eq!(restart_backoff(4), Duration::from_secs(16));
         assert_eq!(restart_backoff(5), Duration::from_secs(30));
         assert_eq!(restart_backoff(200), Duration::from_secs(30));
+    }
+
+    /// sidecar 解析（v2.9.0 打包回归锚点）：externalBin 真实落位——主程序
+    /// 同目录、无 triple 后缀——必须排候选首位。打包产物（deb/AppImage/
+    /// macOS .app）实测 daemon 与主程序同级、名叫 lambchat-daemon；旧解析
+    /// 找 resource_dir/binaries/lambchat-daemon-<triple> 两者皆不中，
+    /// 打包后 restartDaemon 必败 → 配对失败。
+    #[test]
+    fn sidecar_candidates_prefer_bundled_exe_adjacent_name() {
+        let tmp = std::env::temp_dir().join(format!(
+            "lambchat-sidecar-cand-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let exe_dir = tmp.join("bin");
+        let res_dir = tmp.join("resources");
+        std::fs::create_dir_all(&exe_dir).unwrap();
+        std::fs::create_dir_all(res_dir.join("binaries")).unwrap();
+
+        // 打包真实布局：主程序同目录 lambchat-daemon（externalBin 剥 triple）
+        let bundled = exe_dir.join(format!("lambchat-daemon{}", sidecar_exe_suffix()));
+        std::fs::write(&bundled, b"daemon").unwrap();
+        // 旧约定同放一份：真实布局必须优先
+        if let Some(triple) = current_target_triple() {
+            std::fs::write(
+                res_dir
+                    .join("binaries")
+                    .join(format!("lambchat-daemon-{triple}{}", sidecar_exe_suffix())),
+                b"daemon",
+            )
+            .unwrap();
+        }
+        let candidates = sidecar_candidates(&exe_dir, Some(&res_dir));
+        assert_eq!(candidates.first(), Some(&bundled));
+        assert!(candidates.len() >= 3);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// 无打包布局时保留 resource_dir/binaries 旧约定兜底（候选顺序锁死）。
+    #[test]
+    fn sidecar_candidates_fall_back_to_resource_binaries() {
+        let tmp = std::env::temp_dir().join(format!(
+            "lambchat-sidecar-fallback-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let exe_dir = tmp.join("bin");
+        let res_dir = tmp.join("resources");
+        std::fs::create_dir_all(&exe_dir).unwrap();
+
+        let candidates = sidecar_candidates(&exe_dir, Some(&res_dir));
+        assert_eq!(
+            candidates.first(),
+            Some(&exe_dir.join(format!(
+                "lambchat-daemon{}",
+                sidecar_exe_suffix()
+            )))
+        );
+        if let Some(triple) = current_target_triple() {
+            assert_eq!(
+                candidates.get(2),
+                Some(&res_dir.join("binaries").join(format!(
+                    "lambchat-daemon-{triple}{}",
+                    sidecar_exe_suffix()
+                )))
+            );
+        }
+
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     /// 配对文件生命周期：save_pairing 落盘 pat_id → 策略独立写保留其余字段
