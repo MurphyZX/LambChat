@@ -36,6 +36,7 @@ SERVER = os.environ.get("E2E_SANDBOX_SERVER", "http://127.0.0.1:8000")
 WORKSPACE_ROOT = Path("/tmp/lambchat-sbx-e2e")
 
 _results: list[tuple[str, bool, str]] = []
+_PAT_HOLDER: dict = {"pat": ""}
 
 
 def check(name: str, ok: bool, note: str = "") -> None:
@@ -379,6 +380,204 @@ async def battery(user_id: str, pat: str, machine_id: str) -> None:
     )
 
 
+async def edge_cases(user_id: str, machine_id: str) -> None:
+    """边界专项：安全拒绝、超时语义、空文件、会话隔离、超限、伪超帧。"""
+    import httpx
+
+    from src.infra.sandbox.relay.dispatch import dispatch_local_call
+    from src.kernel.errors import AppError
+
+    # E1. 路径逃逸：fs_read path 含 ../ 必拒
+    r = await dispatch_local_call(
+        user_id,
+        "fs_read",
+        {"cwd": "/workspace/e2e", "path": "../../../etc/passwd"},
+        machine_id=machine_id,
+    )
+    err1 = (r.get("result") or {}).get("error", "")
+    check("路径逃逸拒绝", bool(err1), str(err1)[:60])
+
+    # E2. 非 workspace cwd 的 exec 必拒（工作区锁）
+    r = await dispatch_local_call(
+        user_id, "exec", {"command": "cat /etc/hostname", "cwd": "/etc"}, machine_id=machine_id
+    )
+    check(
+        "非工作区 cwd 拒绝",
+        r.get("status") == "error" and "workspace" in str(r.get("error", "")),
+        str(r.get("error", ""))[:60],
+    )
+
+    # E3. 超时语义：sleep 超过 exec timeout → SANDBOX_TIMEOUT（不挂死）
+
+    t0 = time.monotonic()
+    code3 = None
+    try:
+        await dispatch_local_call(
+            user_id,
+            "exec",
+            {"command": "sleep 30", "cwd": "/workspace/e2e"},
+            machine_id=machine_id,
+            timeout=3.0,
+        )
+    except AppError as exc:
+        code3 = getattr(exc.error_code, "code", str(exc.error_code))
+    check(
+        "exec 超时显式报错",
+        code3 == "sandbox_timeout",
+        f"code={code3} 用时{time.monotonic() - t0:.1f}s",
+    )
+
+    # E4. 0 字节文件流式往返
+    from src.infra.sandbox.relay.dispatch import dispatch_local_stream, dispatch_local_stream_upload
+
+    await dispatch_local_stream_upload(
+        user_id,
+        {"cwd": "/workspace/e2e", "path": "edge/empty.bin", "max_bytes": 1024},
+        b"",
+        machine_id=machine_id,
+    )
+    parts4 = []
+    async for chunk in dispatch_local_stream(
+        user_id,
+        "fs_download_stream",
+        {"cwd": "/workspace/e2e", "path": "edge/empty.bin", "max_bytes": 1024},
+        timeout=30.0,
+        machine_id=machine_id,
+    ):
+        parts4.append(chunk)
+    check("0 字节文件往返", b"".join(parts4) == b"")
+
+    # E5. 中文/空格文件名 fs_write + fs_read
+    name5 = "笔记 2026 最终版.txt"
+    txt5 = "边界文件名内容"
+    await dispatch_local_call(
+        user_id,
+        "fs_write",
+        {
+            "cwd": "/workspace/e2e",
+            "path": f"edge/{name5}",
+            "content_b64": base64.b64encode(txt5.encode()).decode(),
+        },
+        machine_id=machine_id,
+    )
+    r = await dispatch_local_call(
+        user_id,
+        "fs_read",
+        {"cwd": "/workspace/e2e", "path": f"edge/{name5}"},
+        machine_id=machine_id,
+    )
+    check("中文/空格文件名", (r.get("result") or {}).get("content") == txt5)
+
+    # E6. 会话隔离：e2e 会话写文件，另一会话经 ../ 读不到
+    await dispatch_local_call(
+        user_id,
+        "fs_write",
+        {
+            "cwd": "/workspace/e2e",
+            "path": "iso.txt",
+            "content_b64": base64.b64encode(b"secret").decode(),
+        },
+        machine_id=machine_id,
+    )
+    r = await dispatch_local_call(
+        user_id,
+        "fs_read",
+        {"cwd": "/workspace/other-session", "path": "../e2e/iso.txt"},
+        machine_id=machine_id,
+    )
+    res6 = r.get("result") or {}
+    check(
+        "会话隔离（跨会话访问被拒）",
+        bool(res6.get("error")) and res6.get("content") is None,
+        str(res6.get("error"))[:60],
+    )
+
+    # E7. 超限拒绝：下载 max_bytes < 文件大小 → file_too_large（流式）
+    payload7 = secrets.token_bytes(64 * 1024)
+    await dispatch_local_stream_upload(
+        user_id,
+        {"cwd": "/workspace/e2e", "path": "edge/64k.bin", "max_bytes": 1024 * 1024},
+        payload7,
+        machine_id=machine_id,
+    )
+    err7 = None
+    try:
+        async for _ in dispatch_local_stream(
+            user_id,
+            "fs_download_stream",
+            {"cwd": "/workspace/e2e", "path": "edge/64k.bin", "max_bytes": 1024},
+            timeout=30.0,
+            machine_id=machine_id,
+        ):
+            pass
+    except AppError as exc:
+        err7 = str(getattr(exc, "args_data", {}).get("detail") or exc.message)
+    check("下载超限显式拒绝", err7 is not None and "file_too_large" in err7, str(err7)[:60])
+
+    # E8. 伪造超帧（>8MiB 单帧）→ 端点 413（帧上限防线）
+    import sys as _sys
+
+    _sys.path.insert(0, str(REPO / "client"))
+    from lambchat_sandbox.frames import FRAME_DATA, FRAME_EOF, encode_frame
+
+    async with httpx.AsyncClient() as hc:
+        resp8 = await hc.post(
+            f"{SERVER}/api/sandbox/results/stream/edge-oversize",
+            content=encode_frame(FRAME_DATA, b"x" * (9 * 1024 * 1024)) + encode_frame(FRAME_EOF),
+            headers={
+                "Authorization": f"Bearer {_PAT_HOLDER['pat']}",
+                "Content-Type": "application/octet-stream",
+            },
+            timeout=30,
+        )
+    check("伪超帧 413", resp8.status_code == 413, f"HTTP {resp8.status_code}")
+
+
+async def crash_recovery(user_id: str, pat: str, machine_id: str, holder: dict) -> None:
+    """daemon SIGKILL（无 post_offline）→ 在飞调用显式失败不挂死 → 同身份重启恢复。"""
+    from src.infra.sandbox.relay.dispatch import dispatch_local_call
+    from src.kernel.errors import AppError
+
+    proc = holder["proc"]
+    task = asyncio.create_task(
+        dispatch_local_call(
+            user_id,
+            "exec",
+            {"command": "sleep 8 && echo done", "cwd": "/workspace/e2e"},
+            machine_id=machine_id,
+            timeout=6.0,
+        )
+    )
+    await asyncio.sleep(1.0)  # 等请求入队进入在飞窗口
+    proc.kill()  # SIGKILL：无优雅下线，机器键靠 35s TTL 过期
+    proc.wait(timeout=5)
+    code = None
+    t0 = time.monotonic()
+    try:
+        await task
+        code = "unexpectedly-succeeded"
+    except AppError as exc:
+        code = getattr(exc.error_code, "code", str(exc.error_code))
+    check(
+        "daemon SIGKILL 在飞调用显式失败",
+        code == "sandbox_timeout",
+        f"code={code} 用时{time.monotonic() - t0:.1f}s",
+    )
+
+    holder["proc"] = spawn_daemon(pat, machine_id)  # 同 machine_id 重启（真实身份复用）
+    r = await dispatch_local_call(
+        user_id,
+        "exec",
+        {"command": "echo recovered", "cwd": "/workspace/e2e"},
+        machine_id=machine_id,
+    )
+    check(
+        "daemon 重启后恢复服务",
+        r.get("stdout", "").strip() == "recovered",
+        f"exit={r.get('exit_code')}",
+    )
+
+
 async def stress(user_id: str, machine_id: str) -> None:
     import random
 
@@ -484,17 +683,21 @@ def main() -> int:
         pat, jwt = mint_pat(username, password)
         _, me = http_json("GET", "/api/auth/me", token=jwt)  # /me 认 JWT，PAT 只用于沙箱端点
         user_id = me.get("id") or me.get("user", {}).get("id")
-        daemon = spawn_daemon(pat, machine_id)
-        print(f"[env] daemon pid={daemon.pid} machine={machine_id} user={username}")
+        _PAT_HOLDER["pat"] = pat
+        holder = {"proc": spawn_daemon(pat, machine_id)}
+        print(f"[env] daemon pid={holder['proc'].pid} machine={machine_id} user={username}")
 
         async def run_all():
-            # battery 与 stress 必须同一事件循环：redis 客户端是模块级单例，
+            # battery/edge/crash/stress 必须同一事件循环：redis 客户端是模块级单例，
             # 跨 asyncio.run 复用会把旧循环的连接带进新循环（Event loop is closed）
             await battery(user_id, pat, machine_id)
+            await edge_cases(user_id, machine_id)
+            await crash_recovery(user_id, pat, machine_id, holder)
             if args.stress:
                 await stress(user_id, machine_id)
 
         asyncio.run(run_all())
+        daemon = holder["proc"]
         # 优雅下线：SIGTERM → 3s 内 machines 翻转离线（post_offline 定向注销）
         daemon.send_signal(signal.SIGTERM)
         daemon.wait(timeout=10)
