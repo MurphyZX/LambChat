@@ -266,6 +266,15 @@ export function ChatInputSelectors({
                 // 离线选本地档：五语提示，但选择仍然生效（不拦截用户意图）
                 toast.error(t("agentOptions.sandbox.offlineHint"));
               }
+              if (
+                isMachine &&
+                typeof value === "string" &&
+                machines.some((m) => m.machine_id === value && m.online === false)
+              ) {
+                // 离线机不可选为目标：置灰保留展示仅为告知存在，点击提示不落选
+                toast.error(t("agentOptions.sandboxMachine.offlineHint"));
+                return;
+              }
               onToggleAgentOption(key, value);
             };
 

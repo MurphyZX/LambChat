@@ -120,3 +120,35 @@ export async function daemonProcessStatus(): Promise<string> {
 export function openLocalPath(path: string): Promise<void> {
   return invokeInShell("open_local_path", { path }).then(() => undefined);
 }
+
+export interface DaemonStatusEvent {
+  running: boolean;
+  unsupported: boolean;
+  generation: number;
+  restarts: number;
+}
+
+/**
+ * 订阅 daemon 托管状态事件（Tauri event `sandbox-daemon-status`）：
+ * 启动/停止/意外退出/重启时由壳推送，前端据此替代 10s 轮询
+ * daemon_process_status（初始仍建议 invoke 一次对账）。
+ *
+ * 非壳环境返回 null（调用方不订阅）；返回的取消函数幂等。
+ */
+export async function subscribeDaemonStatus(
+  listener: (event: DaemonStatusEvent) => void,
+): Promise<(() => void) | null> {
+  if (!isShellAvailable()) {
+    return null;
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  const unlisten = await listen<DaemonStatusEvent>("sandbox-daemon-status", (event) => {
+    listener(event.payload);
+  });
+  let cancelled = false;
+  return () => {
+    if (cancelled) return;
+    cancelled = true;
+    void unlisten();
+  };
+}

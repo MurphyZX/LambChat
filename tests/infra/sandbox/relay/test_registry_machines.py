@@ -216,3 +216,110 @@ async def test_get_confirm_policy_per_machine(registry):
     assert await registry.get_confirm_policy("u1", "srv1") == "all"
     assert await registry.get_confirm_policy("u1", "mac1") == "none"
     assert await registry.get_platform("u1", "srv1") == "win32"
+
+
+# 机器记忆层（machseen）：last_seen 记录 + 离线机保留（include_offline）
+# ---------------------------------------------------------------------------
+
+
+async def test_register_records_last_seen(registry, monkeypatch):
+    """多机注册/心跳写入 machseen 记忆（ts/名称/平台/版本），供离线展示与 last_seen。"""
+    import time as _time
+
+    monkeypatch.setattr("src.infra.sandbox.relay.registry.time.time", lambda: 1700_000_000.0)
+    assert _time.time() > 0  # 仅确保 import 路径可用
+    await registry.register(
+        "u1",
+        "c1",
+        "n1",
+        version="0.4.0",
+        platform="darwin",
+        confirm_policy="none",
+        machine_id="mac1",
+        machine_name="MacBook",
+    )
+    seen = registry.fake.hashes.get("sandbox:machseen:u1")
+    assert seen is not None and "mac1" in seen
+    import json as _json
+
+    record = _json.loads(seen["mac1"])
+    assert record["ts"] == 1700_000_000.0
+    assert record["name"] == "MacBook"
+    assert record["platform"] == "darwin"
+    assert record["version"] == "0.4.0"
+
+
+async def test_list_machines_online_entries_carry_last_seen(registry):
+    await registry.register(
+        "u1", "c1", "n1", version="0.4.0", platform="linux", machine_id="srv1", machine_name="SRV"
+    )
+    machines = await registry.list_machines("u1")
+    assert len(machines) == 1
+    assert machines[0]["online"] is True
+    assert isinstance(machines[0]["last_seen"], float)
+    assert machines[0]["last_seen"] > 0
+
+
+async def test_list_machines_include_offline_keeps_known_machines(registry):
+    """离线机（TTL 过期）默认消失；include_offline=True 时保留并标 online=False。"""
+    await registry.register(
+        "u1", "c1", "n1", version="0.4.0", platform="win32", machine_id="pc1", machine_name="PC"
+    )
+    # 模拟 TTL 过期：机器键失效但 machseen 记忆仍在
+    registry.fake.strings.pop("sandbox:machine:u1:pc1", None)
+    registry.fake.sets["sandbox:machset:u1"].discard("pc1")
+
+    assert await registry.list_machines("u1") == []
+
+    machines = await registry.list_machines("u1", include_offline=True)
+    assert len(machines) == 1
+    offline = machines[0]
+    assert offline["machine_id"] == "pc1"
+    assert offline["online"] is False
+    assert offline["name"] == "PC"
+    assert offline["platform"] == "win32"
+    assert offline["version"] == "0.4.0"
+    assert offline["last_seen"] > 0
+
+
+async def test_list_machines_include_offline_merges_online_and_offline(registry):
+    await registry.register(
+        "u1", "c1", "n1", version="0.4.0", platform="linux", machine_id="srv1", machine_name="SRV"
+    )
+    await registry.register(
+        "u1", "c2", "n2", version="0.4.0", platform="win32", machine_id="pc1", machine_name="PC"
+    )
+    registry.fake.strings.pop("sandbox:machine:u1:pc1", None)
+    registry.fake.sets["sandbox:machset:u1"].discard("pc1")
+
+    machines = await registry.list_machines("u1", include_offline=True)
+    by_id = {m["machine_id"]: m for m in machines}
+    assert by_id["srv1"]["online"] is True
+    assert by_id["pc1"]["online"] is False
+
+
+async def test_rename_overlay_wins_over_seen_name(registry):
+    """离线机展示名：rename 覆盖层 > 上报名。"""
+    await registry.register(
+        "u1", "c1", "n1", version="0.4.0", platform="linux", machine_id="srv1", machine_name="SRV"
+    )
+    await registry.rename_machine("u1", "srv1", "我的服务器")
+    registry.fake.strings.pop("sandbox:machine:u1:srv1", None)
+    registry.fake.sets["sandbox:machset:u1"].discard("srv1")
+
+    machines = await registry.list_machines("u1", include_offline=True)
+    assert machines[0]["name"] == "我的服务器"
+
+
+async def test_forget_machine_clears_seen_record(registry):
+    await registry.register(
+        "u1", "c1", "n1", version="0.4.0", platform="linux", machine_id="srv1", machine_name="SRV"
+    )
+    registry.fake.strings.pop("sandbox:machine:u1:srv1", None)
+    registry.fake.sets["sandbox:machset:u1"].discard("srv1")
+
+    assert await registry.forget_machine("u1", "srv1") is True
+    assert await registry.list_machines("u1", include_offline=True) == []
+    assert "sandbox:machseen:u1" not in registry.fake.hashes or "srv1" not in (
+        registry.fake.hashes.get("sandbox:machseen:u1") or {}
+    )

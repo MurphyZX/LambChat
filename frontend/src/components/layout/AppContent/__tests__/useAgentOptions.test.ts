@@ -3,6 +3,8 @@ import {
   getAgentOptionSyncMode,
   normalizeAgentOptionValues,
   normalizeAgentOptions,
+  resolveSandboxDefault,
+  shouldAdoptLocalOnOnline,
 } from "../useAgentOptions";
 
 test("applies backend boolean option defaults to initial values", () => {
@@ -165,4 +167,99 @@ test("buildAgentOptionValues seeds sandbox=cloud and preserves restored local", 
       sandbox: "local",
     }),
   ).toMatchObject({ sandbox: "local" });
+});
+
+// ---------------------------------------------------------------------------
+// 默认本地档：daemon 在线时新会话默认选本地，离线默认云端
+// ---------------------------------------------------------------------------
+
+test("resolveSandboxDefault prefers the stored explicit preference", () => {
+  expect(resolveSandboxDefault("cloud", true)).toBe("cloud");
+  expect(resolveSandboxDefault("local", false)).toBe("local");
+});
+
+test("resolveSandboxDefault picks local when daemon is online and nothing stored", () => {
+  expect(resolveSandboxDefault(null, true)).toBe("local");
+});
+
+test("resolveSandboxDefault picks cloud when daemon is offline and nothing stored", () => {
+  expect(resolveSandboxDefault(null, false)).toBe("cloud");
+});
+
+test("buildAgentOptionValues seeds sandbox=local when daemon online", () => {
+  expect(
+    buildAgentOptionValues(
+      {
+        enable_code_interpreter: {
+          type: "boolean",
+          default: true,
+          label: "Code Interpreter",
+        },
+      },
+      undefined,
+      undefined,
+      { sandboxOnline: true },
+    ),
+  ).toEqual({ enable_code_interpreter: true, sandbox: "local" });
+});
+
+test("buildAgentOptionValues keeps cloud default when daemon offline (back-compat)", () => {
+  expect(
+    buildAgentOptionValues(
+      {
+        enable_code_interpreter: {
+          type: "boolean",
+          default: true,
+          label: "Code Interpreter",
+        },
+      },
+      undefined,
+      undefined,
+      { sandboxOnline: false },
+    ),
+  ).toEqual({ enable_code_interpreter: true, sandbox: "cloud" });
+});
+
+test("stored defaultSandboxMode=cloud beats online state", () => {
+  const storage = {
+    getItem: (k: string) => (k === "defaultSandboxMode" ? "cloud" : null),
+  };
+  expect(
+    buildAgentOptionValues(
+      {
+        enable_code_interpreter: {
+          type: "boolean",
+          default: true,
+          label: "Code Interpreter",
+        },
+      },
+      undefined,
+      storage,
+      { sandboxOnline: true },
+    ),
+  ).toEqual({ enable_code_interpreter: true, sandbox: "cloud" });
+});
+
+test("restored session sandbox value is never overridden by the online default", () => {
+  expect(
+    buildAgentOptionValues(
+      {
+        enable_code_interpreter: {
+          type: "boolean",
+          default: true,
+          label: "Code Interpreter",
+        },
+      },
+      { sandbox: "cloud" },
+      undefined,
+      { sandboxOnline: true },
+    ),
+  ).toEqual({ enable_code_interpreter: true, sandbox: "cloud" });
+});
+
+test("shouldAdoptLocalOnOnline only flips untouched non-local selections", () => {
+  expect(shouldAdoptLocalOnOnline("cloud", false, null)).toBe(true);
+  expect(shouldAdoptLocalOnOnline("local", false, null)).toBe(false);
+  expect(shouldAdoptLocalOnOnline("cloud", true, null)).toBe(false);
+  expect(shouldAdoptLocalOnOnline("cloud", false, "cloud")).toBe(false);
 });

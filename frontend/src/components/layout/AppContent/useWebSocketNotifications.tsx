@@ -12,6 +12,10 @@ import { sessionApi } from "../../../services/api";
 import { TODAY_USAGE_REFRESH_EVENT } from "../../../hooks/useTodayUsageCost";
 import { appNotificationService } from "../../../services/notifications/appNotificationService";
 import {
+  applySandboxPresence,
+  setSandboxWsHealthy,
+} from "../../../stores/sandboxStatusStore";
+import {
   shouldAttemptAppTaskNotification,
   shouldAttemptBrowserNotification,
   shouldSurfaceTaskNotification,
@@ -339,6 +343,16 @@ export function useWebSocketNotifications({
   // WebSocket for task completion notifications
   useWebSocket({
     enabled,
+    // daemon/机器 presence 推送直达 store（WS 健康时轮询降频为对账兜底）
+    onSandboxPresence: (notification) => {
+      applySandboxPresence(notification.data);
+    },
+    onWsOpen: () => {
+      setSandboxWsHealthy(true);
+    },
+    onWsClose: () => {
+      setSandboxWsHealthy(false);
+    },
     onUsageUpdated: () => {
       // 后端 usage_logs 落库后推送，直接触发各处当日用量刷新
       window.dispatchEvent(new Event(TODAY_USAGE_REFRESH_EVENT));

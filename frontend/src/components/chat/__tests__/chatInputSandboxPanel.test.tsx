@@ -32,9 +32,7 @@ vi.mock("../../../services/api/sandbox", () => ({
     getStatus: mocks.getStatus,
     createPat: vi.fn(),
   },
-  sandboxApiMachines: {
-    listMachines: mocks.listMachines,
-  },
+  sandboxApiMachines: { listMachines: mocks.listMachines },
 }));
 
 vi.mock("../../../services/api/team", () => ({
@@ -59,6 +57,7 @@ import { ChatInputToolbar } from "../ChatInputToolbar";
 import { RunModePopover } from "../RunModePopover";
 import { resolveSandboxPresentation } from "../sandboxOption";
 import type { SandboxMachine } from "../../../services/api/sandbox";
+import { _resetSandboxStatusStoreForTests } from "../../../stores/sandboxStatusStore";
 import type { AgentOption } from "../../../types";
 
 const THINKING_DESCRIPTION = "Control thinking intensity";
@@ -172,7 +171,10 @@ beforeEach(async () => {
     machines: [],
     default_machine_id: null,
   });
+  mocks.listMachines.mockResolvedValue({ machines: [], default_machine_id: null });
   mocks.teamList.mockResolvedValue({ total: 0, teams: [] });
+  // useSandboxStatus 现在是全局单例 store 的薄壳：跨用例隔离状态
+  _resetSandboxStatusStoreForTests();
 });
 
 test("thinking panel open renders only the thinking modal, not the sandbox modal", () => {
@@ -241,11 +243,11 @@ test("resolveSandboxPresentation reports presence and the stored tier label", ()
   // 已存 local：badge 显示本地档 label
   expect(
     resolveSandboxPresentation(options, { sandbox: "local" }, i18n.t),
-  ).toEqual({ has: true, label: "Local" });
+  ).toEqual({ has: true, label: "Local computer" });
   // 未存值：回落 default（cloud）
   expect(resolveSandboxPresentation(options, {}, i18n.t)).toEqual({
     has: true,
-    label: "Cloud",
+    label: "Cloud computer",
   });
 });
 
@@ -263,6 +265,46 @@ test("machine panel renders only the machine modal with online machines", async 
   // 同帧互斥：思考/沙箱模态不渲染
   expect(screen.queryByText(THINKING_DESCRIPTION)).not.toBeInTheDocument();
   expect(screen.queryByText(SANDBOX_DESCRIPTION)).not.toBeInTheDocument();
+});
+
+test("machine panel blocks selecting an offline machine with a hint", async () => {
+  mocks.listMachines.mockResolvedValue({
+    machines: [
+      ...MACHINES,
+      {
+        machine_id: "pc1",
+        name: "Old PC",
+        platform: "win32",
+        version: "0.3.0",
+        confirm_policy: "all",
+        online: false,
+      },
+    ],
+    default_machine_id: "mac1",
+  });
+  const onToggleAgentOption = vi.fn();
+  render(
+    <ChatInputSelectors
+      activePanel="machine"
+      onActivePanelChange={() => {}}
+      agentOptions={buildAgentOptions()}
+      agentOptionValues={{ sandbox: "local" }}
+      onToggleAgentOption={onToggleAgentOption}
+    />,
+  );
+
+  // 离线机置灰保留展示：点击只提示，不落选为目标机
+  const offlineRow = await screen.findByText(/Old PC · offline/);
+  fireEvent.click(offlineRow);
+  const { toast } = await import("react-hot-toast");
+  expect(toast.error).toHaveBeenCalledWith(
+    "That computer is offline and can't be selected as the execution target",
+  );
+  expect(onToggleAgentOption).not.toHaveBeenCalled();
+
+  // 在线机正常可选
+  fireEvent.click(screen.getByText("MacBook"));
+  expect(onToggleAgentOption).toHaveBeenCalledWith("sandbox_machine_id", "mac1");
 });
 
 test("thinking panel does not stack the machine selector modal", async () => {
@@ -314,7 +356,7 @@ test("sandbox panel on offline web keeps the local tier visible with a download 
   mocks.getStatus.mockResolvedValue({ online: false });
   renderSelectors("sandbox");
 
-  const localRow = await screen.findByText("Local");
+  const localRow = await screen.findByText("Local computer");
   expect(localRow).toBeInTheDocument();
 
   const downloadEntry = await screen.findByText("Download local sandbox");
@@ -345,8 +387,8 @@ test("toolbar shows a sandbox chip with the current tier that opens the sandbox 
   renderToolbar(onActivePanelChange);
 
   // 默认云端档：chip 标签直接显示当前档位，无需打开任何浮层
-  const chip = screen.getByTitle("Sandbox · Cloud");
-  expect(chip).toHaveTextContent("Cloud");
+  const chip = screen.getByTitle("Sandbox · Cloud computer");
+  expect(chip).toHaveTextContent("Cloud computer");
 
   fireEvent.click(chip);
   expect(onActivePanelChange).toHaveBeenCalledTimes(1);
@@ -356,20 +398,20 @@ test("toolbar shows a sandbox chip with the current tier that opens the sandbox 
 test("sandbox chip reflects the stored local tier in the label", () => {
   renderToolbar(vi.fn(), { sandbox: "local" });
 
-  expect(screen.getByTitle("Sandbox · Local")).toHaveTextContent("Local");
+  expect(screen.getByTitle("Sandbox · Local computer")).toHaveTextContent("Local computer");
 });
 
 test("sandbox chip swaps to a cloud icon on the cloud tier and a monitor icon on the local tier", () => {
   // 手机端档位文字隐藏，仅靠图标区分档位：云端=云图标，本地=显示器图标
   renderToolbar(vi.fn(), { sandbox: "cloud" });
   expect(
-    screen.getByTitle("Sandbox · Cloud").querySelector("svg.lucide-cloud"),
+    screen.getByTitle("Sandbox · Cloud computer").querySelector("svg.lucide-cloud"),
   ).not.toBeNull();
 
   cleanup();
   renderToolbar(vi.fn(), { sandbox: "local" });
   expect(
-    screen.getByTitle("Sandbox · Local").querySelector("svg.lucide-monitor"),
+    screen.getByTitle("Sandbox · Local computer").querySelector("svg.lucide-monitor"),
   ).not.toBeNull();
 });
 

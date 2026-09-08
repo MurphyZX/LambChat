@@ -249,8 +249,8 @@
       "label": "샌드박스",
       "description": "샌드박스 명령 실행 위치를 선택합니다",
       "options": {
-        "cloud": "클라우드",
-        "local": "로컬"
+        "cloud": "클라우드 PC",
+        "local": "로컬 PC"
       },
       "offlineHint": "로컬 샌드박스가 오프라인 상태입니다: 다운로드 후 실행하면 사용할 수 있어요",
       "downloadEntry": "로컬 샌드박스 다운로드"
@@ -258,7 +258,9 @@
     "sandboxMachine": {
       "label": "머신",
       "description": "로컬 샌드박스 명령을 실행할 머신 선택",
-      "auto": "자동 (기본)"
+      "auto": "자동 (기본 머신)",
+      "offline": "오프라인",
+      "offlineHint": "해당 PC는 오프라인 상태라 실행 머신으로 선택할 수 없어요"
     }
   },
   "agents": {
@@ -651,6 +653,7 @@
     "patScopeDenied": "토큰에 필요한 스코프 {{scope}}가 없습니다",
     "daemonOffline": "로컬 샌드박스 데몬이 오프라인입니다",
     "sandboxTimeout": "로컬 샌드박스 호출 시간 초과({{seconds}}초)",
+    "sandboxResultMismatch": "머신 \"{{machine}}\"이(가) 제출한 결과가 이 호출이 전달된 머신과 일치하지 않습니다",
     "sandboxPayloadTooLarge": "로컬 샌드박스 페이로드가 너무 큽니다",
     "sandboxExecFailed": "로컬 샌드박스 실행 실패: {{detail}}",
     "daemonVersionUnsupported": "로컬 샌드박스 데몬 버전 {{version}}이(가) 최소 요구 사항 {{min}} 미만입니다. 업데이트해 주세요",
@@ -2201,7 +2204,15 @@
         "linux": "Linux",
         "unknown": "알 수 없음"
       },
-      "downloadCta": "로컬 샌드박스 다운로드"
+      "downloadCta": "로컬 샌드박스 다운로드",
+      "offlineBadge": "오프라인",
+      "lastSeen": {
+        "minutes": "{{minutes}}분 전 접속",
+        "hours": "{{hours}}시간 전 접속",
+        "days": "{{days}}일 전 접속"
+      },
+      "forgetMachine": "이 머신 잊기",
+      "forgetMachineConfirm": "\"{{name}}\"을(를) 잊으시겠습니까? 이름과 기본 머신 설정이 삭제됩니다."
     },
     "maxPinnedModels": "최대 {{max}}개 모델을 고정할 수 있습니다",
     "memoryToggle": "세션 간 메모리",
