@@ -1,0 +1,527 @@
+"""本地沙箱 daemon ↔ 服务端链路 E2E（平台开发硬性验证，见 AGENTS.md 验证指南）。
+
+用法：
+  uv run python scripts/e2e_local_sandbox.py             # 全量功能链路
+  uv run python scripts/e2e_local_sandbox.py --stress    # 追加压测段（并发扫描 + 持续负载）
+
+前置：本机 MongoDB / Redis 可达（凭据读仓库 .env）；后端未起时自动拉起并在退出时回收。
+覆盖：SSE 握手与注册表 / machines 与 status 在线 / exec 往返 / 机器绑定防冒答 /
+双向流式传输（2MB 二进制 sha256 校验）/ 结构化 fs op / 分块 base64 兜底 / 优雅下线。
+
+输出：逐项 PASS/FAIL 与汇总；任一 FAIL 退出码非零。
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import base64
+import hashlib
+import json
+import os
+import secrets
+import shutil
+import signal
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))  # src.* 可导入
+
+SERVER = os.environ.get("E2E_SANDBOX_SERVER", "http://127.0.0.1:8000")
+WORKSPACE_ROOT = Path("/tmp/lambchat-sbx-e2e")
+
+_results: list[tuple[str, bool, str]] = []
+
+
+def check(name: str, ok: bool, note: str = "") -> None:
+    _results.append((name, ok, note))
+    print(f"{'✅ PASS' if ok else '❌ FAIL'}  {name}" + (f"  — {note}" if note else ""), flush=True)
+
+
+def http_json(
+    method: str,
+    path: str,
+    body: dict | None = None,
+    token: str | None = None,
+    timeout: float = 10.0,
+    query: str = "",
+):
+    url = f"{SERVER}{path}{query}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("Content-Type", "application/json")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.status, json.loads(resp.read() or b"{}")
+
+
+# ---------- 环境装配 ----------
+
+
+def _env_map() -> dict[str, str]:
+    out: dict[str, str] = {}
+    env_file = REPO / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                out[k.strip()] = v.split(" #")[0].strip()
+    return out
+
+
+def ensure_backend() -> subprocess.Popen | None:
+    """后端在跑返回 None；否则拉起一个并在退出时由调用方回收。"""
+    try:
+        urllib.request.urlopen(f"{SERVER}/api/version", timeout=2).read()
+        print(f"[env] 后端已在运行：{SERVER}")
+        return None
+    except Exception:
+        proc = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "src.api.main:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000",
+            ],
+            cwd=REPO,
+            stdout=open("/tmp/e2e-backend.log", "w"),
+            stderr=subprocess.STDOUT,
+        )
+        for _ in range(30):
+            time.sleep(1)
+            try:
+                urllib.request.urlopen(f"{SERVER}/api/version", timeout=2).read()
+                print(f"[env] 已自动拉起后端 pid={proc.pid}（日志 /tmp/e2e-backend.log）")
+                return proc
+            except Exception:
+                continue
+        raise RuntimeError("后端 30s 未就绪，查 /tmp/e2e-backend.log")
+
+
+def mongo_activate_user(username: str) -> None:
+    env = _env_map()
+    url = env.get("MONGODB_URL", "mongodb://localhost:27017")
+    user, pwd = env.get("MONGODB_USERNAME", ""), env.get("MONGODB_PASSWORD", "")
+    auth_src = env.get("MONGODB_AUTH_SOURCE", "admin")
+    db_name = env.get("MONGODB_DB", "agent_state")
+    if user and pwd:
+        head = url.rstrip("/")
+        sep = "?" if "?" in head else "/"
+        url = f"{head}{sep}authSource={auth_src}" if "@" not in url else url
+        # 凭据走 MongoClient 参数而非拼 URL（密码特殊字符安全）
+        import pymongo
+
+        client = pymongo.MongoClient(
+            url, username=user, password=pwd, authSource=auth_src, serverSelectionTimeoutMS=3000
+        )
+    else:
+        import pymongo
+
+        client = pymongo.MongoClient(url, serverSelectionTimeoutMS=3000)
+    r = client[db_name].users.update_one(
+        {"username": username}, {"$set": {"is_active": True, "email_verified": True}}
+    )
+    if r.matched_count != 1:
+        raise RuntimeError(f"测试用户未注册成功：{username}")
+
+
+def cleanup_user(username: str) -> None:
+    try:
+        env = _env_map()
+        import pymongo
+
+        url = env.get("MONGODB_URL", "mongodb://localhost:27017")
+        user, pwd = env.get("MONGODB_USERNAME", ""), env.get("MONGODB_PASSWORD", "")
+        auth_src = env.get("MONGODB_AUTH_SOURCE", "admin")
+        db_name = env.get("MONGODB_DB", "agent_state")
+        client = pymongo.MongoClient(
+            url,
+            username=user or None,
+            password=pwd or None,
+            authSource=auth_src,
+            serverSelectionTimeoutMS=3000,
+        )
+        db = client[db_name]
+        u = db.users.find_one({"username": username}, {"_id": 1})
+        if u:
+            db.pats.delete_many({"user_id": str(u["_id"])})
+            db.users.delete_one({"_id": u["_id"]})
+    except Exception as exc:  # noqa: BLE001 - 清理尽力而为
+        print(f"[cleanup] 用户清理跳过：{exc}")
+
+
+def mint_pat(username: str, password: str) -> tuple[str, str]:
+    http_json(
+        "POST",
+        "/api/auth/register",
+        {"username": username, "password": password, "email": f"{username}@example.com"},
+    )
+    mongo_activate_user(username)
+    _, login = http_json("POST", "/api/auth/login", {"username": username, "password": password})
+    _, pat = http_json(
+        "POST",
+        "/api/auth/pat",
+        {"name": "e2e-local-sandbox", "scopes": ["sandbox:execute"]},
+        token=login["access_token"],
+    )
+    return pat["token"], login["access_token"]
+
+
+def spawn_daemon(pat: str, machine_id: str) -> subprocess.Popen:
+    proc = subprocess.Popen(
+        [sys.executable, str(Path(__file__).resolve()), "--daemon-child", pat, machine_id],
+        cwd=REPO,
+        stdout=open("/tmp/e2e-daemon.log", "w"),
+        stderr=subprocess.STDOUT,
+    )
+    for _ in range(20):
+        time.sleep(0.5)
+        try:
+            _, body = http_json("GET", "/api/sandbox/machines", token=pat)
+            if any(m["machine_id"] == machine_id and m["online"] for m in body["machines"]):
+                return proc
+        except Exception:
+            continue
+    raise RuntimeError(f"daemon 10s 未上线，查 /tmp/e2e-daemon.log（pid={proc.pid}）")
+
+
+# ---------- 测试电池 ----------
+
+
+async def battery(user_id: str, pat: str, machine_id: str) -> None:
+    from src.infra.sandbox.relay.dispatch import (
+        dispatch_local_call,
+        dispatch_local_stream,
+        dispatch_local_stream_upload,
+    )
+
+    # 1. 在线状态
+    _, machines = http_json("GET", "/api/sandbox/machines", token=pat)
+    m = next((x for x in machines["machines"] if x["machine_id"] == machine_id), None)
+    check(
+        "machines 在线 + last_seen",
+        m is not None and m["online"] and m.get("last_seen") is not None,
+        f"{m['machine_id']} v{m.get('version')}",
+    )
+    _, status = http_json("GET", "/api/sandbox/status", token=pat)
+    check("status 在线", status.get("online") is True)
+
+    # 2. exec 往返（含中文/命令替换/多行）
+    t0 = time.monotonic()
+    r = await dispatch_local_call(
+        user_id,
+        "exec",
+        {"command": "echo e2e-$(hostname) && echo 中文行", "cwd": "/workspace/e2e"},
+        machine_id=machine_id,
+    )
+    check(
+        "exec 往返",
+        r.get("status") == "ok"
+        and "e2e-" in r.get("stdout", "")
+        and "中文行" in r.get("stdout", ""),
+        f"exit={r.get('exit_code')} {(time.monotonic() - t0) * 1000:.0f}ms",
+    )
+
+    # 3. 防冒答：在飞调用以他机身份回传 → 409 sandbox_result_mismatch
+    import redis.asyncio as aioredis
+
+    env = _env_map()
+    slow = asyncio.create_task(
+        dispatch_local_call(
+            user_id,
+            "exec",
+            {"command": "sleep 3 && echo real", "cwd": "/workspace/e2e"},
+            machine_id=machine_id,
+        )
+    )
+    red = aioredis.from_url(env.get("REDIS_URL", "redis://127.0.0.1:6379/0"))
+    call_id = None
+    for _ in range(60):
+        keys = await red.keys("sandbox:callassign:*")
+        if keys:
+            call_id = keys[0].split(b":")[-1].decode()
+            break
+        await asyncio.sleep(0.05)
+    await red.aclose()
+    spoof_code = None
+    try:
+        http_json(
+            "POST",
+            f"/api/sandbox/results/{call_id}",
+            {"stage": "done", "status": "ok", "stdout": "FAKED"},
+            token=pat,
+            query="?machine_id=evil-machine",
+        )
+    except urllib.error.HTTPError as exc:
+        spoof_code = json.loads(exc.read()).get("detail", {}).get("code")
+    real = await slow
+    check(
+        "防冒答 409 + 真实结果不受污染",
+        spoof_code == "sandbox_result_mismatch" and real.get("stdout", "").strip() == "real",
+        f"code={spoof_code}",
+    )
+
+    # 4. 双向流式：大文件二进制（图片/归档形态）上传 + 下载 sha256 校验
+    #    三档尺寸看吞吐线性度（10/50/100MB），max_bytes 覆盖最大档。
+    for size_mb in (10, 50, 100):
+        payload = b"\x89PNG\r\n\x1a\n" + secrets.token_bytes(size_mb * 1024 * 1024 - 8)
+        want = hashlib.sha256(payload).hexdigest()
+        t0 = time.monotonic()
+        await dispatch_local_stream_upload(
+            user_id,
+            {
+                "cwd": "/workspace/e2e",
+                "path": f"imgs/e2e-{size_mb}m.bin",
+                "max_bytes": 200 * 1024 * 1024,
+            },
+            payload,
+            machine_id=machine_id,
+        )
+        up_s = time.monotonic() - t0
+        chunks = []
+        t1 = time.monotonic()
+        async for chunk in dispatch_local_stream(
+            user_id,
+            "fs_download_stream",
+            {
+                "cwd": "/workspace/e2e",
+                "path": f"imgs/e2e-{size_mb}m.bin",
+                "max_bytes": 200 * 1024 * 1024,
+            },
+            timeout=300.0,
+            machine_id=machine_id,
+        ):
+            chunks.append(chunk)
+        down_s = time.monotonic() - t1
+        got = hashlib.sha256(b"".join(chunks)).hexdigest()
+        mbps = lambda secs, n: n / 1024 / 1024 / secs if secs > 0 else 0  # noqa: E731
+        check(
+            f"流式上传+下载 {size_mb}MB sha256 一致",
+            got == want,
+            f"上 {mbps(up_s, len(payload)):.0f}MB/s · 下 {mbps(down_s, len(payload)):.0f}MB/s",
+        )
+
+    # 5. 结构化 fs op：fs_write / fs_read
+    txt = "LambChat E2E 文本校验 " * 20
+    w = await dispatch_local_call(
+        user_id,
+        "fs_write",
+        {
+            "cwd": "/workspace/e2e",
+            "path": "notes/e2e.txt",
+            "content_b64": base64.b64encode(txt.encode()).decode(),
+        },
+        machine_id=machine_id,
+    )
+    rd = await dispatch_local_call(
+        user_id,
+        "fs_read",
+        {"cwd": "/workspace/e2e", "path": "notes/e2e.txt"},
+        machine_id=machine_id,
+    )
+    check(
+        "fs_write + fs_read 内容一致",
+        "error" not in (w.get("result") or {}) and (rd.get("result") or {}).get("content") == txt,
+    )
+
+    # 6. 分块 base64 兜底路径（fs_upload offset/truncate + fs_download 分片到 eof）
+    blob = secrets.token_bytes(5 * 1024 * 1024)
+    off, first, up_err = 0, True, None
+    while off < len(blob) or first:
+        d = await dispatch_local_call(
+            user_id,
+            "fs_upload",
+            {
+                "cwd": "/workspace/e2e",
+                "path": "blobs/e2e.bin",
+                "content_b64": base64.b64encode(blob[off : off + 128 * 1024]).decode(),
+                "offset": off,
+                "truncate": first,
+            },
+            machine_id=machine_id,
+        )
+        if "error" in (d.get("result") or {}):
+            up_err = d["result"]["error"]
+            break
+        off += 128 * 1024
+        first = False
+    parts, off, dl_err = [], 0, None
+    while up_err is None:
+        d = await dispatch_local_call(
+            user_id,
+            "fs_download",
+            {"cwd": "/workspace/e2e", "path": "blobs/e2e.bin", "offset": off, "length": 128 * 1024},
+            machine_id=machine_id,
+        )
+        res = d.get("result") or {}
+        if "error" in res:
+            dl_err = res["error"]
+            break
+        parts.append(base64.b64decode(res.get("content_b64") or ""))
+        off += len(parts[-1])
+        if res.get("eof"):
+            break
+    check(
+        "分块 base64 上传+下载一致",
+        up_err is None and dl_err is None and b"".join(parts) == blob,
+        f"{len(blob) // (1024 * 1024)}MiB",
+    )
+
+
+async def stress(user_id: str, machine_id: str) -> None:
+    import random
+
+    from src.infra.sandbox.relay.dispatch import dispatch_local_call
+
+    fast_cmd = "echo ok-$(date +%s%N | tail -c 5)"
+    medium_cmd = "seq 1 2000 | sha256sum | head -c 24"
+    slow_cmd = "sleep 1.5 && echo slow-done"
+
+    async def one(rnd: random.Random):
+        roll = rnd.random()
+        cmd = fast_cmd if roll < 0.7 else (medium_cmd if roll < 0.9 else slow_cmd)
+        t0 = time.monotonic()
+        try:
+            r = await dispatch_local_call(
+                user_id, "exec", {"command": cmd, "cwd": "/workspace/e2e"}, machine_id=machine_id
+            )
+            ok = r.get("status") == "ok" and r.get("exit_code") == 0
+            detail = "" if ok else str(r.get("error"))[:120]
+            return ok, (time.monotonic() - t0) * 1000, detail
+        except Exception as exc:  # noqa: BLE001
+            return False, (time.monotonic() - t0) * 1000, f"{type(exc).__name__}: {exc}"[:120]
+
+    for conc in (1, 5, 10, 20):
+        sink: list = []
+        t0 = time.monotonic()
+
+        async def worker(i: int):
+            rnd = random.Random(i)
+            for _ in range(10):
+                sink.append(await one(rnd))
+
+        await asyncio.gather(*(worker(i) for i in range(conc)))
+        ms = sorted(x[1] for x in sink)
+        ok = sum(1 for x in sink if x[0])
+        fails = {x[2] for x in sink if not x[0]}
+        check(
+            f"压测 并发={conc}",
+            ok == len(sink),
+            f"{len(sink)} 调用 {ok} 成功 rps={len(sink) / (time.monotonic() - t0):.1f} "
+            f"p50={ms[len(ms) // 2]:.0f}ms max={ms[-1]:.0f}ms"
+            + (f" 失败原因={fails}" if fails else ""),
+        )
+
+    sink = []
+    deadline = time.monotonic() + 20
+
+    async def sw(i: int):
+        rnd = random.Random(1000 + i)
+        while time.monotonic() < deadline:
+            sink.append(await one(rnd))
+
+    t0 = time.monotonic()
+    await asyncio.gather(*(sw(i) for i in range(20)))
+    ok = sum(1 for x in sink if x[0])
+    ms = sorted(x[1] for x in sink)
+    fails = {x[2] for x in sink if not x[0]}
+    check(
+        "压测 持续 20 并发×20s",
+        ok == len(sink),
+        f"{len(sink)} 调用 rps={len(sink) / (time.monotonic() - t0):.1f} "
+        f"p50={ms[len(ms) // 2]:.0f}ms p99={ms[int(len(ms) * 0.99)]:.0f}ms"
+        + (f" 失败原因={fails}" if fails else ""),
+    )
+
+
+async def run_daemon_child(pat: str, machine_id: str) -> None:
+    sys.path.insert(0, str(REPO / "client"))
+    from lambchat_sandbox.config import SandboxConfig
+    from lambchat_sandbox.daemon import run_daemon
+
+    ws = WORKSPACE_ROOT / machine_id / "workspaces"
+    ws.mkdir(parents=True, exist_ok=True)
+    cfg = SandboxConfig(
+        server_url=SERVER,
+        data_root=ws,
+        confirm_policy="all",
+        machine_id=machine_id,
+        machine_name="E2E-AUTO",
+    )
+    await run_daemon(cfg, pat=pat)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--stress", action="store_true", help="追加压测段")
+    ap.add_argument("--daemon-child", nargs=2, metavar=("PAT", "MACHINE_ID"))
+    args = ap.parse_args()
+
+    if args.daemon_child:
+        try:
+            asyncio.run(run_daemon_child(args.daemon_child[0], args.daemon_child[1]))
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            pass
+        return 0
+
+    backend = ensure_backend()
+    machine_id = f"e2e-{int(time.time())}-{secrets.token_hex(3)}"
+    username = f"sbx-e2e-{secrets.token_hex(4)}"
+    password = f"E2e-{secrets.token_hex(8)}!"
+    daemon = None
+    try:
+        pat, jwt = mint_pat(username, password)
+        _, me = http_json("GET", "/api/auth/me", token=jwt)  # /me 认 JWT，PAT 只用于沙箱端点
+        user_id = me.get("id") or me.get("user", {}).get("id")
+        daemon = spawn_daemon(pat, machine_id)
+        print(f"[env] daemon pid={daemon.pid} machine={machine_id} user={username}")
+
+        async def run_all():
+            # battery 与 stress 必须同一事件循环：redis 客户端是模块级单例，
+            # 跨 asyncio.run 复用会把旧循环的连接带进新循环（Event loop is closed）
+            await battery(user_id, pat, machine_id)
+            if args.stress:
+                await stress(user_id, machine_id)
+
+        asyncio.run(run_all())
+        # 优雅下线：SIGTERM → 3s 内 machines 翻转离线（post_offline 定向注销）
+        daemon.send_signal(signal.SIGTERM)
+        daemon.wait(timeout=10)
+        offline_fast = False
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            _, machines = http_json("GET", "/api/sandbox/machines", token=pat)
+            m = next((x for x in machines["machines"] if x["machine_id"] == machine_id), None)
+            if m and not m["online"]:
+                offline_fast = True
+                break
+            time.sleep(0.3)
+        check("优雅下线 5s 内翻转离线", offline_fast)
+    finally:
+        if daemon and daemon.poll() is None:
+            daemon.terminate()
+        if backend:
+            backend.terminate()
+        shutil.rmtree(WORKSPACE_ROOT / machine_id, ignore_errors=True)
+        cleanup_user(username)
+
+    fails = [r for r in _results if not r[1]]
+    print(f"\n===== E2E 汇总：{len(_results) - len(fails)}/{len(_results)} PASS =====")
+    for name, _, note in fails:
+        print(f"  FAIL: {name} {note}")
+    return 1 if fails else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
