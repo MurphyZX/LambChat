@@ -258,3 +258,52 @@ test("shell command errors propagate to the caller", async () => {
     /path must be inside/,
   );
 });
+
+// ---------------------------------------------------------------------------
+// subscribeDaemonStatus：Tauri 事件订阅替代 10s 轮询
+// ---------------------------------------------------------------------------
+
+const eventMocks = vi.hoisted(() => ({
+  listen: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: eventMocks.listen,
+}));
+
+import { subscribeDaemonStatus } from "../sandboxShell.ts";
+
+test("subscribeDaemonStatus forwards event payloads and unlisten is idempotent", async () => {
+  enterTauriShell();
+  const unlisten = vi.fn();
+  let captured: ((event: { payload: unknown }) => void) | null = null;
+  eventMocks.listen.mockImplementation(async (_name, handler) => {
+    captured = handler;
+    return unlisten;
+  });
+
+  const received: unknown[] = [];
+  const cancel = await subscribeDaemonStatus((event) => received.push(event));
+  expect(cancel).not.toBeNull();
+  expect(eventMocks.listen).toHaveBeenCalledWith(
+    "sandbox-daemon-status",
+    expect.any(Function),
+  );
+
+  captured!({ payload: { running: true, unsupported: false, generation: 3, restarts: 1 } });
+  expect(received).toEqual([
+    { running: true, unsupported: false, generation: 3, restarts: 1 },
+  ]);
+
+  cancel!();
+  cancel!(); // 幂等：第二次 no-op
+  expect(unlisten).toHaveBeenCalledTimes(1);
+  leaveTauriShell();
+});
+
+test("subscribeDaemonStatus returns null outside the shell", async () => {
+  leaveTauriShell();
+  eventMocks.listen.mockClear();
+  expect(await subscribeDaemonStatus(() => {})).toBeNull();
+  expect(eventMocks.listen).not.toHaveBeenCalled();
+});

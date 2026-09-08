@@ -249,16 +249,18 @@
       "label": "Sandbox",
       "description": "Choose where sandboxed commands run",
       "options": {
-        "cloud": "Cloud",
-        "local": "Local"
+        "cloud": "Cloud computer",
+        "local": "Local computer"
       },
-      "offlineHint": "Local sandbox is offline: download and start it to use the local tier",
+      "offlineHint": "Local sandbox is offline: download and start it to use the local computer",
       "downloadEntry": "Download local sandbox"
     },
     "sandboxMachine": {
       "label": "Machine",
       "description": "Choose which machine runs local sandbox commands",
-      "auto": "Auto (default)"
+      "auto": "Auto (default)",
+      "offline": "offline",
+      "offlineHint": "That computer is offline and can't be selected as the execution target"
     }
   },
   "agents": {
@@ -651,6 +653,7 @@
     "patScopeDenied": "Token missing required scope '{{scope}}'",
     "daemonOffline": "Local sandbox daemon is offline",
     "sandboxTimeout": "Local sandbox call timed out after {{seconds}}s",
+    "sandboxResultMismatch": "Machine \"{{machine}}\" submitted a result for a call dispatched to another machine",
     "sandboxPayloadTooLarge": "Local sandbox payload exceeds limit",
     "sandboxExecFailed": "Local sandbox execution failed: {{detail}}",
     "daemonVersionUnsupported": "Daemon version {{version}} is below minimum {{min}}; please update",
@@ -2201,7 +2204,15 @@
         "linux": "Linux",
         "unknown": "Unknown"
       },
-      "downloadCta": "Download local sandbox"
+      "downloadCta": "Download local sandbox",
+      "offlineBadge": "Offline",
+      "lastSeen": {
+        "minutes": "last seen {{minutes}}m ago",
+        "hours": "last seen {{hours}}h ago",
+        "days": "last seen {{days}}d ago"
+      },
+      "forgetMachine": "Forget this machine",
+      "forgetMachineConfirm": "Forget \"{{name}}\"? Its name and default-machine setting will be removed."
     },
     "maxPinnedModels": "Pin up to {{max}} models",
     "memoryToggle": "Cross-session memory",
@@ -2773,6 +2784,7 @@
     "S3_REGION": "S3 region",
     "S3_SECRET_KEY": "S3 secret key",
     "SANDBOX_GREP_TIMEOUT": "Sandbox grep command timeout in seconds",
+    "SANDBOX_LOCAL_EXEC_TIMEOUT": "Local sandbox command execution timeout (seconds): hung commands are killed at the deadline; changes apply to subsequent commands immediately.",
     "SANDBOX_PLATFORM": "Sandbox platform to use",
     "SESSION_EVENT_CHUNK_DUAL_WRITE_LEGACY": "Also write chunked trace events to the legacy events array",
     "SESSION_EVENT_CHUNK_SIZE": "Maximum events stored in each trace event chunk document",

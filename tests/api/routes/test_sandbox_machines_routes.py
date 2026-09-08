@@ -58,8 +58,9 @@ class _FakeRegistry:
     async def unregister(self, user_id, client_id, machine_id=""):
         self.calls["unregister"].append((user_id, client_id, machine_id))
 
-    async def list_machines(self, user_id):
+    async def list_machines(self, user_id, include_offline=False):
         self.calls["list_machines"].append(user_id)
+        self.calls["include_offline"] = include_offline
         return self.machines
 
     async def set_default_machine(self, user_id, machine_id):

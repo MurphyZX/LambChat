@@ -111,6 +111,7 @@ YubbChat/
 !/scripts/cleanup_junk_memories.py
 !/scripts/sync_error_locales.py
 !/scripts/backfill_memory_scope.py
+!/scripts/e2e_local_sandbox.py
 !/scripts/benchmark_memory_scope.py
 docs/docs/.vitepress/
 k8s/lambchat-secret.yaml

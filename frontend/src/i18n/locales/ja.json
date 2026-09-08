@@ -249,8 +249,8 @@
       "label": "サンドボックス",
       "description": "サンドボックスのコマンド実行場所を選択します",
       "options": {
-        "cloud": "クラウド",
-        "local": "ローカル"
+        "cloud": "クラウドPC",
+        "local": "ローカルPC"
       },
       "offlineHint": "ローカルサンドボックスはオフラインです：ダウンロードして起動すると利用できます",
       "downloadEntry": "ローカルサンドボックスをダウンロード"
@@ -258,7 +258,9 @@
     "sandboxMachine": {
       "label": "マシン",
       "description": "ローカルサンドボックスコマンドの実行マシンを選択",
-      "auto": "自動（デフォルト）"
+      "auto": "自動（デフォルトマシン）",
+      "offline": "オフライン",
+      "offlineHint": "そのPCは現在オフラインのため、実行マシンとして選択できません"
     }
   },
   "agents": {
@@ -651,6 +653,7 @@
     "patScopeDenied": "トークンに必要なスコープ {{scope}} がありません",
     "daemonOffline": "ローカルサンドボックスデーモンはオフラインです",
     "sandboxTimeout": "ローカルサンドボックス呼び出しがタイムアウトしました（{{seconds}}秒）",
+    "sandboxResultMismatch": "マシン「{{machine}}」が送信した結果は、この呼び出しの配送先マシンと一致しません",
     "sandboxPayloadTooLarge": "ローカルサンドボックスのペイロードが大きすぎます",
     "sandboxExecFailed": "ローカルサンドボックスの実行に失敗しました：{{detail}}",
     "daemonVersionUnsupported": "ローカルサンドボックスデーモンのバージョン {{version}} は最低要件 {{min}} 未満です。アップデートしてください",
@@ -2201,7 +2204,15 @@
         "linux": "Linux",
         "unknown": "不明"
       },
-      "downloadCta": "ローカルサンドボックスをダウンロード"
+      "downloadCta": "ローカルサンドボックスをダウンロード",
+      "offlineBadge": "オフライン",
+      "lastSeen": {
+        "minutes": "{{minutes}}分前にオンライン",
+        "hours": "{{hours}}時間前にオンライン",
+        "days": "{{days}}日前にオンライン"
+      },
+      "forgetMachine": "このマシンを削除",
+      "forgetMachineConfirm": "「{{name}}」を削除しますか？名前とデフォルト設定が消去されます。"
     },
     "maxPinnedModels": "最大{{max}}個のモデルをピン留めできます",
     "memoryToggle": "セッション横断メモリ",
@@ -2773,6 +2784,7 @@
     "S3_REGION": "S3リージョン",
     "S3_SECRET_KEY": "S3シークレットキー",
     "SANDBOX_GREP_TIMEOUT": "サンドボックスgrepコマンドのタイムアウト（秒）",
+    "SANDBOX_LOCAL_EXEC_TIMEOUT": "ローカルサンドボックスのコマンド実行タイムアウト（秒）。ハングしたコマンドは期限で強制終了され、変更は以降のコマンドに即時反映されます。",
     "SANDBOX_PLATFORM": "使用するサンドボックスプラットフォーム",
     "SESSION_EVENT_CHUNK_DUAL_WRITE_LEGACY": "分割保存した trace イベントを従来の events 配列にも書き込む",
     "SESSION_EVENT_CHUNK_SIZE": "各 trace event chunk ドキュメントに保存する最大イベント数",

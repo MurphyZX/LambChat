@@ -55,3 +55,68 @@ describe("buildSandboxMachineOption", () => {
     expect(SANDBOX_MACHINE_AGENT_OPTION_KEY).toBe("sandbox_machine_id");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 离线机保留展示（记忆层）：置灰可选但标注离线；默认机置顶；仅在线机参与
+// ---------------------------------------------------------------------------
+
+function machine(id: string, opts: Partial<Parameters<typeof buildSandboxMachineOption>[0][number]> = {}) {
+  return {
+    machine_id: id,
+    name: id.toUpperCase(),
+    platform: "linux",
+    version: "0.4.0",
+    confirm_policy: "all",
+    online: true,
+    last_seen: 1700_000_000,
+    ...opts,
+  };
+}
+
+test("buildSandboxMachineOption disables offline machines and appends offline hint", () => {
+  const t = (key: string) => key;
+  const option = buildSandboxMachineOption(
+    [machine("on1"), machine("off1", { online: false })],
+    null,
+    t,
+  );
+  expect(option).not.toBeNull();
+  const offline = option!.options!.find((o) => o.value === "off1");
+  expect(offline?.disabled).toBe(true);
+  expect(String(offline?.label)).toContain("agentOptions.sandboxMachine.offline");
+  const online = option!.options!.find((o) => o.value === "on1");
+  expect(online?.disabled).toBeUndefined();
+});
+
+test("buildSandboxMachineOption orders default machine first, online before offline", () => {
+  const t = (key: string) => key;
+  const option = buildSandboxMachineOption(
+    [machine("off1", { online: false }), machine("on2"), machine("on1")],
+    "on2",
+    t,
+  );
+  const values = option!.options!.map((o) => o.value);
+  // 首档「自动」，随后默认机 on2 置顶，再其余在线机（按列表序），最后离线机
+  expect(values).toEqual(["", "on2", "on1", "off1"]);
+});
+
+test("shouldShowSandboxMachineOption hides selector only when no machine is online", () => {
+  expect(
+    shouldShowSandboxMachineOption("local", [
+      machine("off1", { online: false }),
+      machine("off2", { online: false }),
+    ]),
+  ).toBe(false);
+  expect(
+    shouldShowSandboxMachineOption("local", [
+      machine("off1", { online: false }),
+      machine("on1"),
+    ]),
+  ).toBe(true);
+  // 旧数据（无 online 字段）按在线处理，兼容迁移窗口
+  expect(
+    shouldShowSandboxMachineOption("local", [
+      { ...machine("old1"), online: undefined } as never,
+    ]),
+  ).toBe(true);
+});

@@ -1,6 +1,7 @@
 """本地沙箱中继：daemon SSE 通道、结果回传、在线状态。"""
 
 import asyncio
+import contextlib
 import json
 import socket
 import time
@@ -14,13 +15,18 @@ from pydantic import BaseModel, field_validator
 from src.api.deps import get_current_user_pat_or_jwt, require_pat_only
 from src.infra.logging import get_logger
 from src.infra.sandbox.relay import _frames
+from src.infra.sandbox.relay.presence import publish_presence
 from src.infra.sandbox.relay.registry import (
     SandboxClientRegistry,
     parse_confirm_policy,
     parse_daemon_platform,
     parse_daemon_version,
 )
-from src.infra.storage.redis import get_binary_redis_client, get_redis_client
+from src.infra.storage.redis import (
+    create_redis_client,
+    get_binary_redis_client,
+    get_redis_client,
+)
 from src.kernel.config import settings
 from src.kernel.errors import AppError, ErrorCode
 from src.kernel.schemas.user import TokenPayload
@@ -29,7 +35,10 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
-_POLL_INTERVAL = 0.05
+#: 下发队列阻塞读超时（秒）：BLPOP 切片——空转时每秒一次 Redis 往返
+#: （替代旧的 50ms LPOP 轮询：Redis QPS 20/s → 1/s/daemon），心跳与 stop
+#: 检查随切片自然穿插。测试注入小值加速。
+_BLPOP_TIMEOUT = 1.0
 _HEARTBEAT_SECONDS = 15
 _NODE_ID = f"{socket.gethostname()}:{uuid.uuid4().hex[:8]}"
 
@@ -80,6 +89,8 @@ async def channel_frames(
     confirm_policy: str = "",
     machine_id: str = "",
     machine_name: str = "",
+    stream_redis=None,
+    blpop_timeout: float | None = None,
 ) -> AsyncIterator[str]:
     """SSE 帧生成器：hello -> (tool_call | 心跳) 循环；连接期心跳注册表。
 
@@ -103,6 +114,10 @@ async def channel_frames(
     loop = asyncio.get_event_loop()
     last_beat = loop.time()  # 首个心跳在间隔之后到点，保证 hello 后紧跟的是 tool_call
     req_key = registry.queue_key(user_id, machine_id) if machine_id else f"sandbox:req:{user_id}"
+    # 专用阻塞连接（每条 SSE 流独立池）：BLPOP 长阻塞会占住连接，不能与共享
+    # 池混用（会耗尽 50 连接的共享池）；缺省回退共享客户端（测试 Fake 无所谓）
+    blocking = stream_redis if stream_redis is not None else redis
+    timeout_slice = blpop_timeout if blpop_timeout is not None else _BLPOP_TIMEOUT
     while not stop.is_set():
         now = loop.time()
         if now - last_beat >= _HEARTBEAT_SECONDS:
@@ -129,8 +144,11 @@ async def channel_frames(
                 await redis.set(_owner_key(user_id, machine_id), client_id, ex=35)
             last_beat = now
             yield ": heartbeat\n\n"
-        raw = await redis.lpop(req_key)
-        if raw is not None:
+        # 阻塞读下发队列：超时切片返回 None → 回到心跳检查；Redis 异常上抛
+        # 终结本流，daemon 走既有退避重连（与旧轮询模型同语义）
+        item = await blocking.blpop(req_key, timeout=timeout_slice)
+        if item is not None:
+            raw = item[1]
             age = _request_age_seconds(raw)
             if age > settings.SANDBOX_LOCAL_ACK_TIMEOUT:
                 logger.debug(
@@ -142,7 +160,6 @@ async def channel_frames(
                 continue
             yield f"event: tool_call\ndata: {raw}\n\n"
             continue
-        await asyncio.sleep(_POLL_INTERVAL)
 
 
 def _version_tuple(version: str) -> tuple[int, ...]:
@@ -216,6 +233,24 @@ async def sandbox_channel(
     if machine_id:  # 多机属主：同机重连改写属主键，旧流心跳时据此退场
         await _redis().set(_owner_key(user.sub, machine_id), client_id, ex=35)
     stop = asyncio.Event()
+    await publish_presence(user.sub)  # 上线事件：注册成功即推，不等心跳
+    # 每条 SSE 流一个专用阻塞客户端（独立连接池）：BLPOP 长阻塞独占连接，
+    # 不能占用共享池；流关闭时 aclose 释放底层连接
+    stream_redis = create_redis_client(isolated_pool=True)
+
+    async def _finalize_stream() -> None:
+        """断流清理：注销注册表 + 推送下线 presence。
+
+        必须经 ``asyncio.shield`` 以后台任务执行（见 generator 的 finally）——
+        客户端断开时 Starlette 在 anyio 取消域中取消流任务，被取消域内的
+        裸 ``await`` 会立即再抛 ``CancelledError``，清理代码无从完成，崩溃
+        感知退化为 35s TTL（真机 SIGKILL 冒烟实测：机器键平滑倒数至过期）。
+        """
+        with contextlib.suppress(Exception):
+            await stream_redis.aclose()
+        with contextlib.suppress(Exception):
+            await registry.unregister(user.sub, client_id, machine_id=machine_id)
+        await publish_presence(user.sub)  # 下线事件：断流即推（秒级感知）
 
     async def generator():
         try:
@@ -230,10 +265,15 @@ async def sandbox_channel(
                 confirm_policy=confirm_policy,
                 machine_id=machine_id,
                 machine_name=machine_name,
+                stream_redis=stream_redis,
             ):
                 yield frame
         finally:
-            await registry.unregister(user.sub, client_id, machine_id=machine_id)
+            finalize = asyncio.create_task(_finalize_stream())
+            # 正常结束：等清理完成（语义与旧实现一致）；被取消：shield 只中断
+            # 本处的等待，后台任务继续把清理跑完
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(finalize)
 
     return StreamingResponse(
         generator(),
@@ -265,13 +305,30 @@ async def sandbox_result(
     call_id: str,
     request: Request,
     body: SandboxResultRequest,
+    machine_id: str = "",
     user: TokenPayload = Depends(require_pat_only("sandbox:execute")),
 ):
-    # 回传 body 上限：stdout/base64 是失控大头，超限即拒绝，防止打爆 Redis 与内存
-    if len(await request.body()) > settings.SANDBOX_RESULTS_MAX_BYTES:
+    redis = _redis()
+    # 调用-机器绑定：dispatch 入队前写目标机，回传机不一致即拒（同用户 A 机
+    # 冒答 B 机）；无绑定键（旧调用/兼容窗口）或回传不带 machine_id（旧
+    # daemon）时跳过校验
+    assigned = await redis.get(f"sandbox:callassign:{call_id}")
+    if assigned and machine_id and assigned != machine_id:
+        raise AppError(ErrorCode.SANDBOX_RESULT_MISMATCH, args={"machine": machine_id})
+    # 回传 body 上限：stdout/base64 是失控大头。先查 Content-Length 头做早期
+    # 拒绝（超大请求不进内存），再在读完后二次校验（chunked 无 CL 的兜底）
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit():
+        if int(content_length) > settings.SANDBOX_RESULTS_MAX_BYTES:
+            raise AppError(ErrorCode.SANDBOX_PAYLOAD_TOO_LARGE)
+    raw_body = await request.body()
+    if len(raw_body) > settings.SANDBOX_RESULTS_MAX_BYTES:
         raise AppError(ErrorCode.SANDBOX_PAYLOAD_TOO_LARGE)
     payload = {"user_id": user.sub, **body.model_dump(exclude_none=True)}
-    await _redis().set(f"sandbox:resp:{call_id}", json.dumps(payload), ex=120)
+    # 两阶段（ack/done）依次入队：dispatch 侧 BLPOP 按序消费；EXPIRE 防孤儿滞留
+    resp_key = f"sandbox:resp:{call_id}"
+    await redis.rpush(resp_key, json.dumps(payload))
+    await redis.expire(resp_key, 120)
     return {"status": "ok"}
 
 
@@ -357,9 +414,12 @@ async def sandbox_upload_stream(
     """
     redis = _binary_redis()  # lpop 裸二进制帧，解码客户端读取即抛 UnicodeDecodeError
     key = f"sandbox:upblob:{user.sub}:{call_id}"
+    resp_key = f"sandbox:resp:{call_id}"
     deadline = time.monotonic() + float(settings.SANDBOX_LOCAL_STREAM_TIMEOUT) + 10.0
+    saw_eof = False
 
     async def _frame_stream():
+        nonlocal saw_eof
         try:
             while time.monotonic() < deadline:
                 item = await redis.lpop(key)
@@ -371,12 +431,42 @@ async def sandbox_upload_stream(
                 yield item
                 parsed = _frames.try_parse_frame(item)
                 if parsed is not None and parsed[0] == _frames.FRAME_EOF:
+                    saw_eof = True
                     return
         finally:
-            try:
-                await redis.delete(key)
-            except Exception:  # noqa: BLE001 - 清理尽力而为
-                pass
+            # daemon 拉流中途断开（SIGKILL/断网）：向 resp 队列推 error done，
+            # dispatch 快速显式失败——否则干等满 SANDBOX_LOCAL_STREAM_TIMEOUT。
+            # 正常 EOF 收尾不推（daemon 自会回真实 done）。断流时本生成器运行在
+            # 取消域内，裸 await 立即再抛 CancelledError——必须 shield 后台任务
+            # 完成推送（与 sandbox_channel._finalize_stream 同款语义）。
+            async def _push_interrupt_sentinel() -> None:
+                try:
+                    await redis.rpush(
+                        resp_key,
+                        json.dumps(
+                            {
+                                "user_id": user.sub,
+                                "stage": "done",
+                                "status": "error",
+                                "error": "stream_interrupted",
+                            }
+                        ),
+                    )
+                    await redis.expire(resp_key, 120)
+                except Exception:  # noqa: BLE001 - 哨兵尽力而为
+                    pass
+
+            async def _cleanup_upblob() -> None:
+                try:
+                    await redis.delete(key)
+                except Exception:  # noqa: BLE001 - 清理尽力而为
+                    pass
+
+            finalize = asyncio.create_task(
+                _push_interrupt_sentinel() if not saw_eof else _cleanup_upblob()
+            )
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(finalize)
 
     return StreamingResponse(
         _frame_stream(),
@@ -387,8 +477,9 @@ async def sandbox_upload_stream(
 
 @router.get("/machines")
 async def sandbox_machines(user: TokenPayload = Depends(get_current_user_pat_or_jwt)):
-    """在线机器列表（多机 daemon）：machine_id/name/platform/version/policy。"""
-    machines = await _registry().list_machines(user.sub)
+    """机器列表（多机 daemon）：含已知离线机（记忆层保留，online=False +
+    last_seen），前端选择器据此置灰展示而非直接消失。"""
+    machines = await _registry().list_machines(user.sub, include_offline=True)
     default = await _registry().get_default_machine(user.sub)
     return {"machines": machines, "default_machine_id": default}
 
@@ -417,6 +508,7 @@ async def sandbox_machine_rename(
     if len(name) > 64:
         name = name[:64]
     await _registry().rename_machine(user.sub, machine_id, name)
+    await publish_presence(user.sub)
     return {"status": "ok", "machine_id": machine_id, "name": name}
 
 
@@ -427,6 +519,7 @@ async def sandbox_machine_set_default(
 ):
     """设默认机：无会话级选择时的执行目标。"""
     await _registry().set_default_machine(user.sub, machine_id)
+    await publish_presence(user.sub)
     return {"status": "ok", "default_machine_id": machine_id}
 
 
@@ -442,6 +535,7 @@ async def sandbox_machine_forget(
             ErrorCode.SANDBOX_MACHINE_NOT_FOUND,
             args={"machine": machine_id},
         )
+    await publish_presence(user.sub)
     return {"status": "ok"}
 
 
@@ -493,8 +587,10 @@ async def sandbox_offline(
     if machine_id:
         await registry.unregister(user.sub, "", machine_id)
         await _redis().delete(_owner_key(user.sub, machine_id))
+        await publish_presence(user.sub)
         return {"status": "offline", "machine_id": machine_id}
     active = await registry.get_active(user.sub)
     if active is not None:
         await registry.unregister(user.sub, active[0])
+    await publish_presence(user.sub)
     return {"status": "offline"}

@@ -846,3 +846,22 @@ def test_fs_download_stream_respects_offset_and_length(tmp_path):
 def test_handle_fs_stream_unknown_op_raises():
     with pytest.raises(ValueError, match="unknown stream op"):
         fsops.handle_fs_stream("fs_upload_stream", {}, Path("/tmp/x"))
+
+
+def test_stream_upload_writer_creates_empty_file_without_data_frames(tmp_path):
+    """零数据帧（空文件流式上传）close 后必须存在 0 字节文件。
+
+    对齐分块 fs_upload 的「空文件也发首块（truncate 即创建）」语义——writer
+    此前首个 DATA 帧才 open，空上传报成功但文件从不落盘，后续读取
+    file_not_found（scripts/e2e_local_sandbox.py 0 字节档实测捕获）。"""
+    from lambchat_sandbox.fsops import make_stream_upload_writer
+
+    (tmp_path / "s1").mkdir()
+    writer = make_stream_upload_writer(
+        {"cwd": "/workspace/s1", "path": "empty.bin", "max_bytes": 1024}, tmp_path
+    )
+    writer.close()
+    target = tmp_path / "s1" / "empty.bin"
+    assert target.exists()
+    assert target.read_bytes() == b""
+    assert writer.written == 0

@@ -119,6 +119,13 @@ _STALE_TASK_CLEANUP_RECHECK_DELAY_SECONDS = max(5.0, HEARTBEAT_TIMEOUT * 2 + 5)
 def _is_body_limit_exempt(scope: Scope) -> bool:
     path = str(scope.get("path") or "")
 
+    # 本地沙箱流式回传：二进制帧 chunked POST（无 Content-Length），端点自带
+    # 分级上限（总量 S3_INTERNAL_UPLOAD_MAX_SIZE + 1MiB、单帧 8MiB、断流哨兵
+    # 补齐），不归全局请求体门限管——否则 >8MiB 的流式下载必然 413，daemon
+    # 断通道重连、调用超时并连坐同机在飞调用。
+    if path.startswith("/api/sandbox/results/stream/"):
+        return True
+
     headers = {
         key.decode("latin-1").lower(): value.decode("latin-1")
         for key, value in scope.get("headers", [])

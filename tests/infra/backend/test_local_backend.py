@@ -1866,3 +1866,29 @@ async def test_aupload_stream_oversize_preflight(monkeypatch):
     assert sent == []
     assert responses[0].error is not None
     assert responses[0].error.startswith("file_too_large: 11 bytes exceeds 10 limit")
+
+
+async def test_aexecute_reads_exec_timeout_setting_at_call_time(monkeypatch):
+    """执行超时跟随设置调用时读取（前端可动态更新）：改设置不重建 backend 即生效。
+
+    卡死命令的自动击杀依赖该值下发 daemon；构造期缓存会让面板修改对存量
+    会话失效。"""
+    seen: list[float | None] = []
+
+    async def fake_dispatch(user_id, op, payload, *, timeout=None, machine_id=None):
+        seen.append(timeout)
+        return _ok_response(stdout="ok", exit_code=0)
+
+    monkeypatch.setattr(local_module, "dispatch_local_call", fake_dispatch)
+    backend = LocalSandboxBackend(user_id="u1", session_id="s1")
+    monkeypatch.setattr(local_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 120)
+    await backend.aexecute("echo a")
+    monkeypatch.setattr(local_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 7)
+    await backend.aexecute("echo b")
+    assert seen == [120.0, 7.0]
+
+    # 显式构造覆盖仍最高优先（会话级固定超时的既有语义）
+    fixed = LocalSandboxBackend(user_id="u1", session_id="s1", exec_timeout=33)
+    monkeypatch.setattr(local_module.settings, "SANDBOX_LOCAL_EXEC_TIMEOUT", 120)
+    await fixed.aexecute("echo c")
+    assert seen[-1] == 33.0

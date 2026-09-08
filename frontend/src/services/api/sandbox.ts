@@ -139,14 +139,19 @@ export const sandboxApi = {
 // 多机 daemon：机器列表与管理
 // ---------------------------------------------------------------------------
 
-/** 在线机器条目（GET /api/sandbox/machines）。 */
+/**
+ * 机器条目（GET /api/sandbox/machines，含记忆层保留的离线机）。
+ * `online`/`last_seen` 由新后端提供；旧后端无这两个字段——消费方以
+ * `online !== false` 判在线、`last_seen` 可选展示。
+ */
 export interface SandboxMachine {
   machine_id: string;
   name: string;
   platform: string;
   version: string;
   confirm_policy: string;
-  online: boolean;
+  online?: boolean;
+  last_seen?: number | null;
 }
 
 export interface SandboxMachinesResponse {

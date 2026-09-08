@@ -25,6 +25,7 @@ import {
   savePairing,
   clearPairing,
   readPairingPat,
+  subscribeDaemonStatus,
   writeConfirmPolicy,
 } from "../../services/tauri/sandboxShell";
 import { SkeletonLine } from "../skeletons";
@@ -99,15 +100,33 @@ export function LocalSandboxSection({
 
   useEffect(() => {
     if (!shell) return;
+    // 初始 invoke 一次对账 + 订阅壳的 sandbox-daemon-status 事件（启动/停止/
+    // 意外退出/重启即推，替代原 10s 轮询——非壳/订阅失败回退轮询兜底）
     refreshProcessStatus();
-    const timer = setInterval(refreshProcessStatus, PROCESS_POLL_INTERVAL_MS);
-    window.addEventListener(SANDBOX_STATUS_REFRESH_EVENT, refreshProcessStatus);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener(
-        SANDBOX_STATUS_REFRESH_EVENT,
-        refreshProcessStatus,
+    let cancelSubscription: (() => void) | null = null;
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+    void subscribeDaemonStatus((event) => {
+      setProcessStatus(
+        event.unsupported ? "unsupported" : event.running ? "running" : "stopped",
       );
+    }).then((cancel) => {
+      if (cancelled && cancel) {
+        cancel();
+        return;
+      }
+      if (!cancel) {
+        fallbackTimer = setInterval(refreshProcessStatus, PROCESS_POLL_INTERVAL_MS);
+      }
+      cancelSubscription = cancel;
+    });
+    const onRefresh = () => refreshProcessStatus();
+    window.addEventListener(SANDBOX_STATUS_REFRESH_EVENT, onRefresh);
+    return () => {
+      cancelled = true;
+      cancelSubscription?.();
+      if (fallbackTimer) clearInterval(fallbackTimer);
+      window.removeEventListener(SANDBOX_STATUS_REFRESH_EVENT, onRefresh);
     };
   }, [shell, refreshProcessStatus]);
 

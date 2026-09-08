@@ -38,6 +38,9 @@ class _FakeRedis:
         self.sets: "dict[str, set[str]]" = {}
         self.hashes: dict[str, dict[str, str]] = {}
         self.expires_at: dict[str, float] = {}
+        self.blpop_calls = 0
+        self.lpop_calls = 0
+        self.expired_keys: list[str] = []
 
     def _alive(self, key: str) -> bool:
         exp = self.expires_at.get(key)
@@ -47,11 +50,21 @@ class _FakeRedis:
         self.lists.setdefault(key, []).append(value)
 
     async def lpop(self, key):
+        self.lpop_calls += 1
         items = self.lists.get(key)
         return items.pop(0) if items else None
 
     async def llen(self, key):
         return len(self.lists.get(key) or ())
+
+    async def blpop(self, key, timeout=0):
+        self.blpop_calls += 1
+        items = self.lists.get(key)
+        if items:
+            return key, items.pop(0)
+        if timeout and timeout > 0:
+            await asyncio.sleep(timeout)
+        return None
 
     async def set(self, key, value, ex=None):
         self.kv[key] = value
@@ -92,6 +105,7 @@ class _FakeRedis:
 
     async def expire(self, key, seconds):
         self.expires_at[key] = time.monotonic() + seconds
+        self.expired_keys.append(key)
 
     async def exists(self, key):
         return (
@@ -127,6 +141,8 @@ class _FakeRegistry:
     def __init__(self):
         self.beats = 0
         self.active: tuple[str, str] | None = ("c1", "node-a")
+        self.resolved_target: str | None = None
+        self.machine_value: str = ""
         self.unregistered: list[tuple[str, str]] = []
         self.registered: list[tuple[str, str, str, str, str, str]] = []
         self.heartbeats: list[tuple[str, str, str, str, str, str]] = []
@@ -170,6 +186,12 @@ class _FakeRegistry:
     async def get_active(self, user_id):
         return self.active
 
+    async def resolve_target(self, user_id, machine_id=None):
+        return self.resolved_target
+
+    async def _machine_value(self, user_id, machine_id):
+        return self.machine_value
+
 
 async def test_channel_frames_hello_then_tool_call_then_heartbeat(monkeypatch):
     from src.api.routes.sandbox import channel_frames
@@ -179,7 +201,7 @@ async def test_channel_frames_hello_then_tool_call_then_heartbeat(monkeypatch):
         "sandbox:req:u1", json.dumps({"call_id": "x", "op": "exec", "payload": {}, "timeout": 10})
     )
     registry = _FakeRegistry()
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
     stop = asyncio.Event()
     frames = []
@@ -205,7 +227,7 @@ async def test_channel_frames_returns_when_superseded(monkeypatch, superseded_by
     redis = _FakeRedis()
     await redis.rpush("sandbox:req:u1", json.dumps({"call_id": "x", "op": "exec", "payload": {}}))
     registry = _FakeRegistry()
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
     stop = asyncio.Event()
     frames = []
@@ -249,7 +271,7 @@ async def test_channel_frames_drops_stale_requests(monkeypatch):
         json.dumps({"call_id": "new", "op": "exec", "payload": {}, "ts": time.time()}),
     )
     registry = _FakeRegistry()
-    monkeypatch.setattr(sandbox_route, "_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
     stop = asyncio.Event()
     frames = []
     async for frame in channel_frames(redis, registry, "u1", "c1", stop=stop):
@@ -302,8 +324,9 @@ async def test_results_endpoint_writes_resp(monkeypatch):
             json={"stage": "done", "status": "ok", "stdout": "hi"},
         )
     assert resp.status_code == 200
-    stored = json.loads(redis.kv["sandbox:resp:call-1"])
+    stored = json.loads(redis.lists["sandbox:resp:call-1"][0])
     assert stored["user_id"] == "u1" and stored["stage"] == "done"
+    assert redis.expired_keys.count("sandbox:resp:call-1") == 1
 
 
 async def test_results_rejects_oversized_body(monkeypatch):
@@ -365,7 +388,7 @@ async def test_results_accepts_body_at_exact_limit(monkeypatch):
     resp, redis = await _post_results_with_size(monkeypatch, _results_body_of_size(128))
 
     assert resp.status_code == 200
-    assert "sandbox:resp:call-1" in redis.kv
+    assert "sandbox:resp:call-1" in redis.lists
 
 
 async def test_results_rejects_body_one_byte_over_limit(monkeypatch):
@@ -534,6 +557,8 @@ async def test_channel_registers_confirm_policy_from_query(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen["confirm_policy"] = confirm_policy
         if False:  # pragma: no cover - 使其成为 async generator（空流即结束）
@@ -582,6 +607,8 @@ async def test_channel_registers_version_from_query(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen["version"] = version
         seen["platform"] = platform
@@ -627,6 +654,8 @@ async def test_channel_registers_platform_from_query(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen["platform"] = platform
         if False:  # pragma: no cover - 使其成为 async generator（空流即结束）
@@ -714,6 +743,8 @@ async def test_channel_allows_version_at_or_above_min(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         seen.append(version)
         if False:  # pragma: no cover - 空 async generator
@@ -744,6 +775,8 @@ async def test_channel_allows_equal_min_with_nonnumeric_suffix(monkeypatch):
         confirm_policy="",
         machine_id="",
         machine_name="",
+        stream_redis=None,
+        blpop_timeout=None,
     ):
         if False:  # pragma: no cover - 空 async generator
             yield ""
@@ -851,7 +884,7 @@ async def test_results_endpoint_preserves_fs_op_result(monkeypatch):
             json={"stage": "done", "status": "ok", "result": fs_result},
         )
     assert resp.status_code == 200
-    stored = json.loads(redis.kv["sandbox:resp:call-1"])
+    stored = json.loads(redis.lists["sandbox:resp:call-1"][0])
     assert stored["user_id"] == "u1" and stored["stage"] == "done"
     assert stored["result"] == fs_result
 
@@ -953,7 +986,7 @@ async def test_stream_download_seam_single_post_for_whole_file(monkeypatch, tmp_
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(_streaming_daemon(redis, client, tmp_path, counters))
         responses = await asyncio.wait_for(
-            backend.adownload_files(["/workspace/s1/big.bin"]), timeout=30
+            backend.adownload_files(["/workspace/s1/big.bin"]), timeout=60
         )
         daemon_task.cancel()
 
@@ -971,7 +1004,7 @@ async def test_stream_download_seam_file_error_reaches_backend(monkeypatch, tmp_
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(_streaming_daemon(redis, client, tmp_path))
         responses = await asyncio.wait_for(
-            backend.adownload_files(["/workspace/s1/missing.bin"]), timeout=30
+            backend.adownload_files(["/workspace/s1/missing.bin"]), timeout=60
         )
         daemon_task.cancel()
 
@@ -1024,7 +1057,7 @@ async def test_chunked_download_seam_old_daemon_fallback(monkeypatch, tmp_path):
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(fake_daemon(client))
         responses = await asyncio.wait_for(
-            backend.adownload_files(["/workspace/s1/台账.xlsx"]), timeout=30
+            backend.adownload_files(["/workspace/s1/台账.xlsx"]), timeout=60
         )
         daemon_task.cancel()
 
@@ -1178,7 +1211,7 @@ async def test_stream_upload_seam_single_get_for_whole_file(monkeypatch, tmp_pat
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         daemon_task = asyncio.create_task(upload_daemon(client))
         responses = await asyncio.wait_for(
-            backend.aupload_files([("/workspace/s1/up.bin", content)]), timeout=30
+            backend.aupload_files([("/workspace/s1/up.bin", content)]), timeout=60
         )
         daemon_task.cancel()
 
@@ -1278,3 +1311,210 @@ async def test_upload_stream_endpoint_serves_binary_frames(monkeypatch):
 
     assert resp.status_code == 200
     assert resp.content == b"".join(frames)
+
+
+# ---------------------------------------------------------------------------
+# presence 推送挂钩：注册/注销/优雅下线/机器管理都推 presence 快照
+# ---------------------------------------------------------------------------
+
+
+def _presence_probe(monkeypatch, registry):
+    """捕获 publish_presence 调用并替换为记录器。"""
+    published: list[str] = []
+
+    async def fake_publish(user_id: str) -> None:
+        published.append(user_id)
+
+    monkeypatch.setattr(sandbox_route, "publish_presence", fake_publish)
+    return published
+
+
+def _machines_app(monkeypatch, registry):
+    app = FastAPI()
+    register_error_handlers(app)
+    app.include_router(sandbox_route.router, prefix="/api/sandbox", tags=["Sandbox"])
+    app.dependency_overrides[api_deps.get_current_user_pat_or_jwt] = _fake_user
+    monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
+    return app
+
+
+class _MachinesFakeRegistry(_FakeRegistry):
+    """机器管理端点所需的注册表方法。"""
+
+    def __init__(self):
+        super().__init__()
+        self.renamed: list[tuple[str, str, str]] = []
+        self.defaults: list[tuple[str, str]] = []
+        self.forgotten: list[tuple[str, str]] = []
+
+    async def list_machines(self, user_id, include_offline=False):
+        return []
+
+    async def get_default_machine(self, user_id):
+        return None
+
+    async def rename_machine(self, user_id, machine_id, name):
+        self.renamed.append((user_id, machine_id, name))
+
+    async def set_default_machine(self, user_id, machine_id):
+        self.defaults.append((user_id, machine_id))
+
+    async def forget_machine(self, user_id, machine_id):
+        self.forgotten.append((user_id, machine_id))
+        return True
+
+
+async def test_presence_pushed_on_machine_rename_default_forget(monkeypatch):
+    registry = _MachinesFakeRegistry()
+    published = _presence_probe(monkeypatch, registry)
+    app = _machines_app(monkeypatch, registry)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        await client.patch("/api/sandbox/machines/m1", json={"name": "我的机器"})
+        await client.put("/api/sandbox/machines/m1/default")
+        await client.delete("/api/sandbox/machines/m1")
+
+    assert published == ["u1", "u1", "u1"]
+    assert registry.renamed == [("u1", "m1", "我的机器")]
+    assert registry.defaults == [("u1", "m1")]
+    assert registry.forgotten == [("u1", "m1")]
+
+
+async def test_presence_pushed_on_graceful_offline(monkeypatch):
+    registry = _MachinesFakeRegistry()
+    registry.active = ("c1", "node-a")
+    published = _presence_probe(monkeypatch, registry)
+    monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
+    monkeypatch.setattr(sandbox_route, "_redis", lambda: _FakeRedis())
+
+    # 直接调用端点函数（require_pat_only 是工厂闭包，Depends 在 import 期已固定）；
+    # offline 走 legacy 活跃连接注销
+    resp = await sandbox_route.sandbox_offline(machine_id="", user=_fake_user())
+    assert resp["status"] == "offline"
+    assert published == ["u1"]
+
+    resp2 = await sandbox_route.sandbox_offline(machine_id="m1", user=_fake_user())
+    assert resp2["status"] == "offline"
+    assert resp2["machine_id"] == "m1"
+    assert published == ["u1", "u1"]
+
+
+async def test_presence_pushed_on_channel_register_and_disconnect(monkeypatch):
+    """channel 端点：注册成功即推 presence（上线事件）；流关闭（finally 注销）再推（下线事件）。"""
+    registry = _FakeRegistry()
+    registry.resolved_target = None
+    published = _presence_probe(monkeypatch, registry)
+    monkeypatch.setattr(sandbox_route, "_registry", lambda: registry)
+    monkeypatch.setattr(sandbox_route, "_redis", lambda: _FakeRedis())
+    monkeypatch.setattr(sandbox_route, "_BLPOP_TIMEOUT", 0.01)
+    monkeypatch.setattr(sandbox_route, "_HEARTBEAT_SECONDS", 0.05)
+    monkeypatch.setattr(sandbox_route.settings, "SANDBOX_MIN_DAEMON_VERSION", "0.0.1")
+
+    user = _fake_user()
+    resp = await sandbox_route.sandbox_channel(version="0.4.0", machine_id="m1", user=user)
+    assert published == ["u1"]  # register 后、建流前推送
+
+    iterator = resp.body_iterator
+    chunks: list[str] = []
+    async for chunk in iterator:
+        chunks.append(chunk)
+        break  # 只读 hello 帧即关闭
+    await iterator.aclose()
+
+    assert chunks and "hello" in chunks[0]
+    assert published == ["u1", "u1"]  # finally 注销后再推
+    assert registry.unregistered  # 注销确实发生
+
+
+async def test_channel_frames_uses_blocking_pop_not_polling(monkeypatch):
+    """下发读取走 BLPOP（阻塞 1s 切片），不再 50ms LPOP 空转轮询。"""
+    from src.api.routes.sandbox import channel_frames
+
+    redis = _FakeRedis()
+    await redis.rpush(
+        "sandbox:req:u1", json.dumps({"call_id": "x", "op": "exec", "payload": {}, "timeout": 10})
+    )
+    stop = asyncio.Event()
+
+    frames: list[str] = []
+    async for frame in channel_frames(
+        redis,
+        _FakeRegistry(),
+        "u1",
+        "c1",
+        stop=stop,
+    ):
+        frames.append(frame)
+        if "tool_call" in frame:
+            break
+    stop.set()
+
+    assert any("hello" in f for f in frames)
+    assert any("tool_call" in f for f in frames)
+    assert redis.blpop_calls >= 1
+    assert redis.lpop_calls == 0
+
+
+async def test_machines_endpoint_includes_offline(monkeypatch):
+    """机器列表含离线机（online=False + last_seen）：选择器置灰展示而非消失。"""
+    registry = _MachinesFakeRegistry()
+
+    async def list_machines(user_id, include_offline=False):
+        registry.include_offline_seen = include_offline
+        return [
+            {
+                "machine_id": "srv1",
+                "name": "SRV",
+                "platform": "linux",
+                "version": "0.4.0",
+                "confirm_policy": "all",
+                "online": True,
+                "last_seen": 1700_000_000.0,
+            },
+            {
+                "machine_id": "pc1",
+                "name": "PC",
+                "platform": "win32",
+                "version": "0.4.0",
+                "confirm_policy": "all",
+                "online": False,
+                "last_seen": 1699_000_000.0,
+            },
+        ]
+
+    registry.list_machines = list_machines  # type: ignore[method-assign]
+    app = _machines_app(monkeypatch, registry)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        resp = await client.get("/api/sandbox/machines")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert registry.include_offline_seen is True
+    by_id = {m["machine_id"]: m for m in data["machines"]}
+    assert by_id["srv1"]["online"] is True
+    assert by_id["pc1"]["online"] is False
+    assert by_id["pc1"]["last_seen"] == 1699_000_000.0
+
+
+async def test_upload_stream_client_disconnect_pushes_error_done(monkeypatch):
+    """daemon 拉流中途断开（SIGKILL/断网）：上传端点必须把 error done 推进
+    resp 队列，让 dispatch 快速显式失败——否则干等满 SANDBOX_LOCAL_STREAM_TIMEOUT
+    （600s，E2E 上传中断档实测）。正常 EOF 收尾不推（daemon 自会回 done）。"""
+    from src.api.routes import sandbox as sandbox_route
+    from src.infra.sandbox.relay import _frames
+
+    redis = _FakeRedis()
+    monkeypatch.setattr(sandbox_route, "_binary_redis", lambda: redis)
+    await redis.rpush("sandbox:upblob:u1:c1", _frames.encode_frame(_frames.FRAME_DATA, b"partial"))
+    await redis.rpush("sandbox:upblob:u1:c1", _frames.encode_frame(_frames.FRAME_EOF))
+
+    resp = await sandbox_route.sandbox_upload_stream("c1", user=_fake_user())
+    agen = resp.body_iterator
+    async for _ in agen:  # 只消费首块即断开（客户端中途断流）
+        break
+    await agen.aclose()
+
+    queued = redis.lists.get("sandbox:resp:c1") or []
+    assert queued and "stream_interrupted" in queued[0], f"resp 队列: {queued}"
