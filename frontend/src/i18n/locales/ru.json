@@ -653,6 +653,7 @@
     "patScopeDenied": "У токена нет требуемой области {{scope}}",
     "daemonOffline": "Локальный sandbox-демон не подключён",
     "sandboxTimeout": "Превышено время ожидания локального sandbox ({{seconds}} с)",
+    "sandboxResultMismatch": "Результат от машины \"{{machine}}\" не соответствует машине, которой был назначен вызов",
     "sandboxPayloadTooLarge": "Полезная нагрузка локального sandbox слишком велика",
     "sandboxExecFailed": "Ошибка выполнения локального sandbox: {{detail}}",
     "daemonVersionUnsupported": "Версия локального sandbox-демона {{version}} ниже минимальной {{min}}, обновите его",

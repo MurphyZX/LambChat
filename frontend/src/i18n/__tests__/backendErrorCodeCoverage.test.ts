@@ -16,7 +16,11 @@ const LOCALES_DIR = join(REPO_ROOT, "frontend/src/i18n/locales");
 /** 从 src/kernel/errors.py 提取 (code, defaultMessage) 列表。 */
 function extractErrorCodes(): Array<{ code: string; en: string }> {
   const source = readFileSync(ERRORS_PY, "utf-8");
-  const pattern = /= \("([a-z0-9_]+)",\s*(\d+),\s*"((?:[^"\\]|\\.)*)"\)/g;
+  // 允许元组跨行（成员换行排版时 `= (\n  "code",`）：此前正则要求 code 紧跟
+  // `= (` 同行，多行条目整体逃过覆盖检查（2026-09-08 sandbox_result_mismatch
+  // 五语漏翻未被拦截的根因）。
+  const pattern =
+    /=\s*\(\s*"([a-z0-9_]+)",\s*(\d+),\s*"((?:[^"\\]|\\.)*)"\s*,?\s*\)/g;
   const entries: Array<{ code: string; en: string }> = [];
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {

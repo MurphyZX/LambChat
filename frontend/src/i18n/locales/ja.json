@@ -653,6 +653,7 @@
     "patScopeDenied": "トークンに必要なスコープ {{scope}} がありません",
     "daemonOffline": "ローカルサンドボックスデーモンはオフラインです",
     "sandboxTimeout": "ローカルサンドボックス呼び出しがタイムアウトしました（{{seconds}}秒）",
+    "sandboxResultMismatch": "マシン「{{machine}}」が送信した結果は、この呼び出しの配送先マシンと一致しません",
     "sandboxPayloadTooLarge": "ローカルサンドボックスのペイロードが大きすぎます",
     "sandboxExecFailed": "ローカルサンドボックスの実行に失敗しました：{{detail}}",
     "daemonVersionUnsupported": "ローカルサンドボックスデーモンのバージョン {{version}} は最低要件 {{min}} 未満です。アップデートしてください",

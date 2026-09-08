@@ -653,6 +653,7 @@
     "patScopeDenied": "Token missing required scope '{{scope}}'",
     "daemonOffline": "Local sandbox daemon is offline",
     "sandboxTimeout": "Local sandbox call timed out after {{seconds}}s",
+    "sandboxResultMismatch": "Machine \"{{machine}}\" submitted a result for a call dispatched to another machine",
     "sandboxPayloadTooLarge": "Local sandbox payload exceeds limit",
     "sandboxExecFailed": "Local sandbox execution failed: {{detail}}",
     "daemonVersionUnsupported": "Daemon version {{version}} is below minimum {{min}}; please update",
