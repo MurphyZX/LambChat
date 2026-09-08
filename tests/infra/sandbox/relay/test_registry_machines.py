@@ -216,6 +216,8 @@ async def test_get_confirm_policy_per_machine(registry):
     assert await registry.get_confirm_policy("u1", "srv1") == "all"
     assert await registry.get_confirm_policy("u1", "mac1") == "none"
     assert await registry.get_platform("u1", "srv1") == "win32"
+
+
 # 机器记忆层（machseen）：last_seen 记录 + 离线机保留（include_offline）
 # ---------------------------------------------------------------------------
 

@@ -626,9 +626,7 @@ def _install_sigterm_cancel() -> list:
         sigbreak = getattr(signal, "SIGBREAK", None)
         if sigbreak is not None:
             try:
-                signal.signal(
-                    sigbreak, lambda *_: loop.call_soon_threadsafe(task.cancel)
-                )
+                signal.signal(sigbreak, lambda *_: loop.call_soon_threadsafe(task.cancel))
                 installed.append(("signal", sigbreak))
             except (ValueError, OSError, RuntimeError):
                 pass  # 非主线程等：跳过，依赖 SIGINT/外部取消

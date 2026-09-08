@@ -63,7 +63,11 @@ class _FakeRegistry:
         return self.resolved
 
     def queue_key(self, user_id, machine_id):
-        return f"sandbox:req:{user_id}:{machine_id}" if machine_id != "legacy" else f"sandbox:req:{user_id}"
+        return (
+            f"sandbox:req:{user_id}:{machine_id}"
+            if machine_id != "legacy"
+            else f"sandbox:req:{user_id}"
+        )
 
 
 class _FakeRequest:
@@ -215,7 +219,8 @@ async def test_legacy_set_result_still_readable_during_rolling_deploy(wired, mon
         call_id = request["call_id"]
         # 旧格式：SET 直接覆盖（而非 RPUSH 队列）
         await wired.set(
-            f"sandbox:resp:{call_id}", json.dumps({"user_id": "u1", "stage": "done", "status": "ok"})
+            f"sandbox:resp:{call_id}",
+            json.dumps({"user_id": "u1", "stage": "done", "status": "ok"}),
         )
 
     task = asyncio.create_task(old_replica_daemon())

@@ -98,17 +98,13 @@ def pushed(monkeypatch):
             calls.append((user_id, message))
             return 1
 
-    monkeypatch.setattr(
-        presence, "get_connection_manager", lambda: _Manager()
-    )
+    monkeypatch.setattr(presence, "get_connection_manager", lambda: _Manager())
     return {"calls": calls, "mode": mode}
 
 
 async def test_snapshot_shape_with_offline_machines(registry, monkeypatch):
     """快照：machines 含离线机（include_offline 全量）、默认机、legacy_online、revision。"""
-    monkeypatch.setattr(
-        "src.infra.sandbox.relay.registry.time.time", lambda: 1700_000_000.0
-    )
+    monkeypatch.setattr("src.infra.sandbox.relay.registry.time.time", lambda: 1700_000_000.0)
     await registry.register(
         "u1",
         "c1",
@@ -156,9 +152,7 @@ async def test_snapshot_legacy_online_flag(registry):
 
 async def test_revision_monotonic(registry, monkeypatch):
     clock = {"now": 100.0}
-    monkeypatch.setattr(
-        "src.infra.sandbox.relay.presence.time.time", lambda: clock["now"]
-    )
+    monkeypatch.setattr("src.infra.sandbox.relay.presence.time.time", lambda: clock["now"])
     s1 = await presence.build_presence_snapshot("u1")
     clock["now"] = 200.0
     s2 = await presence.build_presence_snapshot("u1")
@@ -188,8 +182,6 @@ async def test_publish_failure_is_swallowed(registry, pushed, monkeypatch):
 
 async def test_snapshot_json_serializable(registry):
     """快照要过 WS JSON 序列化：machines/revision 全部可 json.dumps。"""
-    await registry.register(
-        "u1", "c1", "n1", version="0.4.0", platform="darwin", machine_id="m1"
-    )
+    await registry.register("u1", "c1", "n1", version="0.4.0", platform="darwin", machine_id="m1")
     snapshot = await presence.build_presence_snapshot("u1")
     assert json.loads(json.dumps(snapshot))["type"] == "sandbox:presence"

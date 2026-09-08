@@ -1312,6 +1312,7 @@ async def test_upload_stream_endpoint_serves_binary_frames(monkeypatch):
     assert resp.status_code == 200
     assert resp.content == b"".join(frames)
 
+
 # ---------------------------------------------------------------------------
 # presence 推送挂钩：注册/注销/优雅下线/机器管理都推 presence 快照
 # ---------------------------------------------------------------------------
