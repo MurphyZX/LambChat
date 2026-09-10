@@ -432,7 +432,7 @@ export function LocalSandboxSection({
     }
   };
 
-  const handleOpenLocalPath = (logicalName: "workspaces" | "audit") => {
+  const handleOpenLocalPath = (logicalName: "workspaces" | "audit" | "logs") => {
     openLocalPath(logicalName).catch((err) => {
       console.warn("[LocalSandboxSection] open path failed:", err);
       toast.error(t("common.operationFailed"));
@@ -540,8 +540,8 @@ export function LocalSandboxSection({
               loading={applying}
             />
 
-            {/* 快捷操作：等宽三列，居中对齐（destructive 操作单独降级到下一行） */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* 快捷操作：等宽四列，居中对齐（destructive 操作单独降级到下一行） */}
+            <div className="grid grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => handleOpenLocalPath("workspaces")}
@@ -560,6 +560,16 @@ export function LocalSandboxSection({
                 <FolderOpen size={12} className="shrink-0 opacity-60" />
                 <span className="truncate">
                   {t("profile.localSandbox.openAudit")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenLocalPath("logs")}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200/80 dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors hover:border-stone-300 dark:hover:border-stone-400/70 hover:bg-white dark:hover:bg-stone-800/70"
+              >
+                <FolderOpen size={12} className="shrink-0 opacity-60" />
+                <span className="truncate">
+                  {t("profile.localSandbox.openLogs")}
                 </span>
               </button>
               <button
