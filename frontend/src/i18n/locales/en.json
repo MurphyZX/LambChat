@@ -2188,6 +2188,21 @@
       "resetTitle": "Clear the runtime override and return to the server baked into this build"
     },
     "localSandbox": {
+      "dataLocation": {
+        "title": "Data location",
+        "desc": "Where sandbox workspaces, audit logs, and the embedded Python runtime live",
+        "customizedBadge": "Custom",
+        "defaultBadge": "Default",
+        "change": "Change location",
+        "reset": "Reset to default",
+        "selected": "Selected: {{path}}",
+        "migrateLabel": "Move existing data to the new location",
+        "confirmChange": "Save and move",
+        "confirmChangeNoMigrate": "Save",
+        "savedRestartPending": "Saved. Restart the app to apply the new location.",
+        "resetRestartPending": "Default location restored. Restart the app to apply; existing data stays where it is.",
+        "relaunchNow": "Restart now"
+      },
       "title": "Local Sandbox",
       "desc": "The agent runs commands and file edits on your own machine through the desktop app",
       "statusOnline": "Online",
