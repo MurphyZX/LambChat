@@ -538,6 +538,7 @@
     "profileFieldTooMany": "{{field}} 数量过多：最多 {{max}} 个",
     "unsupportedLanguage": "不支持的语言：{{lang}}",
     "invalidTheme": "主题无效：{{theme}}，必须为 light、dark 或 sepia",
+    "invalidThemeSchedule": "主题定时切换配置无效：需要 enabled（布尔）、start/end（HH:MM）与 nightTheme（dark 或 sepia）",
     "messageNotFound": "消息不存在",
     "sessionDeleteInProgress": "会话删除进行中",
     "sessionError": "会话操作失败",

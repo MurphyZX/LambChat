@@ -538,6 +538,7 @@
     "profileFieldTooMany": "{{field}} が多すぎます。最大 {{max}} 個です",
     "unsupportedLanguage": "サポートされていない言語です: {{lang}}",
     "invalidTheme": "テーマが無効です: {{theme}}。light、dark、sepia のいずれかを指定してください",
+    "invalidThemeSchedule": "テーマの自動切り替え設定が無効です：enabled（真偽値）、start/end（HH:MM）、nightTheme（dark または sepia）が必要です",
     "messageNotFound": "メッセージが見つかりません",
     "sessionDeleteInProgress": "セッションの削除が進行中です",
     "sessionError": "セッション操作に失敗しました",

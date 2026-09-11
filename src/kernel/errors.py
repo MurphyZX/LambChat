@@ -164,6 +164,11 @@ class ErrorCode(Enum):
         400,
         "Invalid theme: {{theme}}. Must be 'light', 'dark' or 'sepia'",
     )
+    INVALID_THEME_SCHEDULE = (
+        "invalid_theme_schedule",
+        400,
+        "Invalid theme schedule: expected {enabled: bool, start: 'HH:MM', end: 'HH:MM', nightTheme: 'dark'|'sepia'}",
+    )
     ROLE_NOT_FOUND = ("role_not_found", 404, "Role not found")
     ROLE_NAME_EXISTS = ("role_name_exists", 409, "Role name '{{name}}' already exists")
     SYSTEM_ROLE_PROTECTED = (

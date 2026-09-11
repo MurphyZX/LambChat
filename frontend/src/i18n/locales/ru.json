@@ -538,6 +538,7 @@
     "profileFieldTooMany": "Слишком много {{field}}: максимум {{max}}",
     "unsupportedLanguage": "Неподдерживаемый язык: {{lang}}",
     "invalidTheme": "Недопустимая тема: {{theme}}. Должна быть light, dark или sepia",
+    "invalidThemeSchedule": "Недопустимое расписание тем: нужны enabled (логическое), start/end (ЧЧ:ММ) и nightTheme (dark или sepia)",
     "messageNotFound": "Сообщение не найдено",
     "sessionDeleteInProgress": "Выполняется удаление сессии",
     "sessionError": "Ошибка операции с сессией",
