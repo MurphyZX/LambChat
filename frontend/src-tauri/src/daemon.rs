@@ -867,9 +867,10 @@ fn normalize_lexically(path: &Path) -> PathBuf {
 
 /// 解析可打开的本地路径。
 ///
-/// 白名单：`~/.lambchat/workspaces` 与 `~/.lambchat/audit` 之下（含目录本身）。
+/// 白名单：`~/.lambchat/workspaces`、`~/.lambchat/audit` 与 `~/.lambchat/logs`
+/// 之下（含目录本身）。
 /// 接受两种输入：
-/// - 逻辑名 `"workspaces"` / `"audit"`（托盘与设置页按钮使用）；
+/// - 逻辑名 `"workspaces"` / `"audit"` / `"logs"`（托盘与设置页按钮使用）；
 /// - 绝对路径。
 ///
 /// 校验顺序（防符号链接逃逸的关键）：
@@ -882,10 +883,14 @@ fn normalize_lexically(path: &Path) -> PathBuf {
 pub(crate) fn resolve_openable_path(raw: &str) -> Result<PathBuf, String> {
     let home = sandbox_home()?;
     let expanded = match raw {
-        "workspaces" | "audit" => home.join(raw),
+        "workspaces" | "audit" | "logs" => home.join(raw),
         _ => PathBuf::from(raw),
     };
-    let bases = [home.join("workspaces"), home.join("audit")];
+    let bases = [
+        home.join("workspaces"),
+        home.join("audit"),
+        home.join("logs"),
+    ];
 
     if let Ok(canonical_target) = std::fs::canonicalize(&expanded) {
         for base in &bases {
@@ -896,7 +901,7 @@ pub(crate) fn resolve_openable_path(raw: &str) -> Result<PathBuf, String> {
             }
         }
         return Err(format!(
-            "path must be inside ~/.lambchat/workspaces or ~/.lambchat/audit, got: {raw}"
+            "path must be inside ~/.lambchat/workspaces, ~/.lambchat/audit or ~/.lambchat/logs, got: {raw}"
         ));
     }
 
@@ -907,7 +912,7 @@ pub(crate) fn resolve_openable_path(raw: &str) -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "path must be inside ~/.lambchat/workspaces or ~/.lambchat/audit, got: {raw}"
+        "path must be inside ~/.lambchat/workspaces, ~/.lambchat/audit or ~/.lambchat/logs, got: {raw}"
     ))
 }
 
@@ -1241,6 +1246,7 @@ mod tests {
         let sandbox = home.join(".lambchat");
         std::fs::create_dir_all(sandbox.join("workspaces")).unwrap();
         std::fs::create_dir_all(sandbox.join("audit")).unwrap();
+        std::fs::create_dir_all(sandbox.join("logs")).unwrap();
         std::fs::write(sandbox.join("workspaces").join("note.txt"), "x").unwrap();
         // 白名单内的符号链接指向敏感路径——逃逸载体。
         std::os::unix::fs::symlink("/etc/passwd", sandbox.join("workspaces").join("evil")).unwrap();
@@ -1251,6 +1257,8 @@ mod tests {
         // 白名单内的真实路径放行（canonicalize 后前缀校验通过）。
         assert!(resolve_openable_path("workspaces").is_ok());
         assert!(resolve_openable_path("audit").is_ok());
+        // logs（desktop.log 所在目录）同属白名单。
+        assert!(resolve_openable_path("logs").is_ok());
         assert!(resolve_openable_path(&sandbox.join("audit").to_string_lossy()).is_ok());
         assert!(
             resolve_openable_path(&sandbox.join("workspaces/note.txt").to_string_lossy()).is_ok()
