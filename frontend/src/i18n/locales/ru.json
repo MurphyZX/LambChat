@@ -538,6 +538,8 @@
     "profileFieldTooMany": "Слишком много {{field}}: максимум {{max}}",
     "unsupportedLanguage": "Неподдерживаемый язык: {{lang}}",
     "invalidTheme": "Недопустимая тема: {{theme}}. Должна быть light, dark или sepia",
+    "invalidDateFormat": "Недопустимый формат даты: {{value}}. Ожидается ISO 8601",
+    "bookmarkMessageNotFound": "Сообщение в этом диалоге не найдено; закладка невозможна",
     "messageNotFound": "Сообщение не найдено",
     "sessionDeleteInProgress": "Выполняется удаление сессии",
     "sessionError": "Ошибка операции с сессией",

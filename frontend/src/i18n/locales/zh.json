@@ -538,6 +538,8 @@
     "profileFieldTooMany": "{{field}} 数量过多：最多 {{max}} 个",
     "unsupportedLanguage": "不支持的语言：{{lang}}",
     "invalidTheme": "主题无效：{{theme}}，必须为 light、dark 或 sepia",
+    "invalidDateFormat": "日期格式无效：{{value}}，应为 ISO 8601 格式",
+    "bookmarkMessageNotFound": "该会话中未找到此消息，无法收藏",
     "messageNotFound": "消息不存在",
     "sessionDeleteInProgress": "会话删除进行中",
     "sessionError": "会话操作失败",

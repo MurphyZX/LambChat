@@ -538,6 +538,8 @@
     "profileFieldTooMany": "Too many {{field}}: maximum {{max}} allowed",
     "unsupportedLanguage": "Unsupported language: {{lang}}",
     "invalidTheme": "Invalid theme: {{theme}}. Must be 'light', 'dark' or 'sepia'",
+    "invalidDateFormat": "Invalid date: {{value}}. Expected ISO 8601 format",
+    "bookmarkMessageNotFound": "Message not found in this session; cannot bookmark",
     "messageNotFound": "Message not found",
     "sessionDeleteInProgress": "Session deletion is in progress",
     "sessionError": "Session operation failed",
