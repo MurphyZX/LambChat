@@ -109,7 +109,11 @@ export function LocalSandboxSection({
     let cancelled = false;
     void subscribeDaemonStatus((event) => {
       setProcessStatus(
-        event.unsupported ? "unsupported" : event.running ? "running" : "stopped",
+        event.unsupported
+          ? "unsupported"
+          : event.running
+            ? "running"
+            : "stopped",
       );
     }).then((cancel) => {
       if (cancelled && cancel) {
@@ -117,7 +121,10 @@ export function LocalSandboxSection({
         return;
       }
       if (!cancel) {
-        fallbackTimer = setInterval(refreshProcessStatus, PROCESS_POLL_INTERVAL_MS);
+        fallbackTimer = setInterval(
+          refreshProcessStatus,
+          PROCESS_POLL_INTERVAL_MS,
+        );
       }
       cancelSubscription = cancel;
     });
@@ -432,7 +439,9 @@ export function LocalSandboxSection({
     }
   };
 
-  const handleOpenLocalPath = (logicalName: "workspaces" | "audit" | "logs") => {
+  const handleOpenLocalPath = (
+    logicalName: "workspaces" | "audit" | "logs",
+  ) => {
     openLocalPath(logicalName).catch((err) => {
       console.warn("[LocalSandboxSection] open path failed:", err);
       toast.error(t("common.operationFailed"));
@@ -545,7 +554,7 @@ export function LocalSandboxSection({
               <button
                 type="button"
                 onClick={() => handleOpenLocalPath("workspaces")}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200/80 dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors hover:border-stone-300 dark:hover:border-stone-400/70 hover:bg-white dark:hover:bg-stone-800/70"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-theme-border dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-theme-text-secondary dark:text-stone-300 transition-colors hover:border-theme-border-hover dark:hover:border-stone-400/70 hover:bg-theme-bg-card dark:hover:bg-stone-800/70"
               >
                 <FolderOpen size={12} className="shrink-0 opacity-60" />
                 <span className="truncate">
@@ -555,7 +564,7 @@ export function LocalSandboxSection({
               <button
                 type="button"
                 onClick={() => handleOpenLocalPath("audit")}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200/80 dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors hover:border-stone-300 dark:hover:border-stone-400/70 hover:bg-white dark:hover:bg-stone-800/70"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-theme-border dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-theme-text-secondary dark:text-stone-300 transition-colors hover:border-theme-border-hover dark:hover:border-stone-400/70 hover:bg-theme-bg-card dark:hover:bg-stone-800/70"
               >
                 <FolderOpen size={12} className="shrink-0 opacity-60" />
                 <span className="truncate">
@@ -565,7 +574,7 @@ export function LocalSandboxSection({
               <button
                 type="button"
                 onClick={() => handleOpenLocalPath("logs")}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200/80 dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors hover:border-stone-300 dark:hover:border-stone-400/70 hover:bg-white dark:hover:bg-stone-800/70"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-theme-border dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-theme-text-secondary dark:text-stone-300 transition-colors hover:border-theme-border-hover dark:hover:border-stone-400/70 hover:bg-theme-bg-card dark:hover:bg-stone-800/70"
               >
                 <FolderOpen size={12} className="shrink-0 opacity-60" />
                 <span className="truncate">
@@ -575,7 +584,7 @@ export function LocalSandboxSection({
               <button
                 type="button"
                 onClick={handleRestart}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200/80 dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-stone-600 dark:text-stone-300 transition-colors hover:border-stone-300 dark:hover:border-stone-400/70 hover:bg-white dark:hover:bg-stone-800/70"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-theme-border dark:border-stone-500/70 px-2 py-2 text-12 font-medium text-theme-text-secondary dark:text-stone-300 transition-colors hover:border-theme-border-hover dark:hover:border-stone-400/70 hover:bg-theme-bg-card dark:hover:bg-stone-800/70"
               >
                 <RotateCw size={12} className="shrink-0 opacity-60" />
                 <span className="truncate">
