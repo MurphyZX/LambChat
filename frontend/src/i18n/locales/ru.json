@@ -3445,6 +3445,7 @@
   "theme": {
     "switchToDark": "Переключить на тёмную тему",
     "switchToLight": "Переключить на светлую тему",
+      "cycleShortcut": "Горячая клавиша Ctrl/Cmd+Shift+L",
     "switchToSepia": "Переключить на режим сепии"
   },
   "tools": {

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { authApi } from "../services/api";
+import { useThemeShortcut } from "../hooks/useThemeShortcut";
 import {
   applyThemeToDocument,
   getInitialThemePreference,
@@ -76,6 +77,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const toggleTheme = () => {
     setThemeState((prev) => resolveNextTheme(prev));
   };
+
+  useThemeShortcut(toggleTheme);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

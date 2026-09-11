@@ -3,6 +3,7 @@ import {
   getInitialThemePreference,
   isTheme,
   readThemeMode,
+  isThemeCycleShortcut,
   resolveNextTheme,
   themeExportBackground,
 } from "../themeDom.ts";
@@ -234,4 +235,15 @@ test("applyThemeToDocument keeps the page background in sync for system bars", (
   expect(rootStyle.get("color-scheme")).toBe("dark");
   expect(bodyStyle.get("background-color")).toBe("#151210");
   expect(bodyStyle.get("color-scheme")).toBe("dark");
+});
+
+test("isThemeCycleShortcut matches Ctrl/Cmd+Shift+L in either case", () => {
+  expect(isThemeCycleShortcut({ key: "l", ctrlKey: true, metaKey: false, shiftKey: true })).toBe(true);
+  expect(isThemeCycleShortcut({ key: "L", ctrlKey: false, metaKey: true, shiftKey: true })).toBe(true);
+});
+
+test("isThemeCycleShortcut rejects missing modifiers or other keys", () => {
+  expect(isThemeCycleShortcut({ key: "l", ctrlKey: false, metaKey: false, shiftKey: true })).toBe(false);
+  expect(isThemeCycleShortcut({ key: "l", ctrlKey: true, metaKey: false, shiftKey: false })).toBe(false);
+  expect(isThemeCycleShortcut({ key: "k", ctrlKey: true, metaKey: false, shiftKey: true })).toBe(false);
 });

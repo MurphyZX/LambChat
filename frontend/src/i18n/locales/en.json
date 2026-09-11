@@ -3445,6 +3445,7 @@
   "theme": {
     "switchToDark": "Switch to dark mode",
     "switchToLight": "Switch to light mode",
+      "cycleShortcut": "Shortcut Ctrl/Cmd+Shift+L",
     "switchToSepia": "Switch to sepia mode"
   },
   "tools": {

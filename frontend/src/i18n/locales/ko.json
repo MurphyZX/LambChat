@@ -3445,6 +3445,7 @@
   "theme": {
     "switchToDark": "다크 모드로 전환",
     "switchToLight": "라이트 모드로 전환",
+      "cycleShortcut": "단축키 Ctrl/Cmd+Shift+L",
     "switchToSepia": "세피아 모드로 전환"
   },
   "tools": {

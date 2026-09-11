@@ -60,6 +60,17 @@ export function themeExportBackground(theme: Theme): string {
   return theme === "sepia" ? "#faf6ea" : "#ffffff";
 }
 
+/** 主题循环快捷键（Ctrl/Cmd+Shift+L）；可编辑目标的豁免由监听方负责 */
+export function isThemeCycleShortcut(
+  event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">,
+): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    event.shiftKey &&
+    (event.key === "L" || event.key === "l")
+  );
+}
+
 export function resolveNextTheme(current: Theme): Theme {
   const index = THEME_CYCLE.indexOf(current);
   return THEME_CYCLE[(index + 1) % THEME_CYCLE.length] ?? "light";
