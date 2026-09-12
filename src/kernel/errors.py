@@ -164,6 +164,11 @@ class ErrorCode(Enum):
         400,
         "Invalid theme: {{theme}}. Must be 'light', 'dark' or 'sepia'",
     )
+    INVALID_THEME_SCHEDULE = (
+        "invalid_theme_schedule",
+        400,
+        "Invalid theme schedule: expected {enabled: bool, start: 'HH:MM', end: 'HH:MM', nightTheme: 'dark'|'sepia'}",
+    )
     INVALID_DATE_FORMAT = (
         "invalid_date_format",
         400,

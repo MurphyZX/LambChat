@@ -538,9 +538,9 @@
     "profileFieldTooMany": "{{field}} が多すぎます。最大 {{max}} 個です",
     "unsupportedLanguage": "サポートされていない言語です: {{lang}}",
     "invalidTheme": "テーマが無効です: {{theme}}。light、dark、sepia のいずれかを指定してください",
+    "invalidThemeSchedule": "テーマの自動切り替え設定が無効です：enabled（真偽値）、start/end（HH:MM）、nightTheme（dark または sepia）が必要です",
     "invalidDateFormat": "日付が無効です：{{value}}。ISO 8601 形式で指定",
-    "bookmarkMessageNotFound": "このセッションにメッセージが見つかりません",
-    "messageNotFound": "メッセージが見つかりません",
+    "bookmarkMessageNotFound": "このセッションにメッセージが見つかりません",    "messageNotFound": "メッセージが見つかりません",
     "sessionDeleteInProgress": "セッションの削除が進行中です",
     "sessionError": "セッション操作に失敗しました",
     "pinUpdateFailed": "ピン留め状態の更新に失敗しました",
@@ -2303,6 +2303,11 @@
     "termsTab": "利用規約",
     "termsTitle": "利用規約",
     "theme": "テーマ",
+    "themeScheduleToggle": "時間帯で自動切り替え",
+    "themeScheduleStart": "夜間の開始",
+    "themeScheduleEnd": "夜間の終了",
+    "themeScheduleNightTheme": "夜間テーマ",
+    "themeSchedulePreview": "現在の時刻で使用するテーマ：{{theme}}",
     "themeSynced": "テーマ設定を保存しました",
     "title": "プロフィール",
     "togglePasswordVisibility": "パスワードの表示切替",
@@ -3463,6 +3468,7 @@
   "theme": {
     "switchToDark": "ダークモードに切り替え",
     "switchToLight": "ライトモードに切り替え",
+      "cycleShortcut": "ショートカット Ctrl/Cmd+Shift+L",
     "switchToSepia": "セピアモードに切り替え"
   },
   "tools": {

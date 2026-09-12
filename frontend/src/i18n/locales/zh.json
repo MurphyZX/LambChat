@@ -538,9 +538,9 @@
     "profileFieldTooMany": "{{field}} 数量过多：最多 {{max}} 个",
     "unsupportedLanguage": "不支持的语言：{{lang}}",
     "invalidTheme": "主题无效：{{theme}}，必须为 light、dark 或 sepia",
+    "invalidThemeSchedule": "主题定时切换配置无效：需要 enabled（布尔）、start/end（HH:MM）与 nightTheme（dark 或 sepia）",
     "invalidDateFormat": "日期无效：{{value}}，需 ISO 8601 格式",
-    "bookmarkMessageNotFound": "会话中未找到该消息，无法收藏",
-    "messageNotFound": "消息不存在",
+    "bookmarkMessageNotFound": "会话中未找到该消息，无法收藏",    "messageNotFound": "消息不存在",
     "sessionDeleteInProgress": "会话删除进行中",
     "sessionError": "会话操作失败",
     "pinUpdateFailed": "置顶状态更新失败",
@@ -2303,6 +2303,11 @@
     "termsTab": "服务条款",
     "termsTitle": "服务条款",
     "theme": "主题",
+    "themeScheduleToggle": "按时段自动切换",
+    "themeScheduleStart": "夜间开始",
+    "themeScheduleEnd": "夜间结束",
+    "themeScheduleNightTheme": "夜间主题",
+    "themeSchedulePreview": "按当前时间将使用：{{theme}}",
     "themeSynced": "主题偏好已保存",
     "title": "个人信息",
     "togglePasswordVisibility": "切换密码可见性",
@@ -3463,6 +3468,7 @@
   "theme": {
     "switchToDark": "切换到深色模式",
     "switchToLight": "切换到浅色模式",
+      "cycleShortcut": "快捷键 Ctrl/Cmd+Shift+L",
     "switchToSepia": "切换到护眼模式"
   },
   "tools": {

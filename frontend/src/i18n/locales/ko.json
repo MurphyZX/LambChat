@@ -538,9 +538,9 @@
     "profileFieldTooMany": "{{field}}이(가) 너무 많습니다. 최대 {{max}}개까지 가능합니다",
     "unsupportedLanguage": "지원하지 않는 언어입니다: {{lang}}",
     "invalidTheme": "잘못된 테마입니다: {{theme}}. light, dark, sepia 중 하나여야 합니다",
+    "invalidThemeSchedule": "테마 예약 전환 설정이 잘못되었습니다: enabled(불리언), start/end(HH:MM), nightTheme(dark 또는 sepia)이 필요합니다",
     "invalidDateFormat": "잘못된 날짜: {{value}}. ISO 8601 형식 필요",
-    "bookmarkMessageNotFound": "이 세션에서 메시지를 찾을 수 없습니다",
-    "messageNotFound": "메시지를 찾을 수 없습니다",
+    "bookmarkMessageNotFound": "이 세션에서 메시지를 찾을 수 없습니다",    "messageNotFound": "메시지를 찾을 수 없습니다",
     "sessionDeleteInProgress": "세션 삭제가 진행 중입니다",
     "sessionError": "세션 작업에 실패했습니다",
     "pinUpdateFailed": "고정 상태 업데이트에 실패했습니다",
@@ -2303,6 +2303,11 @@
     "termsTab": "이용약관",
     "termsTitle": "이용약관",
     "theme": "테마",
+    "themeScheduleToggle": "시간대별 자동 전환",
+    "themeScheduleStart": "야간 시작",
+    "themeScheduleEnd": "야간 종료",
+    "themeScheduleNightTheme": "야간 테마",
+    "themeSchedulePreview": "현재 시간 기준 테마: {{theme}}",
     "themeSynced": "테마 환경설정이 저장되었습니다",
     "title": "프로필",
     "togglePasswordVisibility": "비밀번호 표시 전환",
@@ -3463,6 +3468,7 @@
   "theme": {
     "switchToDark": "다크 모드로 전환",
     "switchToLight": "라이트 모드로 전환",
+      "cycleShortcut": "단축키 Ctrl/Cmd+Shift+L",
     "switchToSepia": "세피아 모드로 전환"
   },
   "tools": {

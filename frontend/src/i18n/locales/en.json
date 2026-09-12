@@ -538,9 +538,9 @@
     "profileFieldTooMany": "Too many {{field}}: maximum {{max}} allowed",
     "unsupportedLanguage": "Unsupported language: {{lang}}",
     "invalidTheme": "Invalid theme: {{theme}}. Must be 'light', 'dark' or 'sepia'",
+    "invalidThemeSchedule": "Invalid theme schedule: expected enabled (boolean), start/end (HH:MM) and nightTheme (dark or sepia)",
     "invalidDateFormat": "Invalid date: {{value}}. Use ISO 8601",
-    "bookmarkMessageNotFound": "Message not found in this session",
-    "messageNotFound": "Message not found",
+    "bookmarkMessageNotFound": "Message not found in this session",    "messageNotFound": "Message not found",
     "sessionDeleteInProgress": "Session deletion is in progress",
     "sessionError": "Session operation failed",
     "pinUpdateFailed": "Failed to update pin state",
@@ -2303,6 +2303,11 @@
     "termsTab": "Terms of Service",
     "termsTitle": "Terms of Service",
     "theme": "Theme",
+    "themeScheduleToggle": "Auto-switch by schedule",
+    "themeScheduleStart": "Night starts",
+    "themeScheduleEnd": "Night ends",
+    "themeScheduleNightTheme": "Night theme",
+    "themeSchedulePreview": "Current time will use: {{theme}}",
     "themeSynced": "Theme preference saved",
     "title": "Profile",
     "togglePasswordVisibility": "Toggle password visibility",
@@ -3463,6 +3468,7 @@
   "theme": {
     "switchToDark": "Switch to dark mode",
     "switchToLight": "Switch to light mode",
+      "cycleShortcut": "Shortcut Ctrl/Cmd+Shift+L",
     "switchToSepia": "Switch to sepia mode"
   },
   "tools": {
