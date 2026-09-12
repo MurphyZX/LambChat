@@ -2190,6 +2190,21 @@
       "resetTitle": "런타임 설정을 지우고 설치 패키지에 내장된 기본 서버로 되돌립니다"
     },
     "localSandbox": {
+      "dataLocation": {
+        "title": "데이터 위치",
+        "desc": "샌드박스 작업 공간, 감사 로그, 내장 Python 런타임의 저장 위치",
+        "customizedBadge": "사용자 지정",
+        "defaultBadge": "기본",
+        "change": "위치 변경",
+        "reset": "기본값으로 복원",
+        "selected": "선택됨: {{path}}",
+        "migrateLabel": "기존 데이터를 새 위치로 이동",
+        "confirmChange": "저장하고 이동",
+        "confirmChangeNoMigrate": "저장",
+        "savedRestartPending": "저장되었습니다. 앱을 재시작하면 새 위치가 적용됩니다.",
+        "resetRestartPending": "기본 위치로 복원되었습니다. 앱 재시작 후 적용되며 기존 데이터는 원래 위치에 남습니다.",
+        "relaunchNow": "지금 재시작"
+      },
       "title": "로컬 샌드박스",
       "desc": "데스크톱 앱을 통해 사용자의 PC에서 직접 명령과 파일 작업을 수행합니다",
       "statusOnline": "온라인",

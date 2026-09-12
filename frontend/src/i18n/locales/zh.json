@@ -2190,6 +2190,21 @@
       "resetTitle": "清除运行时配置，恢复安装包内置的默认服务器"
     },
     "localSandbox": {
+      "dataLocation": {
+        "title": "数据位置",
+        "desc": "沙箱工作区、审计日志与内置 Python 运行时的存放位置",
+        "customizedBadge": "自定义",
+        "defaultBadge": "默认",
+        "change": "更改位置",
+        "reset": "恢复默认",
+        "selected": "已选择：{{path}}",
+        "migrateLabel": "迁移现有数据到新位置",
+        "confirmChange": "保存并迁移",
+        "confirmChangeNoMigrate": "保存",
+        "savedRestartPending": "已保存，重启应用后新位置生效。",
+        "resetRestartPending": "已恢复默认位置，重启应用后生效；现有数据保留在原位置，不会自动搬回。",
+        "relaunchNow": "立即重启"
+      },
       "title": "本地沙箱",
       "desc": "Agent 通过桌面端在你自己的电脑上执行命令与文件读写",
       "statusOnline": "在线",
