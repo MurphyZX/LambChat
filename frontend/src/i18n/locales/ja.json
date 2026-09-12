@@ -538,6 +538,8 @@
     "profileFieldTooMany": "{{field}} が多すぎます。最大 {{max}} 個です",
     "unsupportedLanguage": "サポートされていない言語です: {{lang}}",
     "invalidTheme": "テーマが無効です: {{theme}}。light、dark、sepia のいずれかを指定してください",
+    "invalidDateFormat": "日付が無効です：{{value}}。ISO 8601 形式で指定",
+    "bookmarkMessageNotFound": "このセッションにメッセージが見つかりません",
     "messageNotFound": "メッセージが見つかりません",
     "sessionDeleteInProgress": "セッションの削除が進行中です",
     "sessionError": "セッション操作に失敗しました",
