@@ -85,9 +85,7 @@ class _RecordingStorage:
 
     async def upload_stream_to_key(self, *, file, key, content_type, **_kwargs):
         file.seek(0)
-        self.uploaded.append(
-            {"key": key, "content_type": content_type, "data": file.read()}
-        )
+        self.uploaded.append({"key": key, "content_type": content_type, "data": file.read()})
         return SimpleNamespace(key=key)
 
 
@@ -144,9 +142,7 @@ async def test_upload_transcode_failure_rejected_with_clear_error(
         await upload.upload_file(
             request=SimpleNamespace(headers={}, base_url="http://testserver/"),
             file=_TranscodeUpload("broken.tiff", "image/tiff", b"not-a-tiff"),
-            current_user=SimpleNamespace(
-                sub="owner-a", permissions=["file:upload"], roles=[]
-            ),
+            current_user=SimpleNamespace(sub="owner-a", permissions=["file:upload"], roles=[]),
         )
 
     assert exc_info.value.error_code.code == "image_transcode_failed"
@@ -263,7 +259,8 @@ async def test_get_file_serves_cached_transcode_without_re_render(
 
 @pytest.mark.asyncio
 async def test_get_file_local_storage_transcodes_on_the_fly(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     src = tmp_path / "legacy.tiff"
     src.write_bytes(_tiff_bytes())

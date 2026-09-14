@@ -17,9 +17,7 @@ IMAGE_COMPRESSION_MAX_PIXELS = 40_000_000
 # error 1210 "image input format/parsing error", and canvas in browsers
 # cannot decode TIFF either, so the frontend passes it through untouched).
 MODEL_SAFE_IMAGE_EXTS = frozenset({"jpg", "jpeg", "png", "gif", "webp"})
-MODEL_SAFE_IMAGE_MIME_TYPES = frozenset(
-    {"image/jpeg", "image/png", "image/gif", "image/webp"}
-)
+MODEL_SAFE_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/gif", "image/webp"})
 # Vector format Pillow cannot decode — leave it as-is instead of failing.
 MODEL_UNTRANSCODABLE_EXTS = frozenset({"svg"})
 
