@@ -3623,6 +3623,7 @@
     "searchPlaceholder": "Поиск по имени пользователя...",
     "statsScopeHint": "Сводка включает все совпадающие записи",
     "status": "Статус",
+    "statusCancelled": "Отменено",
     "statusError": "Err",
     "statusOk": "OK",
     "subtitle": "Отслеживание потребления токенов",

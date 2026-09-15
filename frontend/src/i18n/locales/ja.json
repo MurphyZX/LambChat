@@ -3623,6 +3623,7 @@
     "searchPlaceholder": "ユーザー名で検索...",
     "statsScopeHint": "集計はすべての一致するレコードを対象としています",
     "status": "ステータス",
+    "statusCancelled": "取消済み",
     "statusError": "Err",
     "statusOk": "OK",
     "subtitle": "Token消費の追跡",
