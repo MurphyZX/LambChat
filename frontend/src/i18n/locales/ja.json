@@ -3570,6 +3570,7 @@
     "inputTokens": "入力Tokens",
     "insight": {
       "automationShare": "自動化比率",
+      "cancelledCount": "キャンセル {{count}}",
       "avgPerRequest": "平均リクエスト",
       "cacheReuse": "キャッシュ再利用",
       "failedRequests": "異常リクエスト",

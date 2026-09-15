@@ -3570,6 +3570,7 @@
     "inputTokens": "Input Tokens",
     "insight": {
       "automationShare": "Automation Share",
+      "cancelledCount": "Cancelled {{count}}",
       "avgPerRequest": "Avg per Request",
       "cacheReuse": "Cache Reuse",
       "failedRequests": "Failed Requests",
