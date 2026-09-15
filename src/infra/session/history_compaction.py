@@ -13,11 +13,16 @@ frontend/src/hooks/useAgent/eventProcessor.ts）。
    并行子代理/并行工具调用的增量在事件流里交错，相邻合并不生效，
    必须按块标识分组、在首现位置拼接全部内容——与前端「按 thinking_id /
    tool_call_id 反向查找 part 再追加」的实时折叠完全等价。
+
+同一核心同时服务两条链路：
+
+- 历史读取（``compact_history_events``，路由层传输压缩）
+- 后台存量合并（``EventMerger`` 传 ``mark_merges=True``，把已完成 trace
+  的交错增量归并落库，标记 merged/merged_count 便于观测与幂等）
 """
 
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any
 
 # 写入端随流更新的易变字段（各条增量各不相同），不属于块身份；
@@ -39,6 +44,10 @@ def _data_identity(data: Any) -> dict[str, Any] | None:
     }
 
 
+def _envelope_identity(event: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in event.items() if key not in {"data", "seq", "timestamp"}}
+
+
 def _compatible_message_chunks(left: dict[str, Any], right: dict[str, Any]) -> bool:
     if left.get("event_type") != "message:chunk" or right.get("event_type") != "message:chunk":
         return False
@@ -52,13 +61,7 @@ def _compatible_message_chunks(left: dict[str, Any], right: dict[str, Any]) -> b
     ):
         return False
 
-    left_identity = {
-        key: value for key, value in left.items() if key not in {"data", "seq", "timestamp"}
-    }
-    right_identity = {
-        key: value for key, value in right.items() if key not in {"data", "seq", "timestamp"}
-    }
-    if left_identity != right_identity:
+    if _envelope_identity(left) != _envelope_identity(right):
         return False
 
     return _data_identity(left_data) == _data_identity(right_data)
@@ -68,7 +71,8 @@ def compact_consecutive_message_chunks(events: list[dict[str, Any]]) -> list[dic
     """Merge only adjacent semantically compatible assistant text chunks."""
     compacted: list[dict[str, Any]] = []
     for source_event in events:
-        event = deepcopy(source_event)
+        event = dict(source_event)
+        event["data"] = dict(event.get("data") or {})
         if compacted and _compatible_message_chunks(compacted[-1], event):
             previous = compacted[-1]
             merged = event
@@ -134,31 +138,54 @@ def _compatible_adjacent_stream_events(left: dict[str, Any], right: dict[str, An
         right_data.get("content"), str
     ):
         return False
-    left_identity = {
-        key: value for key, value in left.items() if key not in {"data", "seq", "timestamp"}
-    }
-    right_identity = {
-        key: value for key, value in right.items() if key not in {"data", "seq", "timestamp"}
-    }
-    if left_identity != right_identity:
+    if _envelope_identity(left) != _envelope_identity(right):
         return False
     return _data_identity(left_data) == _data_identity(right_data)
 
 
-def compact_history_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _apply_merge_markers(target: dict[str, Any], delta_event: dict[str, Any]) -> None:
+    """存量合并链路（mark_merges=True）的观测标记：合并次数与起止时间。
+
+    多轮合并（已带 merged_count 的目标再并新增量）继续累加，
+    started_at 保留最早一次的值。
+    """
+    data = target["data"]
+    data["merged"] = True
+    data["merged_count"] = int(data.get("merged_count") or 1) + 1
+    if not data.get("started_at"):
+        data["started_at"] = target.get("timestamp")
+    data["ended_at"] = delta_event.get("timestamp")
+
+
+def compact_history_events(
+    events: list[dict[str, Any]], *, mark_merges: bool = False
+) -> list[dict[str, Any]]:
     """无损压缩历史事件：thinking / tool:args:chunk 按块标识归并，
     message:chunk 保持相邻合并（易变流式元数据不参与身份判定）。
 
     归并事件保留首条增量的位置与信封（seq/timestamp）：前端按
     timestamp 排序后在各消息内按到达顺序创建 part，首现位置与实时
     折叠的 part 顺序一致。
+
+    可合并类型的事件在入列时做浅拷贝（信封 + data 顶层）：后续归并只
+    对拷贝做键赋值，输入列表与未参与合并的事件对象不被改动；后台
+    合并链路一次要处理数万事件的 trace，避免整树深拷贝。
+
+    mark_merges=True 时在归并目标上叠加 merged/merged_count/
+    started_at/ended_at 标记（后台存量合并落库用）。
     """
     compacted: list[dict[str, Any]] = []
     group_target_index: dict[tuple[Any, ...], int] = {}
 
     for source_event in events:
-        event = deepcopy(source_event)
-        event_type = event.get("event_type")
+        event_type = source_event.get("event_type")
+        mergeable = event_type in _MERGEABLE_EVENT_TYPES
+        # 可合并类型才需要可写的信封/数据拷贝；其余事件原样引用
+        event: dict[str, Any] = (
+            {**source_event, "data": dict(source_event.get("data") or {})}
+            if mergeable
+            else source_event
+        )
         data = event.get("data")
 
         group_key = _block_group_key(event)
@@ -172,6 +199,8 @@ def compact_history_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]
                 and isinstance(delta, str)
             ):
                 target_data["content"] = target_data["content"] + delta
+                if mark_merges:
+                    _apply_merge_markers(target, event)
                 continue
             # 内容形态异常（非字符串）不做拼接，原样落为独立事件
             compacted.append(event)
@@ -179,13 +208,11 @@ def compact_history_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]
 
         if group_key is not None:
             group_target_index[group_key] = len(compacted)
-        elif (
-            event_type in _MERGEABLE_EVENT_TYPES
-            and compacted
-            and _compatible_adjacent_stream_events(compacted[-1], event)
-        ):
+        elif mergeable and compacted and _compatible_adjacent_stream_events(compacted[-1], event):
             previous = compacted[-1]
             previous["data"]["content"] = previous["data"]["content"] + event["data"]["content"]
+            if mark_merges:
+                _apply_merge_markers(previous, event)
             continue
 
         compacted.append(event)
