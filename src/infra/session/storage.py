@@ -22,6 +22,7 @@ from src.infra.session.search_index import (
     build_search_query_terms,
     compose_session_search_index,
     merge_search_state,
+    session_list_projection,
 )
 from src.infra.session.session_attachment_operations import (
     SessionAttachmentOperationsMixin,
@@ -32,28 +33,6 @@ from src.kernel.schemas.session import Session, SessionCreate, SessionUpdate
 
 SESSION_BATCH_LOOKUP_LIMIT = 100
 SESSION_LIST_LOOKUP_LIMIT = 100
-
-# 会话文档上的搜索索引/写入器字段：只被搜索与回填路径消费，可达数十
-# KB/会话；列表读取（侧边栏）一律投影掉，Session 模型也不声明它们
-_SESSION_LIST_EXCLUDED_FIELDS = frozenset(
-    {
-        "search_text",
-        "search_terms",
-        "name_search_terms",
-        "message_search_terms",
-        "latest_user_message",
-        "search_index_version",
-        "search_index_updated_at",
-        "active_trace_writers",
-    }
-)
-
-
-def _session_list_projection(*, keep_search_text: bool = False) -> dict[str, int]:
-    projection = {field: 0 for field in _SESSION_LIST_EXCLUDED_FIELDS}
-    if keep_search_text:
-        projection.pop("search_text", None)
-    return projection
 
 
 class SessionStorage(SessionAttachmentOperationsMixin):
@@ -460,7 +439,7 @@ class SessionStorage(SessionAttachmentOperationsMixin):
                 query,
                 # 搜索索引/预览字段可达数十 KB/会话且 Session 模型不声明,
                 # 列表读取一律投影掉;搜索路径保留 search_text 生成命中预览
-                _session_list_projection(keep_search_text=bool(search)),
+                session_list_projection(keep_search_text=bool(search)),
             )
             .skip(skip)
             .limit(limit)
@@ -513,7 +492,7 @@ class SessionStorage(SessionAttachmentOperationsMixin):
         }
         total = await self.collection.count_documents(query)
         cursor = (
-            self.collection.find(query, _session_list_projection())
+            self.collection.find(query, session_list_projection())
             .skip(skip)
             .limit(limit)
             .sort("updated_at", -1)
