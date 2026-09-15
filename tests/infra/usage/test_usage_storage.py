@@ -719,7 +719,9 @@ async def test_upsert_usage_log_from_trace_metadata_surfaces_cancel_reason() -> 
 
 
 @pytest.mark.asyncio
-async def test_upsert_usage_log_from_trace_metadata_prefers_error_event_over_cancel_reason() -> None:
+async def test_upsert_usage_log_from_trace_metadata_prefers_error_event_over_cancel_reason() -> (
+    None
+):
     """worker 抢先落了 error 事件（如 "Task cancelled"）时以事件原文优先。"""
     collection = _FakeCollection()
     storage = UsageStorage()

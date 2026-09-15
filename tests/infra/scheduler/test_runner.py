@@ -929,12 +929,8 @@ async def test_execute_agent_injects_default_model_when_task_has_no_model(
         lambda key: (lambda *args, **kwargs: None) if key == "agent_stream" else None,
     )
     monkeypatch.setattr("src.infra.session.manager.SessionManager", lambda: _FakeSessionManager())
-    monkeypatch.setattr(
-        "src.infra.llm.models_service.get_default_model", _default_model
-    )
-    monkeypatch.setattr(
-        "src.infra.llm.models_service.get_default_model_id", _default_model_id
-    )
+    monkeypatch.setattr("src.infra.llm.models_service.get_default_model", _default_model)
+    monkeypatch.setattr("src.infra.llm.models_service.get_default_model_id", _default_model_id)
 
     await ScheduledTaskRunner()._execute_agent(task, run_id="run_1", session_id="session_1")
 
@@ -983,17 +979,13 @@ async def test_execute_agent_keeps_existing_model_selection(
         lambda key: (lambda *args, **kwargs: None) if key == "agent_stream" else None,
     )
     monkeypatch.setattr("src.infra.session.manager.SessionManager", lambda: _FakeSessionManager())
-    monkeypatch.setattr(
-        "src.infra.llm.models_service.get_default_model", _default_model
-    )
+    monkeypatch.setattr("src.infra.llm.models_service.get_default_model", _default_model)
     # 显式选模走 validate_agent_model_access 分支，需要任务 owner 在场
     monkeypatch.setattr(
         "src.infra.scheduler.runner._resolve_task_owner",
         AsyncMock(return_value=object()),
     )
-    monkeypatch.setattr(
-        "src.api.routes.chat.validate_agent_model_access", AsyncMock()
-    )
+    monkeypatch.setattr("src.api.routes.chat.validate_agent_model_access", AsyncMock())
 
     await ScheduledTaskRunner()._execute_agent(task, run_id="run_1", session_id="session_1")
 
