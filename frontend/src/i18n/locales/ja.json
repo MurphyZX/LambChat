@@ -3737,7 +3737,9 @@
     "updateRelaunchInstall": "再起動してインストール",
     "availableTitle": "新しいバージョンがあります",
     "skipVersion": "このバージョンをスキップ",
-    "viewFullNotes": "更新履歴をすべて表示"
+    "viewFullNotes": "更新履歴をすべて表示",
+    "foundToast": "新バージョン v{{version}} があります",
+    "notificationBodyDesktop": "新バージョン {{version}} をバックグラウンドでダウンロード中です。完了後、タイトルバーから再起動してインストールできます"
   },
   "download": {
     "title": "ローカルサンドボックスのダウンロード",
@@ -3780,5 +3782,13 @@
       "title": "モバイルアプリ",
       "desc": "LambChat Android クライアント（APK 直接インストール）。Web と同じアカウントでログインできます。"
     }
+  },
+  "titlebar": {
+    "back": "戻る",
+    "forward": "進む",
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "元に戻す",
+    "close": "閉じる"
   }
 }
