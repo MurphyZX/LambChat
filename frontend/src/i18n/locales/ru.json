@@ -3570,6 +3570,7 @@
     "inputTokens": "Входные токены",
     "insight": {
       "automationShare": "Доля автоматизации",
+      "cancelledCount": "Отменено {{count}}",
       "avgPerRequest": "Среднее за запрос",
       "cacheReuse": "Повторное использование кэша",
       "failedRequests": "Ошибочные запросы",

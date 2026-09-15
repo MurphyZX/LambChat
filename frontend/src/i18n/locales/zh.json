@@ -3570,6 +3570,7 @@
     "inputTokens": "输入 Tokens",
     "insight": {
       "automationShare": "自动化占比",
+      "cancelledCount": "已取消 {{count}}",
       "avgPerRequest": "平均单次",
       "cacheReuse": "缓存复用",
       "failedRequests": "异常请求",

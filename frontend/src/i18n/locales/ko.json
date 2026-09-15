@@ -3570,6 +3570,7 @@
     "inputTokens": "입력 Tokens",
     "insight": {
       "automationShare": "자동화 비율",
+      "cancelledCount": "취소 {{count}}",
       "avgPerRequest": "평균 요청",
       "cacheReuse": "캐시 재사용",
       "failedRequests": "실패 요청",
