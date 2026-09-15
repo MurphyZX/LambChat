@@ -3623,6 +3623,7 @@
     "searchPlaceholder": "사용자명으로 검색...",
     "statsScopeHint": "요약은 모든 일치하는 레코드를 포함합니다",
     "status": "상태",
+    "statusCancelled": "취소됨",
     "statusError": "Err",
     "statusOk": "OK",
     "subtitle": "Token 소비 추적",

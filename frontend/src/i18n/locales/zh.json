@@ -3623,6 +3623,7 @@
     "searchPlaceholder": "搜索用户名...",
     "statsScopeHint": "顶部统计为当前筛选下全部数据",
     "status": "状态",
+    "statusCancelled": "已取消",
     "statusError": "Err",
     "statusOk": "OK",
     "subtitle": "Token 消耗追踪",
