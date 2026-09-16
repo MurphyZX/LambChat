@@ -22,6 +22,7 @@ export const CATEGORY_ORDER: SettingCategory[] = [
   "skills",
   "tools",
   "audio_transcription",
+  "document_parse",
   "tracing",
   "user",
   "oauth",
