@@ -706,7 +706,8 @@
     "skills": "Навыки",
     "tools": "Инструменты",
     "tracing": "Трассировка",
-    "user": "Профиль"
+    "user": "Профиль",
+    "document_parse": "Разбор документов"
   },
   "channel": {
     "addFirstInstance": "Добавить первый экземпляр",
@@ -1037,7 +1038,8 @@
       "toolWebSearchResults_one": "{{count}} результат",
       "toolWebSearchResults_other": "{{count}} результатов",
       "toolWrite": "Запись",
-      "waitingConfirm": "Ожидание подтверждения"
+      "waitingConfirm": "Ожидание подтверждения",
+      "toolDocumentParse": "Разбор документа"
     },
     "messageInput": "Поле ввода сообщения",
     "noPermission": "Нет прав для отправки сообщений",
@@ -1782,7 +1784,6 @@
     "updateSuccess": "Навык успешно обновлён",
     "viewInMySkills": "Открыть в моих навыках"
   },
-
   "mcp": {
     "addFirst": "Добавьте первый MCP сервер",
     "addNew": "Добавить новый MCP сервер",
@@ -2359,7 +2360,6 @@
     "exitFullscreen": "Выйти из полноэкранного режима",
     "expand": "Развернуть",
     "exportZip": "Экспорт ZIP",
-    "downloadFolder": "Скачать папку как ZIP",
     "fileCount": "{{count}} файлов",
     "fullscreen": "Полный экран",
     "fullscreenHint": "Нажмите Esc для выхода из полноэкранного режима",
@@ -2917,7 +2917,26 @@
     "WEB_FETCH_MAX_CHARS": "Максимум символов на загрузку; лишнее обрезается.",
     "FIRECRAWL_BASE_URL": "URL своего Firecrawl (напр. http://fc.internal:3000). Пусто = официальный SaaS. Своий инстанс может работать без ключей.",
     "FIRECRAWL_API_KEYS": "Ключи Firecrawl API, через запятую. Для своего инстанса необязательны.",
-    "EXA_API_KEYS": "Ключи Exa API, через запятую (кэш + живой обход)."
+    "EXA_API_KEYS": "Ключи Exa API, через запятую (кэш + живой обход).",
+    "ENABLE_DOCUMENT_PARSE": "Включить инструмент разбора документов: PDF/DOCX/PPTX в Markdown с извлечением встроенных изображений",
+    "DOCUMENT_PARSE_PROVIDER": "Провайдер разбора документов; auto использует первый настроенный по порядку",
+    "DOCUMENT_PARSE_MISTRAL_API_KEY": "API-ключ провайдера Mistral OCR",
+    "DOCUMENT_PARSE_MISTRAL_BASE_URL": "Базовый URL API Mistral OCR, по умолчанию официальная точка",
+    "DOCUMENT_PARSE_MISTRAL_MODEL": "Название модели Mistral OCR",
+    "DOCUMENT_PARSE_MINERU_API_MODE": "Режим MinerU: cloud — официальный API, local — собственный сервер MinerU",
+    "DOCUMENT_PARSE_MINERU_API_URL": "Адрес сервера MinerU; обязателен для local, в cloud по умолчанию https://mineru.net/api/v4",
+    "DOCUMENT_PARSE_MINERU_API_KEY": "Токен облачного API MinerU (с mineru.net)",
+    "DOCUMENT_PARSE_AZURE_ENDPOINT": "Конечная точка Azure Document Intelligence",
+    "DOCUMENT_PARSE_AZURE_KEY": "Ключ подписки Azure Document Intelligence",
+    "DOCUMENT_PARSE_AZURE_MODEL": "Модель Azure Document Intelligence, напр. prebuilt-read / prebuilt-layout",
+    "DOCUMENT_PARSE_DOCLING_URL": "Адрес сервера docling-serve (собственный)",
+    "DOCUMENT_PARSE_DOCLING_API_KEY": "API-ключ docling-serve (если сервер требует аутентификацию)",
+    "DOCUMENT_PARSE_PADDLEOCR_URL": "Адрес сервера PaddleOCR-VL (собственный PaddleX)",
+    "DOCUMENT_PARSE_PADDLEOCR_TOKEN": "Токен доступа PaddleOCR-VL",
+    "DOCUMENT_PARSE_TIKA_URL": "Адрес сервера Apache Tika (собственный)",
+    "DOCUMENT_PARSE_MAX_DOWNLOAD_BYTES": "Максимальный размер загружаемого документа в байтах",
+    "DOCUMENT_PARSE_MAX_OUTPUT_CHARS": "Максимум символов Markdown в результате, далее усечение",
+    "DOCUMENT_PARSE_MAX_IMAGES": "Максимум извлекаемых изображений за один разбор"
   },
   "settings": {
     "defaultModel": "Модель по умолчанию",

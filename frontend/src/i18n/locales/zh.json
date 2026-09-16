@@ -706,7 +706,8 @@
     "skills": "技能",
     "tools": "工具",
     "tracing": "追踪",
-    "user": "个人资料"
+    "user": "个人资料",
+    "document_parse": "文档解析"
   },
   "channel": {
     "addFirstInstance": "添加第一个实例",
@@ -1037,7 +1038,8 @@
       "toolWebSearchResults_one": "{{count}} 条结果",
       "toolWebSearchResults_other": "{{count}} 条结果",
       "toolWrite": "写入",
-      "waitingConfirm": "等待确认"
+      "waitingConfirm": "等待确认",
+      "toolDocumentParse": "解析文档"
     },
     "messageInput": "消息输入框",
     "noPermission": "没有发送消息的权限",
@@ -1782,7 +1784,6 @@
     "updateSuccess": "技能更新成功",
     "viewInMySkills": "去我的技能查看"
   },
-
   "mcp": {
     "addFirst": "添加您的第一个 MCP 服务器",
     "addNew": "添加新 MCP 服务器",
@@ -2359,7 +2360,6 @@
     "exitFullscreen": "退出全屏",
     "expand": "展开",
     "exportZip": "导出 ZIP",
-    "downloadFolder": "下载此文件夹为 ZIP",
     "fileCount": "{{count}} 个文件",
     "fullscreen": "全屏",
     "fullscreenHint": "按 Esc 退出全屏",
@@ -2917,7 +2917,26 @@
     "WEB_FETCH_MAX_CHARS": "单次抓取返回的最大字符数，超出截断。",
     "FIRECRAWL_BASE_URL": "Firecrawl 自建实例地址（如 http://fc.internal:3000）。留空用官方 SaaS。自建可免 key。",
     "FIRECRAWL_API_KEYS": "Firecrawl API keys，英文逗号分隔多 key 轮询（firecrawl.dev 免费档）。自建实例可留空。",
-    "EXA_API_KEYS": "Exa API keys，英文逗号分隔多 key 轮询（exa.ai 免费档，缓存优先+实爬兜底）。"
+    "EXA_API_KEYS": "Exa API keys，英文逗号分隔多 key 轮询（exa.ai 免费档，缓存优先+实爬兜底）。",
+    "ENABLE_DOCUMENT_PARSE": "启用文档解析工具，将 PDF/DOCX/PPTX 等文档解析为 Markdown 并提取内嵌图片",
+    "DOCUMENT_PARSE_PROVIDER": "文档解析提供商；auto 按顺序使用第一个已配置的提供商",
+    "DOCUMENT_PARSE_MISTRAL_API_KEY": "Mistral OCR 提供商 API Key",
+    "DOCUMENT_PARSE_MISTRAL_BASE_URL": "Mistral OCR API 地址，默认官方端点",
+    "DOCUMENT_PARSE_MISTRAL_MODEL": "Mistral OCR 模型名",
+    "DOCUMENT_PARSE_MINERU_API_MODE": "MinerU 接入模式：cloud 走官方 API，local 走自建 MinerU 服务",
+    "DOCUMENT_PARSE_MINERU_API_URL": "MinerU 服务地址；local 模式必填，cloud 模式默认官方 https://mineru.net/api/v4",
+    "DOCUMENT_PARSE_MINERU_API_KEY": "MinerU 云端 API Token（mineru.net 获取）",
+    "DOCUMENT_PARSE_AZURE_ENDPOINT": "Azure Document Intelligence 端点",
+    "DOCUMENT_PARSE_AZURE_KEY": "Azure Document Intelligence 订阅 Key",
+    "DOCUMENT_PARSE_AZURE_MODEL": "Azure Document Intelligence 模型，如 prebuilt-read / prebuilt-layout",
+    "DOCUMENT_PARSE_DOCLING_URL": "docling-serve 服务地址（自建）",
+    "DOCUMENT_PARSE_DOCLING_API_KEY": "docling-serve API Key（服务启用鉴权时填写）",
+    "DOCUMENT_PARSE_PADDLEOCR_URL": "PaddleOCR-VL 服务地址（自建 PaddleX）",
+    "DOCUMENT_PARSE_PADDLEOCR_TOKEN": "PaddleOCR-VL 访问 Token",
+    "DOCUMENT_PARSE_TIKA_URL": "Apache Tika 服务器地址（自建）",
+    "DOCUMENT_PARSE_MAX_DOWNLOAD_BYTES": "文档下载大小上限（字节）",
+    "DOCUMENT_PARSE_MAX_OUTPUT_CHARS": "解析结果 Markdown 最大字符数，超出截断",
+    "DOCUMENT_PARSE_MAX_IMAGES": "单次解析最多提取的图片数"
   },
   "settings": {
     "defaultModel": "默认模型",

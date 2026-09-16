@@ -27,6 +27,7 @@ export function buildCategoryLabels(
     file_upload: t("categories.file_upload"),
     tools: t("categories.tools"),
     audio_transcription: t("categories.audio_transcription"),
+    document_parse: t("categories.document_parse"),
     tracing: t("categories.tracing"),
     user: t("categories.user"),
     oauth: t("categories.oauth"),
