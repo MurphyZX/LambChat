@@ -236,9 +236,7 @@ export function ProfileInfoTab() {
                 autoFocus
               />
               {usernameError && (
-                <p className="text-12 text-theme-error">
-                  {usernameError}
-                </p>
+                <p className="text-12 text-theme-error">{usernameError}</p>
               )}
               <div className="flex gap-2">
                 <Button

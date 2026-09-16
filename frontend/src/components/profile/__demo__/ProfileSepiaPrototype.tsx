@@ -106,16 +106,18 @@ const VARIANTS: { key: VariantKey; label: string }[] = [
 
 /* ── 弹窗壳层共用件（正式代码中已是 token 写法，各变体原样保留） ── */
 
-const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> =
-  {
-    info: User,
-    notification: Bell,
-    preferences: Settings,
-    envvars: Braces,
-    tools: Wrench,
-    models: Cpu,
-    terms: Scale,
-  };
+const TAB_ICONS: Record<
+  string,
+  React.FC<{ size?: number; className?: string }>
+> = {
+  info: User,
+  notification: Bell,
+  preferences: Settings,
+  envvars: Braces,
+  tools: Wrench,
+  models: Cpu,
+  terms: Scale,
+};
 
 function useDemoTabs() {
   const { t } = useTranslation();
@@ -132,9 +134,7 @@ function useDemoTabs() {
 
 function DemoCloseButton() {
   return (
-    <button
-      className="p-1.5 rounded-lg text-theme-text-tertiary hover:text-theme-text-secondary hover:bg-theme-bg-subtle dark:text-stone-500 dark:hover:text-stone-300 dark:hover:bg-stone-700/60 transition-all"
-    >
+    <button className="p-1.5 rounded-lg text-theme-text-tertiary hover:text-theme-text-secondary hover:bg-theme-bg-subtle dark:text-stone-500 dark:hover:text-stone-300 dark:hover:bg-stone-700/60 transition-all">
       <X size={18} />
     </button>
   );
@@ -821,7 +821,9 @@ function DemoModal({ variant }: { variant: VariantKey }) {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">{content}</div>
+        <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
+          {content}
+        </div>
         <DemoFooter />
       </div>
 
@@ -885,7 +887,8 @@ export function ProfileSepiaPrototype() {
   const cycleVariant = (dir: 1 | -1) => {
     const index = VARIANTS.findIndex((v) => v.key === variant);
     const next =
-      VARIANTS[(index + dir + VARIANTS.length) % VARIANTS.length] ?? VARIANTS[0];
+      VARIANTS[(index + dir + VARIANTS.length) % VARIANTS.length] ??
+      VARIANTS[0];
     setSearchParams({ variant: next.key }, { replace: true });
   };
 
@@ -896,8 +899,7 @@ export function ProfileSepiaPrototype() {
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.closest("input, textarea, select") ||
-          target.isContentEditable)
+        (target.closest("input, textarea, select") || target.isContentEditable)
       ) {
         return;
       }

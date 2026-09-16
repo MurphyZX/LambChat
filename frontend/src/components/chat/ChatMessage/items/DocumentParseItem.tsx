@@ -40,7 +40,8 @@ function parseDocumentParseResult(
   if (typeof result === "string") {
     try {
       const parsed = JSON.parse(result);
-      if (parsed && typeof parsed === "object") data = parsed as Record<string, unknown>;
+      if (parsed && typeof parsed === "object")
+        data = parsed as Record<string, unknown>;
     } catch {
       return { markdown: "", images: [] };
     }
@@ -52,10 +53,12 @@ function parseDocumentParseResult(
   const markdown = typeof data.markdown === "string" ? data.markdown : "";
   const images = Array.isArray(data.images)
     ? (data.images as ParsedImage[]).filter(
-        (image) => image && typeof image === "object" && typeof image.url === "string",
+        (image) =>
+          image && typeof image === "object" && typeof image.url === "string",
       )
     : [];
-  const provider = typeof data.provider === "string" ? data.provider : undefined;
+  const provider =
+    typeof data.provider === "string" ? data.provider : undefined;
   const pagesProcessed =
     typeof data.pages_processed === "number" ? data.pages_processed : undefined;
   const truncated = data.truncated === true;
@@ -98,7 +101,10 @@ function DocumentParseDetail({ args, result }: ToolDetailProps) {
     <div className="p-4 sm:p-5 space-y-4 tool-panel-content">
       {url && (
         <ToolArgsBlock size="detail" wrap>
-          <FileScan size={14} className="shrink-0 text-sky-500 dark:text-sky-400" />
+          <FileScan
+            size={14}
+            className="shrink-0 text-sky-500 dark:text-sky-400"
+          />
           <span className="truncate">{url}</span>
         </ToolArgsBlock>
       )}
@@ -116,12 +122,13 @@ function DocumentParseDetail({ args, result }: ToolDetailProps) {
             {pages}
           </span>
         )}
-        {typeof parsed.pagesProcessed === "number" && parsed.pagesProcessed > 0 && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-theme-bg-subtle text-theme-text-tertiary text-12">
-            <Layers size={10} className="opacity-60" />
-            {parsed.pagesProcessed}
-          </span>
-        )}
+        {typeof parsed.pagesProcessed === "number" &&
+          parsed.pagesProcessed > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-theme-bg-subtle text-theme-text-tertiary text-12">
+              <Layers size={10} className="opacity-60" />
+              {parsed.pagesProcessed}
+            </span>
+          )}
         {parsed.images.length > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-theme-bg-subtle text-theme-text-tertiary text-12">
             <Images size={10} className="opacity-60" />
@@ -228,7 +235,8 @@ const DocumentParseItem = memo(function DocumentParseItem({
             title: t("chat.message.toolDocumentParse"),
             icon: <FileScan size={16} />,
             status,
-            subtitle: url.length > 100 ? url.slice(0, 97) + "…" : url || undefined,
+            subtitle:
+              url.length > 100 ? url.slice(0, 97) + "…" : url || undefined,
             fallback: detailContent || undefined,
             buildDetail: (data) => (
               <DocumentParseDetail {...toolDetailPropsFromPanelData(data)} />
