@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import binascii
 import importlib.util
 import io
 import re
@@ -44,6 +45,11 @@ _MEDIA_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "
 # （`![](data:image/png;base64...)`），pptx 是自造文件名（`![](Picture2.jpg)`），
 # 都不带 http(s) 前缀——按出现顺序换成我们生成的 ref。
 _LOCAL_MARKDOWN_IMAGE_REF_RE = re.compile(r"(!\[[^\]]*\]\()((?!https?://)[^\s)]+)(\))")
+# 任意图片引用（含 http(s)）：纯图片文档判定时剥掉后看剩余正文
+_IMAGE_REF_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+# 只做文本层提取、不具备图片 OCR 能力的提供商：页面图转投时跳过
+_TEXT_ONLY_PROVIDERS = frozenset({"markitdown", "tika"})
+_IMAGE_OCR_CONCURRENCY = 4
 _markitdown_available: bool | None = None
 
 
@@ -582,6 +588,11 @@ def rewrite_local_image_refs(markdown: str, refs: list[str]) -> str:
     return _LOCAL_MARKDOWN_IMAGE_REF_RE.sub(_replace, markdown)
 
 
+def markdown_text_content(markdown: str) -> str:
+    """剥离全部图片引用后的正文文本（判定「纯图片文档」用）。"""
+    return _IMAGE_REF_RE.sub("", markdown).strip()
+
+
 def _markitdown_importable() -> bool:
     global _markitdown_available
     if _markitdown_available is None:
@@ -675,6 +686,136 @@ def resolve_document_parse_provider_chain() -> list[str]:
     return [provider for provider in _PROVIDER_ORDER if _provider_available(provider)]
 
 
+async def _ocr_page_image(
+    client: httpx.AsyncClient,
+    *,
+    image: dict[str, str],
+    index: int,
+    capable_providers: list[str],
+    image_limit: int,
+) -> tuple[str, str]:
+    """单张页面图按链序转投 OCR 提供商，返回 (provider, 正文文本)。
+
+    全部提供商失败或无文本时返回 ("", "")，调用方保留原图引用兜底。
+    """
+    ref = str(image.get("ref") or "")
+    extension = ref.rsplit(".", 1)[-1].lower() if "." in ref else "png"
+    if extension not in _MEDIA_IMAGE_EXTENSIONS:
+        extension = "png"
+    filename = f"page-{index}.{extension}"
+    try:
+        data = base64.b64decode(str(image.get("base64") or ""))
+    except (binascii.Error, ValueError):
+        logger.warning("[DocumentParse] image OCR skip %s: bad base64", filename)
+        return "", ""
+    for provider in capable_providers:
+        try:
+            result = await PROVIDER_FUNCS[provider](
+                client,
+                data=data,
+                filename=filename,
+                include_images=False,
+                pages=None,
+                image_limit=image_limit,
+            )
+            text = markdown_text_content(str(result.get("markdown") or ""))
+            if text:
+                return provider, text
+        except Exception as e:  # noqa: BLE001 —— 单页失败换下家，全败保原图
+            logger.warning(
+                "[DocumentParse] image OCR provider %s failed on %s: error_type=%s: %s",
+                provider,
+                filename,
+                type(e).__name__,
+                e,
+            )
+    return "", ""
+
+
+async def _redispatch_image_only_result(
+    client: httpx.AsyncClient,
+    *,
+    result: dict[str, Any],
+    chain: list[str],
+    image_limit: int,
+) -> dict[str, Any] | None:
+    """纯图片文档自动转投：文本层为空时把页面图按页交给 OCR 提供商。
+
+    生产实测（2026-09-16）：整页贴图拼成的 SPEC docx 文本层为空，markitdown
+    与 MinerU 直收 docx 都只能吐回图片引用；同一批页面图直投 MinerU 云端
+    则完整还原中英目录与信号表。故首遍结果「无正文 + 有页面图」时，把每页
+    图片（含扩展名改成 page-N.ext）转投链上具备 OCR 能力的提供商，按页
+    交错合并「OCR 文本 + 原图引用」，视觉模型兜底不受影响。
+
+    返回 None 表示不适用或整轮无产出（调用方保留首遍原结果）。
+    """
+    images = result.get("images") or []
+    if not isinstance(images, list) or not images:
+        return None
+    if markdown_text_content(str(result.get("markdown") or "")):
+        return None
+    capable = [p for p in chain if p not in _TEXT_ONLY_PROVIDERS]
+    if not capable:
+        return None
+
+    unique: list[dict[str, str]] = []
+    seen_refs: set[str] = set()
+    for image in images:
+        ref = str(image.get("ref") or "")
+        if ref and ref not in seen_refs:
+            seen_refs.add(ref)
+            unique.append(image)
+    if image_limit > 0:
+        unique = unique[:image_limit]
+    if not unique:
+        return None
+
+    semaphore = asyncio.Semaphore(_IMAGE_OCR_CONCURRENCY)
+
+    async def _run(index: int, image: dict[str, str]) -> tuple[str, str]:
+        async with semaphore:
+            return await _ocr_page_image(
+                client,
+                image=image,
+                index=index,
+                capable_providers=capable,
+                image_limit=image_limit,
+            )
+
+    outcomes = await asyncio.gather(
+        *(_run(index, image) for index, image in enumerate(unique, start=1))
+    )
+
+    blocks: list[str] = []
+    ocr_engines: list[str] = []
+    ocr_pages = 0
+    for image, (provider, text) in zip(unique, outcomes):
+        ref = str(image.get("ref") or "")
+        parts = [text] if text else []
+        parts.append(f"![]({ref})")
+        blocks.append("\n\n".join(parts))
+        if text:
+            ocr_pages += 1
+            if provider not in ocr_engines:
+                ocr_engines.append(provider)
+    if not ocr_pages:
+        return None
+
+    engine = f"{result.get('engine') or 'unknown'}+ocr:{'+'.join(ocr_engines)}"
+    logger.info(
+        "[DocumentParse] image-only document redispatched to OCR: engine=%s pages=%d/%d",
+        engine,
+        ocr_pages,
+        len(unique),
+    )
+    return _result(
+        markdown="\n\n".join(blocks),
+        images=unique,
+        pages=len(unique),
+        engine=engine,
+    )
+
+
 async def execute_document_parse(
     *,
     data: bytes,
@@ -699,7 +840,7 @@ async def execute_document_parse(
         last_error: Exception | None = None
         for provider in chain:
             try:
-                return await PROVIDER_FUNCS[provider](
+                result = await PROVIDER_FUNCS[provider](
                     client,
                     data=data,
                     filename=filename,
@@ -715,6 +856,15 @@ async def execute_document_parse(
                     type(e).__name__,
                     e,
                 )
+                continue
+            # 首遍成功但正文为空（纯图片拼版文档）：页面图转投 OCR 提供商
+            redispatched = await _redispatch_image_only_result(
+                client,
+                result=result,
+                chain=chain,
+                image_limit=image_limit,
+            )
+            return redispatched or result
         raise last_error or DocumentParseError("document_parse_failed")
     finally:
         if owned_client is not None:
