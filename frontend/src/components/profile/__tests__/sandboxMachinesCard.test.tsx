@@ -71,7 +71,10 @@ test("online machines show green dot, offline machines greyed with last-seen and
   );
 
   const onlineRow = screen.getByText("PrimaryServer").closest("div");
-  expect(onlineRow?.querySelector("span")?.className).toContain("bg-green-500");
+  // 在线状态点走语义 token（护眼模式下降饱和），不再用裸 green-500
+  expect(onlineRow?.querySelector("span")?.className).toContain(
+    "bg-theme-success",
+  );
 
   // 离线机：置灰点 + 离线徽标 + 相对时间
   expect(screen.getByText("Old PC")).toBeInTheDocument();
