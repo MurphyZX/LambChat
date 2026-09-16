@@ -107,6 +107,15 @@ const CoverGalleryDemo = import.meta.env.DEV
       })),
     )
   : null;
+
+// Dev-only 原型：护眼模式下个人信息模块的视觉统一性方案对比（一次性）。
+const ProfileSepiaPrototype = import.meta.env.DEV
+  ? lazy(() =>
+      import(
+        "./components/profile/__demo__/ProfileSepiaPrototype"
+      ).then((m) => ({ default: m.ProfileSepiaPrototype })),
+    )
+  : null;
 const NotFoundPage = lazy(() =>
   import("./components/common/NotFoundPage").then((m) => ({
     default: m.NotFoundPage,
@@ -647,6 +656,16 @@ function App() {
                 element={
                   <Suspense fallback={null}>
                     <CoverGalleryDemo />
+                  </Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && ProfileSepiaPrototype && (
+              <Route
+                path="/dev/profile-sepia"
+                element={
+                  <Suspense fallback={null}>
+                    <ProfileSepiaPrototype />
                   </Suspense>
                 }
               />

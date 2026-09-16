@@ -870,6 +870,7 @@
       "parameters": "パラメータ",
       "processing": "過程",
       "projects": "プロジェクト",
+      "queueFollowUp": "追加質問を送信（このターン終了後に自動送信・Alt+Enter）",
       "rejected": "ユーザーにより操作が拒否されました",
       "removeBookmark": "ブックマークを削除",
       "result": "結果",
@@ -1053,7 +1054,7 @@
     "queued": "順番待ち中 ({{position}}番目)...",
     "rateLimited": "リクエストが多すぎます。しばらくしてからお試しください",
     "requestFailed": "セッションの読み込みに失敗しました",
-    "runningPlaceholder": "入力を続けると修正が順番にキューされます…",
+    "runningPlaceholder": "生成中：Enter で現在の質問を補足、Alt+Enter で次の質問を予約…",
     "memory": {
       "initializing": "関連するメモリを検索中",
       "ready": "メモリ検索完了"
@@ -1085,17 +1086,17 @@
     "status": {
       "cancelled": "キャンセル済み"
     },
-    "steer": "ステアリング送信（現在のステップ完了後に届く）",
     "steerCancel": "このステアリングをキャンセル",
     "steerFailed": "ステアリングメッセージの送信に失敗しました。もう一度お試しください",
     "steerFailedRetry": "送信に失敗しました。もう一度お試しください",
     "steerNext": "タスク完了後に送信",
-    "steerQueue": "保留中のステアリング",
+    "steerQueue": "送信待ちのメッセージ",
     "steerQueued": "現在のステップ完了後に届きます",
     "stop": "生成を停止",
     "stopConfirmMessage": "本当に生成を停止しますか？生成された内容は保持されます。",
     "stopConfirmTitle": "生成を停止",
     "subagentStatus": "サブエージェントステータス: {{status}}",
+    "supplement": "現在の質問を補足（回答を中断し、追加分を反映して再考）",
     "teamPlaceholder": "メッセージを入力して会話を開始、@ でチームを切替…",
     "teamSelected": "チーム選択済み",
     "textAutoUploaded": "長いテキストがファイルとして自動アップロードされました",

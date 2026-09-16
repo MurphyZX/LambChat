@@ -40,7 +40,7 @@ export function ChatInputSteerQueue({
                 : "var(--theme-text-secondary)",
             }}
           >
-            {deferred || failed ? <X size={14} /> : <Clock size={14} />}
+            {failed ? <X size={14} /> : <Clock size={14} />}
             <span className="min-w-0 flex-1 truncate">{item.content}</span>
             <span className="flex min-h-5 shrink-0 min-w-[7rem] items-center justify-center text-center text-12">
               {failed

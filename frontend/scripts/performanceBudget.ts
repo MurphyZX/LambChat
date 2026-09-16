@@ -155,9 +155,10 @@ export function combinePrecacheBudgetEntries(
   });
 }
 
-// 534KB：#563/#565 叠加后约 526.8KB（见前），文档解析工具 document_parse
-// （专属 Item + 五语 22 键 settingDesc/分类文案）再 +2.6KB 把 eager JS
-// 顶到约 533.9KB，沿 2KB 阶梯惯例累加抬档。
+// 534KB：#563/#565 叠加后约 526.8KB（见前），运行中「补充/追加提问」双模式
+// （chatInputRunningSend 分流模块 + steer 队列排队态，约 +0.5KB）顶过 530KB 线，
+// 文档解析工具 document_parse（专属 Item + 五语 22 键 settingDesc/分类文案）
+// 再 +2.6KB 把 eager JS 顶到约 533.4KB，沿 2KB 阶梯惯例累加抬档。
 export const EAGER_JAVASCRIPT_BUDGET_BYTES = 534 * 1024;
 export const PRECACHE_BUDGET_BYTES = 5 * 1024 * 1024;
 export const PRECACHE_ADDITIONAL_ENTRIES: PrecacheEntry[] = [];

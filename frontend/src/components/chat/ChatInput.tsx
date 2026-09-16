@@ -22,7 +22,6 @@ import { useTeamMentionSearch } from "../../hooks/useTeamMentionSearch";
 import { useInputHistory } from "../../hooks/useInputHistory";
 import { useLongTextConversion } from "../../hooks/useLongTextConversion";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
-import { isSendEnterKey } from "../../hooks/sendModifier";
 import { useNotifyTodayUsageRefresh } from "../../hooks/useTodayUsageCost";
 import { useAuth } from "../../hooks/useAuth";
 import { MentionPopup } from "./MentionPopup";
@@ -64,10 +63,11 @@ import type { ComposerArrowDirection } from "./richComposer/ArrowKeyPlugin";
 import { selectVisibleDraftAttachments } from "./acceptedDraftCleanup";
 import { ChatInputSteerQueue } from "./ChatInputSteerQueue";
 import { ChatInputDialogLayer } from "./ChatInputDialogLayer";
+import { areAttachmentsSendable } from "./attachmentValidation";
 import {
-  areAttachmentsSendable,
-  filterSendableAttachments,
-} from "./attachmentValidation";
+  createRunningDraftSender,
+  handleEnterSubmit,
+} from "./chatInputRunningSend";
 import { useAcceptedDraftSubmission } from "./useAcceptedDraftSubmission";
 const RichChatComposer = lazy(async () => {
   const module = await import("./richComposer/RichChatComposer");
@@ -82,7 +82,8 @@ export type { ChatInputProps } from "./chatInputTypes";
 export const ChatInput = memo(function ChatInput({
   onSend,
   onStop,
-  onSteer,
+  onSupplement,
+  onQueueFollowUp,
   steerMessages = [],
   onCancelSteer,
   isLoading,
@@ -520,6 +521,12 @@ export const ChatInput = memo(function ChatInput({
     (attachment) => attachment.uploadError,
   );
   const hasInvalidAttachment = !areAttachmentsSendable(visibleAttachments);
+  // 运行中发送（补充 / 追加提问）共用：按当前草稿发送并清空输入
+  const sendRunningDraft = createRunningDraftSender(
+    input,
+    visibleAttachments,
+    clearSteerDraft,
+  );
   const handleComposerKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       // Lexical prevents Enter first; defaultPrevented cannot distinguish send intent.
@@ -543,30 +550,26 @@ export const ChatInput = memo(function ChatInput({
       }
       if (event.key === "Enter") {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-        if (!isSendEnterKey(event)) return;
-        event.preventDefault();
-        if (sendBlocked) {
-          return;
-        }
-        // 运行中且支持插话：Enter 发送 steer 消息（Codex 式），否则保留停止确认
-        if (isLoading) {
-          if (
-            onSteer &&
-            (input.trim() || visibleAttachments.length > 0) &&
-            !hasUploadingAttachment &&
-            !hasFailedAttachment &&
-            !hasInvalidAttachment
-          ) {
-            onSteer(input, filterSendableAttachments(visibleAttachments));
-            clearSteerDraft();
-          } else {
-            setStopConfirmOpen(true);
-          }
-        } else {
-          // The expanded editor is outside the form; resolve it via ref, not ancestry.
-          formRef.current?.requestSubmit();
-        }
-        return;
+        // 空闲→表单提交；运行中 Alt+Enter→追加提问（优先于发送键偏好）、
+        // 发送键→补充当前问题、草稿不可发送→停止确认
+        handleEnterSubmit(
+          event,
+          {
+            isLoading,
+            sendBlocked,
+            input,
+            visibleAttachments,
+            hasUploadingAttachment,
+            hasFailedAttachment,
+            hasInvalidAttachment,
+          },
+          { onSupplement, onQueueFollowUp },
+          {
+            clearDraft: clearSteerDraft,
+            openStopConfirm: () => setStopConfirmOpen(true),
+            submitForm: () => formRef.current?.requestSubmit(),
+          },
+        );
       }
     },
     [
@@ -582,7 +585,8 @@ export const ChatInput = memo(function ChatInput({
       mention.isActive,
       mentionMode,
       mentionSearch.presets,
-      onSteer,
+      onQueueFollowUp,
+      onSupplement,
       resetMention,
       sendBlocked,
       visibleAttachments,
@@ -875,16 +879,8 @@ export const ChatInput = memo(function ChatInput({
                   sendBlocked={sendBlocked}
                   isLoading={isLoading}
                   hasDraft={!!input.trim() || visibleAttachments.length > 0}
-                  onSteer={
-                    onSteer &&
-                    (() => {
-                      onSteer(
-                        input,
-                        filterSendableAttachments(visibleAttachments),
-                      );
-                      clearSteerDraft();
-                    })
-                  }
+                  onSupplement={sendRunningDraft(onSupplement)}
+                  onQueueFollowUp={sendRunningDraft(onQueueFollowUp)}
                   canSubmit={canSubmit}
                   hasUploadingAttachment={hasUploadingAttachment}
                   hasFailedAttachment={hasFailedAttachment}

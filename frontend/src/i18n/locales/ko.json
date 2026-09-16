@@ -870,6 +870,7 @@
       "parameters": "매개변수",
       "processing": "과정",
       "projects": "프로젝트",
+      "queueFollowUp": "후속 질문 추가 전송(이번 턴 종료 후 자동 전송 · Alt+Enter)",
       "rejected": "사용자가 작업을 거부했습니다",
       "removeBookmark": "북마크 제거",
       "result": "결과",
@@ -1053,7 +1054,7 @@
     "queued": "대기 중 ({{position}}번째)...",
     "rateLimited": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요",
     "requestFailed": "세션 로드에 실패했습니다",
-    "runningPlaceholder": "계속 입력하면 수정이 순서대로 대기열에 추가됩니다…",
+    "runningPlaceholder": "생성 중: Enter로 현재 질문 보충, Alt+Enter로 다음 질문 예약…",
     "memory": {
       "initializing": "관련 메모리를 검색하는 중",
       "ready": "메모리 검색 완료"
@@ -1085,17 +1086,17 @@
     "status": {
       "cancelled": "취소됨"
     },
-    "steer": "스티어링 전송 (현재 단계 후 전달)",
     "steerCancel": "이 스티어링 취소",
     "steerFailed": "스티어링 메시지 전송에 실패했습니다. 다시 시도해 주세요",
     "steerFailedRetry": "전송에 실패했습니다. 다시 시도해 주세요",
     "steerNext": "작업이 끝난 후 전송",
-    "steerQueue": "대기 중인 스티어링 메시지",
+    "steerQueue": "전송 대기 중인 메시지",
     "steerQueued": "현재 단계가 끝난 후 전달됩니다",
     "stop": "생성 중지",
     "stopConfirmMessage": "정말로 생성을 중단하시겠습니까? 지금까지 생성된 내용은 유지됩니다.",
     "stopConfirmTitle": "생성 중단",
     "subagentStatus": "서브에이전트 상태: {{status}}",
+    "supplement": "현재 질문 보충(답변을 중단하고 추가 내용을 반영해 재생성)",
     "teamPlaceholder": "메시지를 입력하여 대화를 시작, @ 로 팀 전환…",
     "teamSelected": "팀 선택됨",
     "textAutoUploaded": "긴 텍스트가 파일로 자동 업로드되었습니다",
