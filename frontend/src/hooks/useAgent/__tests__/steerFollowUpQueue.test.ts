@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { selectSteersForFollowUp, toFollowUpQueueItem } from "../steerQueue";
+import {
+  releaseUnfinishedFollowUps,
+  selectSteersForFollowUp,
+  toFollowUpQueueItem,
+} from "../steerQueue";
 
 describe("toFollowUpQueueItem", () => {
   test("builds a follow-up item that run-end promotion can pick up", () => {
@@ -38,5 +42,23 @@ describe("toFollowUpQueueItem", () => {
 
   test("rejects blank drafts", () => {
     expect(toFollowUpQueueItem("   ")).toBeNull();
+  });
+});
+
+describe("releaseUnfinishedFollowUps", () => {
+  test("unmarks items still queued so the next effect run can retake them", () => {
+    const pending = toFollowUpQueueItem("还在排队")!;
+    const sent = toFollowUpQueueItem("已补发")!;
+    const marked = new Set([pending.id, sent.id]);
+
+    releaseUnfinishedFollowUps(
+      [pending, sent],
+      // 已补发的项在补发前被 clearSteer 移出队列
+      (id) => id === pending.id,
+      marked,
+    );
+
+    expect(marked.has(pending.id)).toBe(false);
+    expect(marked.has(sent.id)).toBe(true);
   });
 });

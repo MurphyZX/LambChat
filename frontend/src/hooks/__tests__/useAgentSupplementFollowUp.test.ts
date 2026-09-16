@@ -17,9 +17,9 @@ test("supplementFollowUp interrupts the running turn before resending", () => {
   );
 });
 
-test("supplementFollowUp queues instead of racing an in-flight submission", () => {
-  // 上一条 POST 仍在途时打断会造出同会话双发竞态，先排队到本轮结束后补发
-  expect(source).toMatch(
-    /if \(isSendingRef\.current\) \{[\s\S]*?queueFollowUp\(text, attachments\);[\s\S]*?return;\s*\}/,
-  );
+test("supplementFollowUp queues only while the submit POST is unresolved", () => {
+  // 流式中 isSendingRef 恒为 true（await connectToSSE 贯穿全程），用它
+  // 判在途会让回车补充永远变成排队；只有 POST 在途才需要转排队
+  expect(source).toMatch(/if \(submitInFlightRef\.current\) \{/);
+  expect(source).toMatch(/queueFollowUp\(text, attachments\);/);
 });

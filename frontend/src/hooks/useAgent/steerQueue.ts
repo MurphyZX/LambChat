@@ -58,6 +58,20 @@ export function selectSteersForFollowUp(items: SteerItem[]): SteerItem[] {
   return items.filter((item) => item.queued && item.status !== "failed");
 }
 
+/**
+ * effect cleanup 回滚：仍在队列（未被送达/清除）的排队项解除占用标记，
+ * 让下一次 effect 重新接管——否则 cleanup 杀掉重试后这些项会永久滞留。
+ */
+export function releaseUnfinishedFollowUps(
+  followUps: SteerItem[],
+  isStillQueued: (id: string) => boolean,
+  marked: Set<string>,
+): void {
+  for (const item of followUps) {
+    if (isStillQueued(item.id)) marked.delete(item.id);
+  }
+}
+
 export interface PromoteSteerFollowUpsDeps {
   sessionId: string | null;
   cancelSteer: (
@@ -203,6 +217,10 @@ export function useSteerFollowUpPromotion(
     }
     let cancelled = false;
     let retryTimer: number | undefined;
+    // cleanup 读 ref.current 会触发 exhaustive-deps 且有滞后风险：进入时
+    // 拷贝（Set 本身从不被整体重赋值，语义等价）
+    const markedFollowUpIds = followUpSteerIdsRef.current;
+    const queuedSnapshot = steerMessagesRef;
     const promote = async () => {
       // 先取消后端队列中的残留项再补发，否则新 run 的首次模型调用会把
       // 同一条插话再次注入（同内容投递两次）。FIFO 逐条等待补发，避免
@@ -242,6 +260,13 @@ export function useSteerFollowUpPromotion(
       cancelled = true;
       window.clearTimeout(timer);
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      // cleanup 会杀掉在途补发/5s 重试：未完成的排队项回滚占用标记，
+      // 交给下一次 effect 接管，避免「追问排队后永远没发出去」
+      releaseUnfinishedFollowUps(
+        followUps,
+        (id) => queuedSnapshot.current.some((item) => item.id === id),
+        markedFollowUpIds,
+      );
     };
   }, [
     clearSteer,
@@ -333,12 +358,17 @@ export function useSteerQueue({
   // 追加提问：只入本地排队（不 POST /steer），run 结束后自动转普通消息
   const queueFollowUp = useCallback(
     (content: string, attachments: MessageAttachment[] = []) => {
-      const currentSessionId = sessionIdRef.current;
       const item = toFollowUpQueueItem(content, attachments);
-      if (!item || !currentSessionId) return;
+      if (!item) return;
+      const currentSessionId = sessionIdRef.current;
+      if (!currentSessionId) {
+        // 首条消息 POST 在途（会话尚未建立）：挂到 deferred 队列，由该次
+        // 发送的 finally 在 run 结束后补发——静默丢弃会弄丢用户输入
+        deferSteer(item.content, item.id, attachments);
+      }
       setSteerMessages((prev) => [...prev, item]);
     },
-    [sessionIdRef],
+    [sessionIdRef, deferSteer],
   );
 
   const cancelSteer = useCallback(

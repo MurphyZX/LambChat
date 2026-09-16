@@ -111,3 +111,49 @@ export function createRunningDraftSender(
       clearDraft();
     });
 }
+
+export interface RunningSendToolkitOptions {
+  input: string;
+  visibleAttachments: MessageAttachment[];
+  clearDraft: () => void;
+  setComposerText: (text: string) => void;
+  removeQueued?: (content: string, messageId: string) => void;
+  focusComposer: () => void;
+}
+
+/**
+ * 运行中发送与排队编辑的统一工厂：
+ * - sendRunningDraft：按当前草稿发送（补充/追加）并清空输入
+ * - editQueuedMessage / editLastQueuedMessage：Codex edit_queued_message，
+ *   把排队消息弹回输入框继续编辑（附件不回填）
+ */
+export function createRunningSendToolkit(options: RunningSendToolkitOptions) {
+  const editQueuedMessage = (content: string, messageId: string) => {
+    options.setComposerText(content);
+    options.removeQueued?.(content, messageId);
+    options.focusComposer();
+  };
+  return {
+    sendRunningDraft: createRunningDraftSender(
+      options.input,
+      options.visibleAttachments,
+      options.clearDraft,
+    ),
+    editQueuedMessage,
+    editLastQueuedMessage: (items: Array<{ id: string; content: string }>) => {
+      const last = items[items.length - 1];
+      if (last) editQueuedMessage(last.content, last.id);
+    },
+  };
+}
+
+/** Alt+↑ 是否为「编辑上一条排队消息」快捷键（Codex edit_queued_message） */
+export function isEditLastQueuedShortcut(
+  event: Pick<KeyboardEvent, "altKey" | "key">,
+  mentionActive: boolean,
+  queueLength: number,
+): boolean {
+  return (
+    event.altKey && event.key === "ArrowUp" && !mentionActive && queueLength > 0
+  );
+}
