@@ -683,6 +683,7 @@
     "pluginNoEditPermission": "No permission to edit plugin {{name}}"
   },
   "categories": {
+    "scheduled_task": "Scheduled tasks",
     "agent": "Agent",
     "audio_transcription": "Audio Transcription",
     "captcha": "CAPTCHA",
@@ -871,8 +872,7 @@
       "processing": "Process",
       "projects": "Projects",
       "queueEdit": "Edit this queued message",
-      "queueEditHint": "Alt+↑ edit last queued message",
-      "queueFollowUp": "Queue follow-up (auto-sends after this turn · Alt+Enter)",
+      "queueFollowUp": "Queue message (send after the current task)",
       "queueGroup": "Queued follow-up inputs",
       "rejected": "Operation rejected by user",
       "removeBookmark": "Remove bookmark",
@@ -1057,7 +1057,7 @@
     "queued": "Queued (position {{position}})...",
     "rateLimited": "Too many requests, please try again later",
     "requestFailed": "Failed to load session",
-    "runningPlaceholder": "Generating — Enter supplements this question, Alt+Enter queues the next…",
+    "runningPlaceholder": "Keep typing…",
     "memory": {
       "initializing": "Recalling relevant memories",
       "ready": "Memory recall complete"
@@ -1093,6 +1093,10 @@
     "steerFailed": "Failed to send the steering message, please try again",
     "steerFailedRetry": "Failed to send, please try again",
     "steerNext": "Send when the task finishes",
+    "queueGuide": "Steer",
+    "queueGuideHint": "Use this message in the current task",
+    "queueDelete": "Delete queued message",
+    "queueMore": "More actions",
     "steerQueue": "Queued messages to send",
     "steerQueued": "Delivered after the current step",
     "stop": "Stop generating",
@@ -2943,6 +2947,34 @@
     "DOCUMENT_PARSE_MAX_IMAGES": "Maximum images extracted per parse"
   },
   "settings": {
+    "navigation": {
+      "browse": "Browse categories",
+      "subtitle": "Application and service settings",
+      "searchPlaceholder": "Search names, descriptions or keys",
+      "searchResults": "Search results",
+      "allCategories": "All categories",
+      "resultCount": "{{count}} settings",
+      "clearSearch": "Clear search",
+      "subcategory": "Subcategory",
+      "allSubcategories": "All subcategories",
+      "saveHint": "Save each setting after editing. Unsaved inputs are kept when you switch categories.",
+      "groups": {
+        "experience": "Experience",
+        "intelligence": "Agents & models",
+        "memory": "Memory",
+        "capabilities": "Tools & files",
+        "access": "Account & security",
+        "infrastructure": "Infrastructure"
+      },
+      "descriptions": {
+        "experience": "Configure the interface and session behavior.",
+        "intelligence": "Adjust agent execution, model requests and retry policies.",
+        "memory": "Manage memory extraction, embeddings, retrieval and storage.",
+        "capabilities": "Configure tools, skills, sandboxes and file processing.",
+        "access": "Manage registration, sign-in, authentication and email.",
+        "infrastructure": "Configure databases, caching, persistence and monitoring."
+      }
+    },
     "defaultModel": "Default Model",
     "exportSettings": "Export settings",
     "exportSuccess": "Settings exported successfully",

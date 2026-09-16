@@ -4,8 +4,38 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 import {
   createRunningDraftSender,
+  createRunningSendToolkit,
   handleEnterSubmit,
 } from "../chatInputRunningSend";
+import type { MessageAttachment } from "../../../types";
+
+test("editing a queued message restores its attachments as visible draft cards", () => {
+  const file: MessageAttachment = {
+    id: "f1",
+    key: "f1",
+    name: "report.pdf",
+    type: "document",
+    mimeType: "application/pdf",
+    size: 10,
+    composerReferenceId: "old-node",
+  };
+  const restoreAttachments = vi.fn();
+  const removeQueued = vi.fn();
+  const toolkit = createRunningSendToolkit({
+    input: "",
+    visibleAttachments: [],
+    clearDraft: vi.fn(),
+    setComposerText: vi.fn(),
+    focusComposer: vi.fn(),
+    removeQueued,
+    restoreAttachments,
+  });
+  toolkit.editQueuedMessage("", "q1", [file]);
+  expect(restoreAttachments).toHaveBeenCalledWith([
+    { ...file, composerReferenceId: undefined },
+  ]);
+  expect(removeQueued).toHaveBeenCalledWith("", "q1");
+});
 
 type TestEvent = {
   altKey: boolean;
@@ -45,7 +75,30 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-test("Alt+Enter while running queues a follow-up instead of supplementing", () => {
+test.each([
+  ["ctrl", { ctrlKey: true }],
+  ["shift", { shiftKey: true }],
+  ["enter", {}],
+] as const)(
+  "%s send preference queues without guiding",
+  (preference, modifiers) => {
+    localStorage.setItem("newlineModifier", preference);
+    const onQueueFollowUp = vi.fn();
+    const onSupplement = vi.fn();
+    const act = actions();
+    handleEnterSubmit(
+      enterEvent(modifiers) as never,
+      runningState(),
+      { onQueueFollowUp, onSupplement },
+      act,
+    );
+    expect(onQueueFollowUp).toHaveBeenCalledExactlyOnceWith("hello", []);
+    expect(onSupplement).not.toHaveBeenCalled();
+    expect(act.clearDraft).toHaveBeenCalledOnce();
+  },
+);
+
+test("Alt+Enter does not override the configured send key", () => {
   const onSupplement = vi.fn();
   const onQueueFollowUp = vi.fn();
   const act = actions();
@@ -57,13 +110,13 @@ test("Alt+Enter while running queues a follow-up instead of supplementing", () =
     act,
   );
 
-  expect(onQueueFollowUp).toHaveBeenCalledWith("hello", []);
+  expect(onQueueFollowUp).not.toHaveBeenCalled();
   expect(onSupplement).not.toHaveBeenCalled();
-  expect(act.clearDraft).toHaveBeenCalled();
+  expect(act.clearDraft).not.toHaveBeenCalled();
   expect(act.openStopConfirm).not.toHaveBeenCalled();
 });
 
-test("the send key while running supplements the current question", () => {
+test("the send key while running queues a follow-up", () => {
   const onSupplement = vi.fn();
   const onQueueFollowUp = vi.fn();
   const act = actions();
@@ -75,11 +128,11 @@ test("the send key while running supplements the current question", () => {
     act,
   );
 
-  expect(onSupplement).toHaveBeenCalledWith("hello", []);
-  expect(onQueueFollowUp).not.toHaveBeenCalled();
+  expect(onQueueFollowUp).toHaveBeenCalledWith("hello", []);
+  expect(onSupplement).not.toHaveBeenCalled();
 });
 
-test("Alt held together with Ctrl still supplements (queue needs pure Alt+Enter)", () => {
+test("Alt held together with Ctrl preserves the configured send behavior and queues", () => {
   const onSupplement = vi.fn();
   const onQueueFollowUp = vi.fn();
 
@@ -90,8 +143,8 @@ test("Alt held together with Ctrl still supplements (queue needs pure Alt+Enter)
     actions(),
   );
 
-  expect(onSupplement).toHaveBeenCalledWith("hello", []);
-  expect(onQueueFollowUp).not.toHaveBeenCalled();
+  expect(onQueueFollowUp).toHaveBeenCalledWith("hello", []);
+  expect(onSupplement).not.toHaveBeenCalled();
 });
 
 test("Alt+Enter with an unsendable draft does not hijack the key", () => {

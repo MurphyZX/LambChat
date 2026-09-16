@@ -192,6 +192,8 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     clearSteer,
     hydrateSteers,
     queueFollowUp,
+    restoreSteerMessages,
+    bindSteerSession,
   } = steerQueue;
 
   useEffect(() => {
@@ -354,8 +356,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
       // 清空且无人接管，恢复快照，避免「消息全没了」的空列表滞留
       const messagesSnapshot = messagesRef.current;
       setMessages([]);
-      // A history load replaces the rendered conversation. Drop any optimistic
-      // steer entries so they cannot survive a session switch or manual refresh.
+      // Clear the previous view; restore this session's local follow-ups after access is verified.
       clearSteerMessages();
       deferredSteersRef.current = [];
       followUpSteerIdsRef.current.clear();
@@ -404,6 +405,8 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
             );
             return { session_id: targetSessionId, items: [] };
           });
+        if (isStaleHistoryLoad()) return null;
+        restoreSteerMessages(targetSessionId);
         hydrateSteers(pendingSteersData.items);
 
         if (sessionData) {
@@ -459,8 +462,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
           }
 
           if (isStaleHistoryLoad()) {
-            if (messagesRef.current.length === 0)
-              setMessages(messagesSnapshot);
+            if (messagesRef.current.length === 0) setMessages(messagesSnapshot);
             return null;
           }
           setCurrentRunId(currentRunId);
@@ -528,6 +530,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
       canReadFeedback,
       clearSteerMessages,
       hydrateSteers,
+      restoreSteerMessages,
       recordFirstWindow,
       recordFeedback,
       resetHistoryPagination,
@@ -716,6 +719,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
         }
 
         if (!sessionId && newSessionId) {
+          bindSteerSession(newSessionId);
           setSessionId(newSessionId);
           const now = new Date().toISOString();
 
@@ -908,6 +912,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
       selectedTeamId,
       goalModeEnabled,
       clearSteer,
+      bindSteerSession,
       setActiveGoal,
       setConnectionStatus,
       setCurrentProjectId,
@@ -987,7 +992,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
   const supplementFollowUp = useCallback(
     async (content: string, attachments?: MessageAttachment[]) => {
       const text = content.trim();
-      if (!text) return;
+      if (!text && !attachments?.length) return;
       // isSendingRef 在整个流式期间恒为 true，不能用它在途判定；只有
       // POST 尚未被服务端受理时打断才会造成同会话双提交——仅该窗口转排队
       if (submitInFlightRef.current) {

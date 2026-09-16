@@ -34,7 +34,6 @@ const baseProps = {
   sendBlocked: false,
   isLoading: true,
   hasDraft: true,
-  onSupplement: vi.fn(),
   canSubmit: false,
   hasUploadingAttachment: false,
   hasFailedAttachment: false,
@@ -85,25 +84,25 @@ test("hides the queue follow-up trigger without a callback", () => {
   expect(queryByTestId("queue-followup-trigger")).toBeNull();
 });
 
-test("shows the supplement send button while running with a draft and fires it", () => {
-  const onSupplement = vi.fn();
+test("the main send button queues while running", () => {
+  const onQueueFollowUp = vi.fn();
   const { getByTestId } = render(
-    <ChatInputToolbar {...baseProps} onSupplement={onSupplement} />,
+    <ChatInputToolbar {...baseProps} onQueueFollowUp={onQueueFollowUp} />,
   );
 
-  fireEvent.click(getByTestId("supplement-send"));
+  fireEvent.click(getByTestId("queue-followup-trigger"));
 
-  expect(onSupplement).toHaveBeenCalledTimes(1);
+  expect(onQueueFollowUp).toHaveBeenCalledTimes(1);
 });
 
-test("hides the supplement send button while idle", () => {
+test("hides the running send button while idle", () => {
   const { queryByTestId } = render(
     <ChatInputToolbar
       {...baseProps}
       isLoading={false}
-      onSupplement={vi.fn()}
+      onQueueFollowUp={vi.fn()}
     />,
   );
 
-  expect(queryByTestId("supplement-send")).toBeNull();
+  expect(queryByTestId("queue-followup-trigger")).toBeNull();
 });

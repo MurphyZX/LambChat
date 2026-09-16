@@ -683,6 +683,7 @@
     "pluginNoEditPermission": "プラグイン {{name}} を編集する権限がありません"
   },
   "categories": {
+    "scheduled_task": "スケジュールタスク",
     "agent": "エージェント",
     "audio_transcription": "音声文字起こし",
     "captcha": "CAPTCHA",
@@ -871,8 +872,7 @@
       "processing": "過程",
       "projects": "プロジェクト",
       "queueEdit": "このキュー済みメッセージを編集",
-      "queueEditHint": "Alt+↑ 最後のキュー済みメッセージを編集",
-      "queueFollowUp": "追加質問を送信（このターン終了後に自動送信・Alt+Enter）",
+      "queueFollowUp": "メッセージを予約（現在のタスク終了後に送信）",
       "queueGroup": "後続入力のキュー",
       "rejected": "ユーザーにより操作が拒否されました",
       "removeBookmark": "ブックマークを削除",
@@ -1057,7 +1057,7 @@
     "queued": "順番待ち中 ({{position}}番目)...",
     "rateLimited": "リクエストが多すぎます。しばらくしてからお試しください",
     "requestFailed": "セッションの読み込みに失敗しました",
-    "runningPlaceholder": "生成中：Enter で現在の質問を補足、Alt+Enter で次の質問を予約…",
+    "runningPlaceholder": "続けて入力…",
     "memory": {
       "initializing": "関連するメモリを検索中",
       "ready": "メモリ検索完了"
@@ -1093,6 +1093,10 @@
     "steerFailed": "ステアリングメッセージの送信に失敗しました。もう一度お試しください",
     "steerFailedRetry": "送信に失敗しました。もう一度お試しください",
     "steerNext": "タスク完了後に送信",
+    "queueGuide": "方向修正",
+    "queueGuideHint": "このメッセージを現在のタスクに反映",
+    "queueDelete": "待機中のメッセージを削除",
+    "queueMore": "その他の操作",
     "steerQueue": "送信待ちのメッセージ",
     "steerQueued": "現在のステップ完了後に届きます",
     "stop": "生成を停止",
@@ -2943,6 +2947,34 @@
     "DOCUMENT_PARSE_MAX_IMAGES": "1 回の解析で抽出する画像の最大数"
   },
   "settings": {
+    "navigation": {
+      "browse": "カテゴリから探す",
+      "subtitle": "アプリとサービスの設定",
+      "searchPlaceholder": "名前・説明・設定キーを検索",
+      "searchResults": "検索結果",
+      "allCategories": "すべてのカテゴリ",
+      "resultCount": "{{count}} 件の設定",
+      "clearSearch": "検索をクリア",
+      "subcategory": "サブカテゴリ",
+      "allSubcategories": "すべてのサブカテゴリ",
+      "saveHint": "変更した設定は個別に保存してください。カテゴリを切り替えても未保存の入力は保持されます。",
+      "groups": {
+        "experience": "基本設定",
+        "intelligence": "Agent とモデル",
+        "memory": "メモリ",
+        "capabilities": "ツールとファイル",
+        "access": "アカウントとセキュリティ",
+        "infrastructure": "インフラ"
+      },
+      "descriptions": {
+        "experience": "画面表示とセッションの動作を設定します。",
+        "intelligence": "Agent の実行、モデル呼び出し、再試行を調整します。",
+        "memory": "メモリの抽出、埋め込み、検索、保存を管理します。",
+        "capabilities": "ツール、スキル、サンドボックス、ファイル処理を設定します。",
+        "access": "登録、ログイン、認証、メールを管理します。",
+        "infrastructure": "データベース、キャッシュ、永続化、監視を設定します。"
+      }
+    },
     "defaultModel": "デフォルトモデル",
     "exportSettings": "設定をエクスポート",
     "exportSuccess": "設定をエクスポートしました",

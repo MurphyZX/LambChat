@@ -32,16 +32,23 @@ describe("toFollowUpQueueItem", () => {
     const third = toFollowUpQueueItem("第三个追加问题")!;
 
     expect(
-      selectSteersForFollowUp([
-        first,
-        second,
-        third,
-      ]).map((item) => item.content),
+      selectSteersForFollowUp([first, second, third]).map(
+        (item) => item.content,
+      ),
     ).toEqual(["第一个追加问题", "第二个追加问题", "第三个追加问题"]);
   });
 
   test("rejects blank drafts", () => {
     expect(toFollowUpQueueItem("   ")).toBeNull();
+  });
+
+  test("queues attachment-only drafts without losing their files", () => {
+    const attachments = [{ id: "f1", name: "report.pdf" }] as never[];
+    expect(toFollowUpQueueItem("  ", attachments)).toMatchObject({
+      content: "",
+      attachments,
+      status: "deferred",
+    });
   });
 });
 
