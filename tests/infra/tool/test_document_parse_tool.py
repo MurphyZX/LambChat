@@ -751,6 +751,215 @@ async def test_markitdown_parse_rejects_unsupported_extension() -> None:
     assert "markitdown does not support" in str(exc_info.value)
 
 
+# ── 纯图片文档自动转投 OCR（docx/pptx 整页贴图，文本层为空） ────────────
+
+
+def test_markdown_text_content_strips_image_refs_only() -> None:
+    from src.infra.tool.document_parse_providers import markdown_text_content
+
+    image_only = "![](markitdown-img-1.png)\n\n![](markitdown-img-2.png)\n"
+    assert markdown_text_content(image_only) == ""
+    mixed = "# 标题\n\n![](http://x/a.png)\n\n正文段落"
+    stripped = markdown_text_content(mixed)
+    # 只剥图片引用本身，保留其余结构（含周边空行）
+    assert "![" not in stripped
+    assert stripped.replace("\n", "") == "# 标题正文段落"
+    table = "<table><tr><td>signal</td></tr></table>"
+    assert markdown_text_content(table) == table
+
+
+@pytest.mark.asyncio
+async def test_execute_document_parse_redispatches_image_only_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers.settings, "DOCUMENT_PARSE_MISTRAL_API_KEY", "sk-mistral")
+
+    calls: list[str] = []
+
+    async def _branching_parse(client, *, data, filename, include_images, pages, image_limit):
+        calls.append(filename)
+        if filename.endswith((".docx", ".pptx")):
+            # 首遍：文本层为空，只有页面图
+            return providers._result(
+                markdown="![](markitdown-img-1.png)\n\n![](markitdown-img-2.png)",
+                images=[
+                    {"ref": "markitdown-img-1.png", "base64": base64.b64encode(b"P1").decode()},
+                    {"ref": "markitdown-img-2.png", "base64": base64.b64encode(b"P2").decode()},
+                ],
+                pages=None,
+                engine="mistral:mistral-ocr-latest",
+            )
+        index = filename.removeprefix("page-").removesuffix(".png")
+        return providers._result(
+            markdown=f"## Page {index} OCR 文本", images=[], pages=1, engine="mistral:ocr"
+        )
+
+    monkeypatch.setitem(providers.PROVIDER_FUNCS, "mistral", _branching_parse)
+
+    result = await providers.execute_document_parse(
+        data=b"DOCX",
+        filename="spec.docx",
+        include_images=True,
+        client=_FakeClient([]),
+    )
+
+    assert calls == ["spec.docx", "page-1.png", "page-2.png"]
+    assert result["engine"] == "mistral:mistral-ocr-latest+ocr:mistral"
+    # 每页 OCR 文本紧跟其原图引用（保住 VLM 视觉兜底）
+    assert "## Page 1 OCR 文本" in result["markdown"]
+    assert "## Page 2 OCR 文本" in result["markdown"]
+    assert "![](markitdown-img-1.png)" in result["markdown"]
+    assert "![](markitdown-img-2.png)" in result["markdown"]
+    assert result["pages"] == 2
+
+
+@pytest.mark.asyncio
+async def test_execute_document_parse_skips_redispatch_when_text_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers.settings, "DOCUMENT_PARSE_MISTRAL_API_KEY", "sk-mistral")
+
+    calls: list[str] = []
+
+    async def _text_parse(client, *, data, filename, include_images, pages, image_limit):
+        calls.append(filename)
+        return providers._result(
+            markdown="# 有文字的文档\n\n![](markitdown-img-1.png)",
+            images=[{"ref": "markitdown-img-1.png", "base64": "UE5H"}],
+            pages=None,
+            engine="mistral:mistral-ocr-latest",
+        )
+
+    monkeypatch.setitem(providers.PROVIDER_FUNCS, "mistral", _text_parse)
+
+    result = await providers.execute_document_parse(
+        data=b"DOCX",
+        filename="spec.docx",
+        include_images=True,
+        client=_FakeClient([]),
+    )
+
+    assert calls == ["spec.docx"]
+    assert result["engine"] == "mistral:mistral-ocr-latest"
+    assert result["markdown"] == "# 有文字的文档\n\n![](markitdown-img-1.png)"
+
+
+@pytest.mark.asyncio
+async def test_execute_document_parse_skips_redispatch_without_capable_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers, "_markitdown_available", True)
+
+    calls: list[str] = []
+
+    async def _image_only_parse(client, *, data, filename, include_images, pages, image_limit):
+        calls.append(filename)
+        return providers._result(
+            markdown="![](markitdown-img-1.png)",
+            images=[{"ref": "markitdown-img-1.png", "base64": "UE5H"}],
+            pages=None,
+            engine="markitdown",
+        )
+
+    monkeypatch.setitem(providers.PROVIDER_FUNCS, "markitdown", _image_only_parse)
+
+    result = await providers.execute_document_parse(
+        data=b"DOCX",
+        filename="spec.docx",
+        include_images=True,
+        client=_FakeClient([]),
+    )
+
+    # 链上只有 markitdown（无 OCR 能力）：原样返回，不重投
+    assert calls == ["spec.docx"]
+    assert result["engine"] == "markitdown"
+    assert result["markdown"] == "![](markitdown-img-1.png)"
+
+
+@pytest.mark.asyncio
+async def test_execute_document_parse_partial_redispatch_failure_keeps_image_refs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers.settings, "DOCUMENT_PARSE_MISTRAL_API_KEY", "sk-mistral")
+
+    async def _branching_parse(client, *, data, filename, include_images, pages, image_limit):
+        if filename.endswith((".docx", ".pptx")):
+            return providers._result(
+                markdown="![](markitdown-img-1.png)\n\n![](markitdown-img-2.png)",
+                images=[
+                    {"ref": "markitdown-img-1.png", "base64": "UTE="},
+                    {"ref": "markitdown-img-2.png", "base64": "UTI="},
+                ],
+                pages=None,
+                engine="mistral:mistral-ocr-latest",
+            )
+        if filename == "page-2.png":
+            raise providers.DocumentParseError("mistral HTTP 500")
+        return providers._result(
+            markdown="第一页 OCR 文本", images=[], pages=1, engine="mistral:ocr"
+        )
+
+    monkeypatch.setitem(providers.PROVIDER_FUNCS, "mistral", _branching_parse)
+
+    result = await providers.execute_document_parse(
+        data=b"DOCX",
+        filename="spec.docx",
+        include_images=True,
+        client=_FakeClient([]),
+    )
+
+    # page-1 出字、page-2 失败保图：合并结果两页图引用都在；pages 记文档总页数
+    assert "第一页 OCR 文本" in result["markdown"]
+    assert "![](markitdown-img-1.png)" in result["markdown"]
+    assert "![](markitdown-img-2.png)" in result["markdown"]
+    assert result["pages"] == 2
+
+
+@pytest.mark.asyncio
+async def test_execute_document_parse_all_redispatch_failure_returns_original(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers.settings, "DOCUMENT_PARSE_MISTRAL_API_KEY", "sk-mistral")
+
+    async def _branching_parse(client, *, data, filename, include_images, pages, image_limit):
+        if not filename.endswith(".png"):
+            return providers._result(
+                markdown="![](markitdown-img-1.png)",
+                images=[{"ref": "markitdown-img-1.png", "base64": "UTE="}],
+                pages=None,
+                engine="mistral:mistral-ocr-latest",
+            )
+        raise providers.DocumentParseError("mistral HTTP 503")
+
+    monkeypatch.setitem(providers.PROVIDER_FUNCS, "mistral", _branching_parse)
+
+    result = await providers.execute_document_parse(
+        data=b"DOCX",
+        filename="spec.docx",
+        include_images=True,
+        client=_FakeClient([]),
+    )
+
+    # 全部页面 OCR 失败：保留首遍原结果（引擎与 markdown 不变）
+    assert result["engine"] == "mistral:mistral-ocr-latest"
+    assert result["markdown"] == "![](markitdown-img-1.png)"
+
+
 @pytest.mark.asyncio
 async def test_execute_document_parse_no_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     from src.infra.tool import document_parse_providers as providers
