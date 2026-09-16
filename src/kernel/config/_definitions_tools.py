@@ -217,7 +217,16 @@ TOOLS_SETTING_DEFINITIONS: dict[str, dict] = {
         "default": "auto",
         "depends_on": "ENABLE_DOCUMENT_PARSE",
         "frontend_visible": True,
-        "options": ["auto", "mistral", "mineru", "azure", "docling", "paddleocr_vl", "tika"],
+        "options": [
+            "auto",
+            "mistral",
+            "mineru",
+            "azure",
+            "docling",
+            "paddleocr_vl",
+            "tika",
+            "markitdown",
+        ],
     },
     "DOCUMENT_PARSE_MISTRAL_API_KEY": {
         "type": SettingType.STRING,

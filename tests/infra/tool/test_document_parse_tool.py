@@ -203,12 +203,25 @@ def test_provider_chain_auto_picks_first_configured(monkeypatch: pytest.MonkeyPa
     from src.infra.tool import document_parse_providers as providers
 
     _clear_provider_settings(monkeypatch)
-    assert providers.resolve_document_parse_provider_chain() == []
+    # markitdown 是本地库，零配置即可用 → 链尾兜底始终存在
+    assert providers.resolve_document_parse_provider_chain() == ["markitdown"]
 
     monkeypatch.setattr(providers.settings, "DOCUMENT_PARSE_DOCLING_URL", "http://docling:5001")
     monkeypatch.setattr(providers.settings, "DOCUMENT_PARSE_MISTRAL_API_KEY", "sk-mistral")
-    # auto 顺序：mistral 优先于 docling
-    assert providers.resolve_document_parse_provider_chain() == ["mistral", "docling"]
+    # auto 顺序：mistral 优先于 docling，markitdown 垫底
+    assert providers.resolve_document_parse_provider_chain() == [
+        "mistral",
+        "docling",
+        "markitdown",
+    ]
+
+
+def test_provider_chain_empty_when_markitdown_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers, "_markitdown_available", False)
+    assert providers.resolve_document_parse_provider_chain() == []
 
 
 def test_provider_chain_pinned_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -574,11 +587,176 @@ async def test_paddleocr_parse(monkeypatch: pytest.MonkeyPatch) -> None:
     assert client.calls[0]["json"]["fileType"] == 0
 
 
+# ── MarkItDown（本地库） ──────────────────────────────────────────────────
+
+_TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+def _build_docx_with_image() -> bytes:
+    document = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+        ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+        ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'
+        ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+        ' xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        "<w:body><w:p><w:r><w:t>Quarterly Report</w:t></w:r></w:p>"
+        '<w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">'
+        '<wp:extent cx="9525" cy="9525"/><wp:docPr id="1" name="Picture 1"/>'
+        "<a:graphic><a:graphicData"
+        ' uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        '<pic:pic><pic:nvPicPr><pic:cNvPr id="1"'
+        ' name="image1.png"/><pic:cNvPicPr/></pic:nvPicPr>'
+        '<pic:blipFill><a:blip r:embed="rId7"/></pic:blipFill>'
+        '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="9525"'
+        ' cy="9525"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+        "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p></w:body></w:document>"
+    )
+    rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+        '<Relationship Id="rId7"'
+        ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"'
+        ' Target="media/image1.png"/>\n'
+        "</Relationships>"
+    )
+    ctypes = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels"'
+        ' ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Default Extension="png" ContentType="image/png"/>'
+        '<Override PartName="/word/document.xml"'
+        ' ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        "</Types>"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("[Content_Types].xml", ctypes)
+        archive.writestr("word/document.xml", document)
+        archive.writestr("word/_rels/document.xml.rels", rels)
+        archive.writestr("word/media/image1.png", _TINY_PNG)
+    return buffer.getvalue()
+
+
+def _build_pptx_with_image() -> bytes:
+    from pptx import Presentation
+
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    box = slide.shapes.add_textbox(0, 0, 100, 20)
+    box.text_frame.text = "Slide one text"
+    slide.shapes.add_picture(io.BytesIO(_TINY_PNG), 0, 30)
+    buffer = io.BytesIO()
+    prs.save(buffer)
+    return buffer.getvalue()
+
+
+def test_extract_ooxml_media_images() -> None:
+    from src.infra.tool.document_parse_providers import extract_ooxml_media_images
+
+    docx = _build_docx_with_image()
+    images = extract_ooxml_media_images(docx)
+
+    assert [image["ref"] for image in images] == ["markitdown-img-1.png"]
+    assert images[0]["base64"] == base64.b64encode(_TINY_PNG).decode()
+
+    assert extract_ooxml_media_images(b"not a zip") == []
+
+
+def test_rewrite_local_image_refs_sequential_and_skips_http() -> None:
+    from src.infra.tool.document_parse_providers import rewrite_local_image_refs
+
+    markdown = "![a](data:image/png;base64...) [link](https://example.com) ![b](Picture2.jpg)"
+
+    rewritten = rewrite_local_image_refs(markdown, ["markitdown-img-1.png", "markitdown-img-2.jpg"])
+
+    assert "![a](markitdown-img-1.png)" in rewritten
+    assert "![b](markitdown-img-2.jpg)" in rewritten
+    assert "[link](https://example.com)" in rewritten
+    # refs 用尽后剩余引用原样保留
+    tail = rewrite_local_image_refs("![x](a.png) ![y](b.png)", ["only-1.png"])
+    assert "![x](only-1.png)" in tail
+    assert "![y](b.png)" in tail
+
+
+@pytest.mark.asyncio
+async def test_markitdown_parse_docx_with_image() -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    class _UnusedClient:
+        pass
+
+    result = await providers.markitdown_parse(
+        _UnusedClient(),  # type: ignore[arg-type]
+        data=_build_docx_with_image(),
+        filename="report.docx",
+        include_images=True,
+        pages=None,
+        image_limit=0,
+    )
+
+    assert result["engine"] == "markitdown"
+    assert "Quarterly Report" in result["markdown"]
+    # 截断的 data URI 占位符被换成生成的 ref，图片字节来自 ZIP media
+    assert "data:image" not in result["markdown"]
+    assert result["images"] == [
+        {"ref": "markitdown-img-1.png", "base64": base64.b64encode(_TINY_PNG).decode()}
+    ]
+    assert "](markitdown-img-1.png)" in result["markdown"]
+
+
+@pytest.mark.asyncio
+async def test_markitdown_parse_pptx_with_image() -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    class _UnusedClient:
+        pass
+
+    result = await providers.markitdown_parse(
+        _UnusedClient(),  # type: ignore[arg-type]
+        data=_build_pptx_with_image(),
+        filename="slides.pptx",
+        include_images=True,
+        pages=None,
+        image_limit=0,
+    )
+
+    assert result["engine"] == "markitdown"
+    assert "Slide one text" in result["markdown"]
+    assert [image["ref"] for image in result["images"]] == ["markitdown-img-1.png"]
+    assert "](markitdown-img-1.png)" in result["markdown"]
+
+
+@pytest.mark.asyncio
+async def test_markitdown_parse_rejects_unsupported_extension() -> None:
+    from src.infra.tool import document_parse_providers as providers
+
+    class _UnusedClient:
+        pass
+
+    with pytest.raises(providers.DocumentParseError) as exc_info:
+        await providers.markitdown_parse(
+            _UnusedClient(),  # type: ignore[arg-type]
+            data=b"OLE",
+            filename="legacy.doc",
+            include_images=True,
+            pages=None,
+            image_limit=0,
+        )
+
+    assert "markitdown does not support" in str(exc_info.value)
+
+
 @pytest.mark.asyncio
 async def test_execute_document_parse_no_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     from src.infra.tool import document_parse_providers as providers
 
     _clear_provider_settings(monkeypatch)
+    monkeypatch.setattr(providers, "_markitdown_available", False)
 
     with pytest.raises(providers.DocumentParseError) as exc_info:
         await providers.execute_document_parse(data=b"x", filename="a.pdf", include_images=True)
@@ -822,14 +1000,20 @@ async def test_document_parse_returns_error_when_download_exceeds_limit(
 
 
 @pytest.mark.asyncio
-async def test_document_parse_returns_error_when_provider_fails(
+async def test_document_parse_falls_back_to_markitdown_when_provider_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from src.infra.tool import document_parse_providers as providers
     from src.infra.tool import document_parse_tool
 
     _patch_common(monkeypatch)
     client = _FakeToolHttpClient([b"PDFBYTES"], RuntimeError("boom"))
     _patch_http(monkeypatch, client)
+
+    async def _failing_parse(*args, **kwargs):
+        raise providers.DocumentParseError("mistral HTTP 500: boom")
+
+    monkeypatch.setitem(providers.PROVIDER_FUNCS, "mistral", _failing_parse)
 
     result = json.loads(
         await document_parse_tool.document_parse.coroutine(
@@ -838,8 +1022,9 @@ async def test_document_parse_returns_error_when_provider_fails(
         )
     )
 
-    # provider 链上唯一配置的 mistral 挂了 → 错误透传
-    assert "error" in result
+    # mistral 失败后沿链降级到本地 markitdown 兜底
+    assert result["success"] is True
+    assert result["provider"] == "markitdown"
 
 
 @pytest.mark.asyncio

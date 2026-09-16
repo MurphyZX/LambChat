@@ -3,9 +3,10 @@
 用户上传的 docx/pdf/pptx 附件原本只以链接形式进入对话，模型只能在沙箱里
 手写解析代码，含图片的文档几乎必然翻车。本工具把文档发给已配置的解析
 提供商（Mistral OCR / MinerU / Azure Document Intelligence / docling-serve /
-Tika / PaddleOCR-VL，见 document_parse_providers），拿回页级 Markdown，并把
-内嵌图片上传到存储、回写成真实 URL——模型直接得到可读文本 + 可分析图片，
-前端面板也能内联渲染。形态对齐 web_search 工具（settings 选 provider）。
+Tika / PaddleOCR-VL / MarkItDown 本地兜底，见 document_parse_providers），
+拿回页级 Markdown，并把内嵌图片上传到存储、回写成真实 URL——模型直接
+得到可读文本 + 可分析图片，前端面板也能内联渲染。形态对齐 web_search
+工具（settings 选 provider）。
 """
 
 from __future__ import annotations
@@ -193,8 +194,9 @@ async def document_parse(
 ) -> str:
     """Parse a document (PDF, DOCX, PPTX, DOC, PPT, ODT) into Markdown via the configured
     document parsing providers (Mistral OCR, MinerU, Azure Document Intelligence, docling,
-    Tika, PaddleOCR-VL), with embedded images uploaded and inlined as image URLs. Use this
-    to read user document attachments instead of writing ad-hoc sandbox parsing code."""
+    Tika, PaddleOCR-VL, or the local MarkItDown fallback), with embedded images uploaded
+    and inlined as image URLs. Use this to read user document attachments instead of
+    writing ad-hoc sandbox parsing code."""
 
     resolved_url = _resolve_url(url, runtime)
 

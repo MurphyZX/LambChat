@@ -1,23 +1,27 @@
 """Document parse providers: multi-provider OCR/parsing clients.
 
 对齐 Open WebUI 的文档解析接入面（Mistral OCR / MinerU / Azure Document
-Intelligence / docling-serve / Apache Tika / PaddleOCR-VL），按本仓库
-web_search_providers 的形态组织：settings 选 provider（auto = 第一个配好
-凭据的），归一化输出统一为 ``{"markdown", "images": [{"ref", "base64"}],
-"pages", "engine"}``；图片由工具层统一上传存储并重写 Markdown 引用。
+Intelligence / docling-serve / Apache Tika / PaddleOCR-VL / MarkItDown），
+按本仓库 web_search_providers 的形态组织：settings 选 provider（auto =
+第一个配好凭据的，markitdown 为零配置本地兜底），归一化输出统一为
+``{"markdown", "images": [{"ref", "base64"}], "pages", "engine"}``；
+图片由工具层统一上传存储并重写 Markdown 引用。
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+import importlib.util
 import io
+import re
 import zipfile
 from collections.abc import Callable
 from typing import Any
 
 import httpx
 
+from src.infra.async_utils import run_blocking_io
 from src.infra.logging import get_logger
 from src.kernel.config import settings
 
@@ -34,6 +38,13 @@ _AZURE_POLL_INTERVAL_SECONDS = 1.5
 _AZURE_MAX_POLLS = 200
 _TIKA_CONTENT_KEY = "X-TIKA:content"
 _PADDLE_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff"}
+_MARKITDOWN_SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
+_MEDIA_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tif"}
+# markitdown 输出里的本地图片引用：docx 是被截断的 data URI
+# （`![](data:image/png;base64...)`），pptx 是自造文件名（`![](Picture2.jpg)`），
+# 都不带 http(s) 前缀——按出现顺序换成我们生成的 ref。
+_LOCAL_MARKDOWN_IMAGE_REF_RE = re.compile(r"(!\[[^\]]*\]\()((?!https?://)[^\s)]+)(\))")
+_markitdown_available: bool | None = None
 
 
 class DocumentParseError(Exception):
@@ -527,6 +538,97 @@ async def paddleocr_parse(
     )
 
 
+# ── MarkItDown（本地库，零配置兜底） ─────────────────────────────────────
+
+
+def extract_ooxml_media_images(data: bytes) -> list[dict[str, str]]:
+    """直接从 OOXML ZIP 的 media 目录抽图片（word/media、ppt/media）。
+
+    markitdown 的 Markdown 里 data URI 会被截断（`base64...`）、pptx 引用
+    是自造文件名，字节只能回源文件里拿；ref 用我们生成的序号名。
+    """
+    images: list[dict[str, str]] = []
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            for name in archive.namelist():
+                if "/media/" not in f"/{name}":
+                    continue
+                extension = name.lower().rsplit(".", 1)[-1]
+                if extension not in _MEDIA_IMAGE_EXTENSIONS:
+                    continue
+                ref = f"markitdown-img-{len(images) + 1}.{extension}"
+                images.append(
+                    {
+                        "ref": ref,
+                        "base64": base64.b64encode(archive.read(name)).decode("ascii"),
+                    }
+                )
+    except (zipfile.BadZipFile, OSError, ValueError):
+        return []
+    return images
+
+
+def rewrite_local_image_refs(markdown: str, refs: list[str]) -> str:
+    """把 Markdown 里的本地图片引用按出现顺序换成生成的 ref。"""
+    state = {"next": 0}
+
+    def _replace(match: re.Match[str]) -> str:
+        if state["next"] >= len(refs):
+            return match.group(0)
+        ref = refs[state["next"]]
+        state["next"] += 1
+        return f"{match.group(1)}{ref}{match.group(3)}"
+
+    return _LOCAL_MARKDOWN_IMAGE_REF_RE.sub(_replace, markdown)
+
+
+def _markitdown_importable() -> bool:
+    global _markitdown_available
+    if _markitdown_available is None:
+        try:
+            _markitdown_available = importlib.util.find_spec("markitdown") is not None
+        except Exception:
+            _markitdown_available = False
+    return _markitdown_available
+
+
+async def markitdown_parse(
+    client: httpx.AsyncClient,
+    *,
+    data: bytes,
+    filename: str,
+    include_images: bool,
+    pages: str | None,
+    image_limit: int,
+) -> dict[str, Any]:
+    extension = f".{filename.lower().rsplit('.', 1)[-1]}" if "." in filename else ""
+    if extension not in _MARKITDOWN_SUPPORTED_EXTENSIONS:
+        raise DocumentParseError(
+            f"markitdown does not support '{extension}' files (pdf/docx/pptx only)"
+        )
+
+    def _convert() -> str:
+        from markitdown import MarkItDown
+
+        converter = MarkItDown(enable_plugins=False)
+        result = converter.convert_stream(io.BytesIO(data), file_extension=extension)
+        return str(getattr(result, "markdown", None) or result.text_content or "")
+
+    try:
+        markdown = await run_blocking_io(_convert)
+    except ImportError as exc:
+        raise DocumentParseError(f"markitdown not installed: {exc}") from exc
+    except Exception as exc:
+        raise DocumentParseError(f"markitdown conversion failed: {exc}") from exc
+    if not markdown.strip():
+        raise DocumentParseError("markitdown returned empty markdown")
+
+    images = extract_ooxml_media_images(data) if include_images else []
+    if images:
+        markdown = rewrite_local_image_refs(markdown, [image["ref"] for image in images])
+    return _result(markdown=markdown, images=images, pages=None, engine="markitdown")
+
+
 # ── 注册表与 auto 选择（对齐 web_search_providers） ──────────────────────
 
 PROVIDER_FUNCS: dict[str, Callable[..., Any]] = {
@@ -536,9 +638,11 @@ PROVIDER_FUNCS: dict[str, Callable[..., Any]] = {
     "docling": docling_parse,
     "paddleocr_vl": paddleocr_parse,
     "tika": tika_parse,
+    "markitdown": markitdown_parse,
 }
 
-_PROVIDER_ORDER = ("mistral", "mineru", "azure", "docling", "paddleocr_vl", "tika")
+# markitdown 零配置即可用，放在链尾兜底：配了任何 API 提供商优先走 API。
+_PROVIDER_ORDER = ("mistral", "mineru", "azure", "docling", "paddleocr_vl", "tika", "markitdown")
 
 _PROVIDER_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "mistral": ("DOCUMENT_PARSE_MISTRAL_API_KEY",),
@@ -555,6 +659,8 @@ def _provider_available(provider: str) -> bool:
         if _mineru_mode() == "cloud":
             return bool(_setting("DOCUMENT_PARSE_MINERU_API_KEY"))
         return bool(_setting("DOCUMENT_PARSE_MINERU_API_URL"))
+    if provider == "markitdown":
+        return _markitdown_importable()
     required = _PROVIDER_REQUIREMENTS.get(provider)
     if not required:
         return False
