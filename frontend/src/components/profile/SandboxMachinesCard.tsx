@@ -143,7 +143,7 @@ export function SandboxMachinesCard() {
             >
               <span
                 className={`h-2 w-2 rounded-full shrink-0 ${
-                  machineOnline ? "bg-green-500" : "bg-theme-border-hover dark:bg-stone-600"
+                  machineOnline ? "bg-theme-success" : "bg-theme-border-hover dark:bg-stone-600"
                 }`}
               />
               {renaming ? (
@@ -227,7 +227,7 @@ export function SandboxMachinesCard() {
                       type="button"
                       onClick={() => void handleForget(machine)}
                       disabled={busy}
-                      className="rounded-md p-1 text-theme-text-tertiary dark:text-stone-500 transition-colors hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                      className="rounded-md p-1 text-theme-text-tertiary dark:text-stone-500 transition-colors hover:text-theme-error dark:hover:text-red-400 disabled:opacity-50"
                       title={t("profile.localSandbox.forgetMachine")}
                       data-testid={`forget-${machine.machine_id}`}
                     >
