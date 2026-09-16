@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from "react";
-import { ArrowUp, Cloud, Monitor, Settings2, Square, Lock } from "lucide-react";
+import { ArrowUp, Cloud, ListPlus, Monitor, Settings2, Square, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FeatureMenu, type FeaturePanel } from "../selectors/FeatureMenu";
 import {
@@ -35,9 +35,11 @@ export interface ChatInputToolbarProps {
   canSend: boolean;
   sendBlocked?: boolean;
   isLoading: boolean;
-  /** 运行中是否有草稿文本：有则按钮发送插话（steer），无则保持停止 */
+  /** 运行中是否有草稿文本：有则主按钮补充当前问题（打断重生成），无则保持停止 */
   hasDraft?: boolean;
-  onSteer?: () => void;
+  onSupplement?: () => void;
+  /** 追加提问：不打断当前 run，本轮结束后自动作为新消息发送 */
+  onQueueFollowUp?: () => void;
   canSubmit: boolean;
   hasUploadingAttachment: boolean;
   hasFailedAttachment?: boolean;
@@ -99,7 +101,8 @@ export function ChatInputToolbar({
   sendBlocked = false,
   isLoading,
   hasDraft = false,
-  onSteer,
+  onSupplement,
+  onQueueFollowUp,
   canSubmit,
   hasUploadingAttachment,
   hasFailedAttachment = false,
@@ -416,6 +419,38 @@ export function ChatInputToolbar({
           onToggleAgentOption={onToggleAgentOption}
         />
 
+        {/* 追加提问：不打断当前 run，本轮结束后自动作为新消息发送
+            （Alt+Enter 等效） */}
+        {canSend &&
+        !sendBlocked &&
+        isLoading &&
+        hasDraft &&
+        onQueueFollowUp &&
+        !hasUploadingAttachment &&
+        !hasFailedAttachment &&
+        !hasInvalidAttachment ? (
+          <button
+            type="button"
+            data-testid="queue-followup-trigger"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onQueueFollowUp();
+            }}
+            className="chat-tool-btn shrink-0"
+            title={t(
+              "chat.queueFollowUp",
+              "发送追加提问（本轮结束后自动发送，Alt+Enter）",
+            )}
+            aria-label={t(
+              "chat.queueFollowUp",
+              "发送追加提问（本轮结束后自动发送，Alt+Enter）",
+            )}
+          >
+            <ListPlus size={16} />
+          </button>
+        ) : null}
+
         {!canSend ? (
           <button
             type="button"
@@ -448,16 +483,17 @@ export function ChatInputToolbar({
           </button>
         ) : isLoading &&
           hasDraft &&
-          onSteer &&
+          onSupplement &&
           !hasUploadingAttachment &&
           !hasFailedAttachment &&
           !hasInvalidAttachment ? (
           <button
             type="button"
+            data-testid="supplement-send"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onSteer();
+              onSupplement();
             }}
             className="flex items-center justify-center rounded-full h-9 w-9 transition-all duration-300 hover:scale-105 active:scale-95"
             style={{
@@ -465,7 +501,14 @@ export function ChatInputToolbar({
               border: "1px solid var(--theme-primary)",
               color: "var(--theme-bg-card)",
             }}
-            title={t("chat.steer", "发送插话（当前步骤后送达）")}
+            title={t(
+              "chat.supplement",
+              "补充当前问题（打断本条回答，结合新内容重新思考）",
+            )}
+            aria-label={t(
+              "chat.supplement",
+              "补充当前问题（打断本条回答，结合新内容重新思考）",
+            )}
           >
             <ArrowUp size={18} />
           </button>

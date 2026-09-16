@@ -181,8 +181,13 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     },
     removeDeferredSteer,
   });
-  const { markSteerDelivered, clearSteerMessages, clearSteer, hydrateSteers } =
-    steerQueue;
+  const {
+    markSteerDelivered,
+    clearSteerMessages,
+    clearSteer,
+    hydrateSteers,
+    queueFollowUp,
+  } = steerQueue;
 
   useEffect(() => {
     currentRunIdRef.current = currentRunId;
@@ -917,6 +922,24 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     }
   }, [options, setIsInitializingSandbox, setIsLoading, setSandboxError]);
 
+  // 补充当前问题：打断进行中的 run，把补充内容并入这轮思考重新生成
+  // （原问题与已生成部分保留在历史，新一轮自动携带完整上下文）
+  const supplementFollowUp = useCallback(
+    async (content: string, attachments?: MessageAttachment[]) => {
+      const text = content.trim();
+      if (!text) return;
+      if (isSendingRef.current) {
+        // 上一条提交仍在途（尚未开始流式）：此刻打断会造成双发竞态，
+        // 先排队到本轮结束后自动补发
+        queueFollowUp(text, attachments);
+        return;
+      }
+      await stopGeneration();
+      await sendMessageRef.current?.(text, attachments);
+    },
+    [queueFollowUp, stopGeneration],
+  );
+
   const clearMessages = useCallback(() => {
     loadHistoryRequestIdRef.current += 1;
     streamVersionRef.current += 1;
@@ -1035,6 +1058,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     sandboxError,
     sendMessage,
     ...steerQueue,
+    supplementFollowUp,
     applyRecommendQuestions,
     clearActiveGoal,
     stopGeneration,

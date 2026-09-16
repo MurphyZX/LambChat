@@ -16,6 +16,28 @@ interface SteerQueueOptions {
   removeDeferredSteer?: (content: string, messageId?: string) => void;
 }
 
+/**
+ * 「追加提问」的本地排队项：不进后端插话队列（不会在 run 中途被注入
+ * 打断当前任务），只作为排队气泡展示；run 结束后由
+ * useSteerFollowUpPromotion 与未送达插话一起补发为普通消息。
+ */
+export function toFollowUpQueueItem(
+  content: string,
+  attachments: MessageAttachment[] = [],
+): SteerItem | null {
+  const text = content.trim();
+  if (!text) return null;
+  return {
+    id: uuid(),
+    content: text,
+    attachments,
+    queued: true,
+    status: "deferred",
+    deferred: true,
+    timestamp: new Date(),
+  };
+}
+
 export function removeSteerItem(
   items: SteerItem[],
   content: string,
@@ -51,6 +73,8 @@ export interface PromoteSteerFollowUpsDeps {
   clearSteer?: (content: string, messageId: string) => void;
   /** 会话仍有运行中的 run 时返回 true：插话留在队列等注入，不补发 */
   isSessionActive?: () => Promise<boolean>;
+  /** 本地 sendMessage 在途时返回 true：补发会被在途守卫静默丢弃，须保留排队项稍后重试 */
+  isSending?: () => boolean;
 }
 
 export interface PromoteSteerFollowUpsResult {
@@ -93,8 +117,16 @@ export async function promoteSteerFollowUps(
     }
   }
   let promoted = 0;
+  let deferredBySending = 0;
   for (const item of items) {
     if (deps.isCancelled?.(item.id)) continue;
+    // 本地提交在途（用户恰好在 run 结束瞬间手动发送）：sendMessage 的
+    // 在途守卫会静默丢弃补发调用，若先清本地项这条排队消息就丢了。
+    // 原样留在队列，靠 skippedActive 的重试稍后再发。
+    if (deps.isSending?.()) {
+      deferredBySending += 1;
+      continue;
+    }
     deps.clearSteer?.(item.content, item.id);
     try {
       await deps.cancelSteer(sessionId, item.content, item.id);
@@ -104,7 +136,7 @@ export async function promoteSteerFollowUps(
     await deps.sendMessage(item.content, item.attachments);
     promoted += 1;
   }
-  return { promoted, skippedActive: 0 };
+  return { promoted, skippedActive: deferredBySending };
 }
 
 /** 补发插话前视为「会话仍在运行」的任务状态（终态之外的都算） */
@@ -194,6 +226,7 @@ export function useSteerFollowUpPromotion(
           const { status } = await sessionApi.getStatus(sessionId);
           return ACTIVE_RUN_STATUSES.has(status);
         },
+        isSending: () => isSendingRef.current,
       });
       // 会话仍在运行：插话留在原 run 队列等注入，稍后再探测
       if (result.skippedActive > 0 && !cancelled) {
@@ -297,6 +330,17 @@ export function useSteerQueue({
     [sessionIdRef, deferSteer],
   );
 
+  // 追加提问：只入本地排队（不 POST /steer），run 结束后自动转普通消息
+  const queueFollowUp = useCallback(
+    (content: string, attachments: MessageAttachment[] = []) => {
+      const currentSessionId = sessionIdRef.current;
+      const item = toFollowUpQueueItem(content, attachments);
+      if (!item || !currentSessionId) return;
+      setSteerMessages((prev) => [...prev, item]);
+    },
+    [sessionIdRef],
+  );
+
   const cancelSteer = useCallback(
     (content: string, messageId?: string) => {
       let removed: SteerItem | undefined;
@@ -370,6 +414,7 @@ export function useSteerQueue({
   return {
     steerMessages,
     steerMessage,
+    queueFollowUp,
     cancelSteer,
     markSteerDelivered,
     clearSteerMessages,

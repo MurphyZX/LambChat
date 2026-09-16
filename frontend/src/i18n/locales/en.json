@@ -869,6 +869,7 @@
       "parameters": "Parameters",
       "processing": "Process",
       "projects": "Projects",
+      "queueFollowUp": "Queue follow-up (auto-sends after this turn · Alt+Enter)",
       "rejected": "Operation rejected by user",
       "removeBookmark": "Remove bookmark",
       "result": "Result",
@@ -1051,7 +1052,7 @@
     "queued": "Queued (position {{position}})...",
     "rateLimited": "Too many requests, please try again later",
     "requestFailed": "Failed to load session",
-    "runningPlaceholder": "Keep typing to queue ordered edits…",
+    "runningPlaceholder": "Generating — Enter supplements this question, Alt+Enter queues the next…",
     "memory": {
       "initializing": "Recalling relevant memories",
       "ready": "Memory recall complete"
@@ -1083,17 +1084,17 @@
     "status": {
       "cancelled": "Cancelled"
     },
-    "steer": "Send steering message (delivered after the current step)",
     "steerCancel": "Cancel this steering message",
     "steerFailed": "Failed to send the steering message, please try again",
     "steerFailedRetry": "Failed to send, please try again",
     "steerNext": "Send when the task finishes",
-    "steerQueue": "Pending steering messages",
+    "steerQueue": "Queued messages to send",
     "steerQueued": "Delivered after the current step",
     "stop": "Stop generating",
     "stopConfirmMessage": "Are you sure you want to stop generating? The content generated so far will be kept.",
     "stopConfirmTitle": "Stop generating",
     "subagentStatus": "Subagent status: {{status}}",
+    "supplement": "Supplement this question (interrupts the reply and rethinks with the addition)",
     "teamPlaceholder": "Type a message to start, @ to switch team…",
     "teamSelected": "Team selected",
     "textAutoUploaded": "Long text automatically converted to file upload",
