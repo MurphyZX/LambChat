@@ -67,7 +67,6 @@ import { areAttachmentsSendable } from "./attachmentValidation";
 import {
   createRunningSendToolkit,
   handleEnterSubmit,
-  isEditLastQueuedShortcut,
 } from "./chatInputRunningSend";
 import { useAcceptedDraftSubmission } from "./useAcceptedDraftSubmission";
 const RichChatComposer = lazy(async () => {
@@ -398,7 +397,14 @@ export const ChatInput = memo(function ChatInput({
       onUsePersonaPreset?.(preset);
       resetMention();
     },
-    [input, mention, focusComposerAtEnd, onUsePersonaPreset, resetMention, setComposerPlainText],
+    [
+      input,
+      mention,
+      focusComposerAtEnd,
+      onUsePersonaPreset,
+      resetMention,
+      setComposerPlainText,
+    ],
   );
   const applyTeamMentionSelection = useCallback(
     (team: Team) => {
@@ -412,7 +418,14 @@ export const ChatInput = memo(function ChatInput({
       onSelectTeam?.(team.id);
       resetMention();
     },
-    [input, mention, focusComposerAtEnd, onSelectTeam, resetMention, setComposerPlainText],
+    [
+      input,
+      mention,
+      focusComposerAtEnd,
+      onSelectTeam,
+      resetMention,
+      setComposerPlainText,
+    ],
   );
   const handleComposerChange = useCallback((change: RichChatComposerChange) => {
     const { projection } = change;
@@ -507,19 +520,17 @@ export const ChatInput = memo(function ChatInput({
     (attachment) => attachment.uploadError,
   );
   const hasInvalidAttachment = !areAttachmentsSendable(visibleAttachments);
-  // 运行中发送（补充/追加）与排队消息编辑（Codex Tab-queue / Alt+↑）
-  const { sendRunningDraft, editQueuedMessage, editLastQueuedMessage } =
-    createRunningSendToolkit({
-      input,
-      visibleAttachments,
-      clearDraft: clearSteerDraft,
-      setComposerText: setComposerPlainText,
-      removeQueued: onCancelSteer,
-      focusComposer: focusComposerAtEnd,
-    });
+  const { sendRunningDraft, editQueuedMessage } = createRunningSendToolkit({
+    input,
+    visibleAttachments,
+    clearDraft: clearSteerDraft,
+    setComposerText: setComposerPlainText,
+    restoreAttachments: setAttachments,
+    removeQueued: onCancelSteer,
+    focusComposer: focusComposerAtEnd,
+  });
   const handleComposerKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      // Lexical prevents Enter first; defaultPrevented cannot distinguish send intent.
       if (mention.isActive) {
         if (event.key === "Enter" || event.key === "Tab") {
           event.preventDefault();
@@ -538,17 +549,8 @@ export const ChatInput = memo(function ChatInput({
           return;
         }
       }
-      if (
-        isEditLastQueuedShortcut(event, mention.isActive, steerMessages.length)
-      ) {
-        event.preventDefault();
-        editLastQueuedMessage(steerMessages);
-        return;
-      }
       if (event.key === "Enter") {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-        // 空闲→表单提交；运行中 Alt+Enter→追加提问（优先于发送键偏好）、
-        // 发送键→补充当前问题、草稿不可发送→停止确认
         handleEnterSubmit(
           event,
           {
@@ -560,7 +562,7 @@ export const ChatInput = memo(function ChatInput({
             hasFailedAttachment,
             hasInvalidAttachment,
           },
-          { onSupplement, onQueueFollowUp },
+          { onQueueFollowUp },
           {
             clearDraft: clearSteerDraft,
             openStopConfirm: () => setStopConfirmOpen(true),
@@ -573,7 +575,6 @@ export const ChatInput = memo(function ChatInput({
       applyMentionSelection,
       applyTeamMentionSelection,
       clearSteerDraft,
-      editLastQueuedMessage,
       hasFailedAttachment,
       hasUploadingAttachment,
       hasInvalidAttachment,
@@ -583,11 +584,9 @@ export const ChatInput = memo(function ChatInput({
       mention.isActive,
       mentionMode,
       mentionSearch.presets,
-      onSupplement,
       onQueueFollowUp,
       resetMention,
       sendBlocked,
-      steerMessages,
       visibleAttachments,
       teamMentionSearch.teams,
     ],
@@ -630,10 +629,9 @@ export const ChatInput = memo(function ChatInput({
       setComposerPlainText,
     ],
   );
-  const hasContent =
-    (!!input.trim() || visibleAttachments.length > 0) && !disabled;
   const canSubmit =
-    hasContent &&
+    (!!input.trim() || visibleAttachments.length > 0) &&
+    !disabled &&
     canSend &&
     !sendBlocked &&
     !isLoading &&
@@ -703,6 +701,9 @@ export const ChatInput = memo(function ChatInput({
         items={steerMessages}
         onCancel={onCancelSteer}
         onEdit={onCancelSteer ? editQueuedMessage : undefined}
+        onGuide={
+          isLoading && canSend && !sendBlocked ? onSupplement : undefined
+        }
       />
       <form
         ref={formRef}
@@ -883,7 +884,6 @@ export const ChatInput = memo(function ChatInput({
                   sendBlocked={sendBlocked}
                   isLoading={isLoading}
                   hasDraft={!!input.trim() || visibleAttachments.length > 0}
-                  onSupplement={sendRunningDraft(onSupplement)}
                   onQueueFollowUp={sendRunningDraft(onQueueFollowUp)}
                   canSubmit={canSubmit}
                   hasUploadingAttachment={hasUploadingAttachment}

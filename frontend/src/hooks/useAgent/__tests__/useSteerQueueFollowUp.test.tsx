@@ -14,6 +14,7 @@ vi.mock("../../services/api", () => ({
 import { useSteerQueue } from "../steerQueue";
 
 beforeEach(() => {
+  sessionStorage.clear();
   steer.mockClear();
 });
 
@@ -59,7 +60,8 @@ test("queueFollowUp supports stacking multiple follow-ups in order", () => {
   });
 
   expect(steer).not.toHaveBeenCalled();
-  expect(
-    result.current.steerMessages.map((item) => item.content),
-  ).toEqual(["第一条追加", "第二条追加"]);
+  expect(result.current.steerMessages.map((item) => item.content)).toEqual([
+    "第一条追加",
+    "第二条追加",
+  ]);
 });

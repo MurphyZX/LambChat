@@ -11,7 +11,7 @@ test("supplementFollowUp interrupts the running turn before resending", () => {
   // 内容作为新消息发出：原问题与半截回答保留在历史，新一轮结合补充
   // 内容重新生成
   expect(source).toMatch(/const supplementFollowUp = useCallback/);
-  expect(source).toMatch(/if \(!text\) return;/);
+  expect(source).toMatch(/if \(!text && !attachments\?\.length\) return;/);
   expect(source).toMatch(
     /await stopGeneration\(\);\s*await sendMessageRef\.current\?\.\(text, attachments\);/,
   );

@@ -8,6 +8,7 @@ export function buildCategoryLabels(
   return {
     frontend: t("categories.frontend"),
     agent: t("categories.agent"),
+    scheduled_task: t("categories.scheduled_task"),
     llm: t("categories.llm"),
     session: t("categories.session"),
     skills: t("categories.skills"),

@@ -39,7 +39,8 @@ const BANNED_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: "border-white", pattern: /\bborder-white\b/ },
   {
     name: "red-*（文字/边框/浅底）",
-    pattern: /(?:(?:hover:)?(?:text|border|ring)-(?:red|rose)-\d)|(?:bg-(?:red|rose)-[1-4]\d\b)/,
+    pattern:
+      /(?:(?:hover:)?(?:text|border|ring)-(?:red|rose)-\d)|(?:bg-(?:red|rose)-[1-4]\d\b)/,
   },
   {
     name: "green-*（状态色请用 theme-success）",

@@ -17,7 +17,7 @@ export interface RunningDraftState {
 export interface RunningSendHandlers {
   /** 补充当前问题：打断本条回答，结合新内容重新思考 */
   onSupplement?: (content: string, attachments?: MessageAttachment[]) => void;
-  /** 追加提问（Codex Tab-queue）：本轮结束后自动作为新消息发送 */
+  /** 追加提问：本轮结束后自动作为新消息发送 */
   onQueueFollowUp?: (
     content: string,
     attachments?: MessageAttachment[],
@@ -39,59 +39,35 @@ export function isRunningDraftSendable(state: RunningDraftState): boolean {
   );
 }
 
-/** Alt+Enter（不叠 Ctrl/Cmd）是否应走追加提问（运行中、草稿可发送且有回调） */
-export function canQueueFollowUp(
-  event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "metaKey">,
-  state: RunningDraftState,
-  onQueueFollowUp?: RunningSendHandlers["onQueueFollowUp"],
-): boolean {
-  return (
-    !!onQueueFollowUp &&
-    event.altKey &&
-    !event.ctrlKey &&
-    !event.metaKey &&
-    state.isLoading &&
-    isRunningDraftSendable(state)
-  );
-}
-
 /** 执行运行中分流：发送草稿并清空输入；草稿不可发送/无回调时返回 false */
 export function dispatchRunningEnterAction(
-  event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "metaKey">,
   state: RunningDraftState,
   handlers: RunningSendHandlers,
   clearDraft: () => void,
 ): boolean {
   if (!isRunningDraftSendable(state)) return false;
-  const queue = canQueueFollowUp(event, state, handlers.onQueueFollowUp);
-  const send = queue ? handlers.onQueueFollowUp : handlers.onSupplement;
+  const send = handlers.onQueueFollowUp;
   if (!send) return false;
   send(state.input, filterSendableAttachments(state.visibleAttachments));
   clearDraft();
   return true;
 }
 
-/**
- * Enter 按键的统一去向：空闲 → 表单提交；运行中 → 发送键补充当前问题
- * （打断本条回答，结合新内容重新思考）、Alt+Enter 追加提问（本轮结束
- * 后作为新消息发送，优先于 Enter/Ctrl/Shift 发送偏好）、草稿不可发送
- * → 停止确认。
- */
+/** 发送键遵循用户偏好：空闲时发送，运行中默认追加排队。 */
 export function handleEnterSubmit(
   event: KeyboardEvent<HTMLDivElement>,
   state: RunningDraftState,
   handlers: RunningSendHandlers,
   actions: EnterSubmitActions,
 ): void {
-  const altQueue = canQueueFollowUp(event, state, handlers.onQueueFollowUp);
-  if (!altQueue && !isSendEnterKey(event)) return;
+  if (!isSendEnterKey(event)) return;
   event.preventDefault();
   if (state.sendBlocked) return;
   if (!state.isLoading) {
     actions.submitForm();
     return;
   }
-  if (!dispatchRunningEnterAction(event, state, handlers, actions.clearDraft)) {
+  if (!dispatchRunningEnterAction(state, handlers, actions.clearDraft)) {
     actions.openStopConfirm();
   }
 }
@@ -117,6 +93,7 @@ export interface RunningSendToolkitOptions {
   visibleAttachments: MessageAttachment[];
   clearDraft: () => void;
   setComposerText: (text: string) => void;
+  restoreAttachments?: (attachments: MessageAttachment[]) => void;
   removeQueued?: (content: string, messageId: string) => void;
   focusComposer: () => void;
 }
@@ -124,12 +101,25 @@ export interface RunningSendToolkitOptions {
 /**
  * 运行中发送与排队编辑的统一工厂：
  * - sendRunningDraft：按当前草稿发送（补充/追加）并清空输入
- * - editQueuedMessage / editLastQueuedMessage：Codex edit_queued_message，
- *   把排队消息弹回输入框继续编辑（附件不回填）
+ * - editQueuedMessage：通过菜单
+ *   把排队消息和附件弹回输入框继续编辑
  */
 export function createRunningSendToolkit(options: RunningSendToolkitOptions) {
-  const editQueuedMessage = (content: string, messageId: string) => {
+  const editQueuedMessage = (
+    content: string,
+    messageId: string,
+    attachments: MessageAttachment[] = [],
+  ) => {
     options.setComposerText(content);
+    if (attachments.length) {
+      const restored = new Map(
+        [...options.visibleAttachments, ...attachments].map((attachment) => [
+          attachment.id,
+          { ...attachment, composerReferenceId: undefined },
+        ]),
+      );
+      options.restoreAttachments?.([...restored.values()]);
+    }
     options.removeQueued?.(content, messageId);
     options.focusComposer();
   };
@@ -140,20 +130,5 @@ export function createRunningSendToolkit(options: RunningSendToolkitOptions) {
       options.clearDraft,
     ),
     editQueuedMessage,
-    editLastQueuedMessage: (items: Array<{ id: string; content: string }>) => {
-      const last = items[items.length - 1];
-      if (last) editQueuedMessage(last.content, last.id);
-    },
   };
-}
-
-/** Alt+↑ 是否为「编辑上一条排队消息」快捷键（Codex edit_queued_message） */
-export function isEditLastQueuedShortcut(
-  event: Pick<KeyboardEvent, "altKey" | "key">,
-  mentionActive: boolean,
-  queueLength: number,
-): boolean {
-  return (
-    event.altKey && event.key === "ArrowUp" && !mentionActive && queueLength > 0
-  );
 }

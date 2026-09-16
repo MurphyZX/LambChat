@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { RefObject } from "react";
 
 import { sessionApi } from "../../services/api";
 import type { SteerItem } from "../../utils/mergeSteers";
 import { uuid } from "../../utils/uuid";
 import type { MessageAttachment } from "../../types";
+import { useQueuedFollowUpState } from "./queuedFollowUpState";
 
 interface SteerQueueOptions {
   sessionIdRef: RefObject<string | null>;
@@ -26,7 +27,7 @@ export function toFollowUpQueueItem(
   attachments: MessageAttachment[] = [],
 ): SteerItem | null {
   const text = content.trim();
-  if (!text) return null;
+  if (!text && attachments.length === 0) return null;
   return {
     id: uuid(),
     content: text,
@@ -304,7 +305,13 @@ export function useSteerQueue({
   deferSteer,
   removeDeferredSteer,
 }: SteerQueueOptions) {
-  const [steerMessages, setSteerMessages] = useState<SteerItem[]>([]);
+  const {
+    steerMessages,
+    setSteerMessages,
+    clearSteerMessages,
+    restoreSteerMessages,
+    bindSteerSession,
+  } = useQueuedFollowUpState(sessionIdRef.current);
 
   // 引用必须稳定：作为 props 传给 memo(ChatInput)，流式期间父级高频
   // 重渲染时不能破坏记忆化（否则编辑器每个 token 重渲染一次）
@@ -352,7 +359,7 @@ export function useSteerQueue({
         );
       }
     },
-    [sessionIdRef, deferSteer],
+    [sessionIdRef, deferSteer, setSteerMessages],
   );
 
   // 追加提问：只入本地排队（不 POST /steer），run 结束后自动转普通消息
@@ -368,7 +375,7 @@ export function useSteerQueue({
       }
       setSteerMessages((prev) => [...prev, item]);
     },
-    [sessionIdRef, deferSteer],
+    [sessionIdRef, deferSteer, setSteerMessages],
   );
 
   const cancelSteer = useCallback(
@@ -387,7 +394,7 @@ export function useSteerQueue({
           .catch(() => {});
       }
     },
-    [removeDeferredSteer, sessionIdRef],
+    [removeDeferredSteer, sessionIdRef, setSteerMessages],
   );
 
   const markSteerDelivered = useCallback(
@@ -404,33 +411,35 @@ export function useSteerQueue({
         return [...prev.slice(0, index), ...prev.slice(index + 1)];
       });
     },
-    [],
+    [setSteerMessages],
   );
 
-  const clearSteerMessages = useCallback(() => setSteerMessages([]), []);
-  const hydrateSteers = useCallback((items: PendingSteerSnapshot[]) => {
-    setSteerMessages((prev) => {
-      const existing = new Map(prev.map((item) => [item.id, item]));
-      for (const item of items) {
-        if (!existing.has(item.message_id)) {
-          existing.set(item.message_id, {
-            id: item.message_id,
-            content: item.content,
-            attachments: item.attachments?.map((attachment) => ({
-              ...attachment,
-              mimeType: attachment.mimeType ?? attachment.mime_type ?? "",
-            })),
-            queued: true,
-            status: "pending",
-            timestamp: new Date(item.created_at),
-          });
+  const hydrateSteers = useCallback(
+    (items: PendingSteerSnapshot[]) => {
+      setSteerMessages((prev) => {
+        const existing = new Map(prev.map((item) => [item.id, item]));
+        for (const item of items) {
+          if (!existing.has(item.message_id)) {
+            existing.set(item.message_id, {
+              id: item.message_id,
+              content: item.content,
+              attachments: item.attachments?.map((attachment) => ({
+                ...attachment,
+                mimeType: attachment.mimeType ?? attachment.mime_type ?? "",
+              })),
+              queued: true,
+              status: "pending",
+              timestamp: new Date(item.created_at),
+            });
+          }
         }
-      }
-      return [...existing.values()].sort(
-        (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-      );
-    });
-  }, []);
+        return [...existing.values()].sort(
+          (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+        );
+      });
+    },
+    [setSteerMessages],
+  );
   const clearSteer = useCallback(
     (content: string, messageId?: string) =>
       setSteerMessages((prev) =>
@@ -438,7 +447,7 @@ export function useSteerQueue({
           messageId ? item.id !== messageId : item.content !== content,
         ),
       ),
-    [],
+    [setSteerMessages],
   );
 
   return {
@@ -450,5 +459,7 @@ export function useSteerQueue({
     clearSteerMessages,
     clearSteer,
     hydrateSteers,
+    restoreSteerMessages,
+    bindSteerSession,
   };
 }

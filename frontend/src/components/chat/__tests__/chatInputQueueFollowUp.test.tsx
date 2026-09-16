@@ -26,6 +26,7 @@ vi.mock("../ChatInputSelectors", () => ({
 }));
 
 import { ChatInput } from "../ChatInput";
+import i18n from "../../../i18n";
 
 beforeEach(() => {
   localStorage.clear();
@@ -48,7 +49,7 @@ function renderRunningInput() {
   return { onSend, onQueueFollowUp, onSupplement };
 }
 
-test("Alt+Enter during a running session queues a follow-up turn", async () => {
+test("Alt+Enter leaves the draft intact when Ctrl+Enter is the send key", async () => {
   const { onSend, onQueueFollowUp, onSupplement } = renderRunningInput();
 
   const editor = await screen.findByRole("textbox");
@@ -57,15 +58,13 @@ test("Alt+Enter during a running session queues a follow-up turn", async () => {
     fireEvent.keyDown(editor, { key: "Enter", code: "Enter", altKey: true });
   });
 
-  expect(onQueueFollowUp).toHaveBeenCalledTimes(1);
-  expect(onQueueFollowUp.mock.calls[0]?.slice(0, 2)).toEqual(["hello", []]);
+  expect(onQueueFollowUp).not.toHaveBeenCalled();
   expect(onSend).not.toHaveBeenCalled();
   expect(onSupplement).not.toHaveBeenCalled();
-  // 排队后草稿被清空，可继续输入下一条
-  expect(editor).not.toHaveTextContent("hello");
+  expect(editor).toHaveTextContent("hello");
 });
 
-test("Ctrl+Alt+Enter during a running session supplements the current question", async () => {
+test("Ctrl+Alt+Enter during a running session queues a follow-up", async () => {
   const { onSend, onQueueFollowUp, onSupplement } = renderRunningInput();
 
   const editor = await screen.findByRole("textbox");
@@ -79,14 +78,13 @@ test("Ctrl+Alt+Enter during a running session supplements the current question",
     });
   });
 
-  expect(onSupplement).toHaveBeenCalledTimes(1);
-  expect(onSupplement.mock.calls[0]?.slice(0, 2)).toEqual(["hello", []]);
-  expect(onQueueFollowUp).not.toHaveBeenCalled();
+  expect(onQueueFollowUp).toHaveBeenCalledExactlyOnceWith("hello", []);
+  expect(onSupplement).not.toHaveBeenCalled();
   expect(onSend).not.toHaveBeenCalled();
   expect(editor).not.toHaveTextContent("hello");
 });
 
-test("Alt+ArrowUp pops the last queued message back into the composer", async () => {
+test("Alt+ArrowUp does not edit queued messages", async () => {
   const onCancelSteer = vi.fn();
   render(
     <ChatInput
@@ -118,12 +116,15 @@ test("Alt+ArrowUp pops the last queued message back into the composer", async ()
   const editor = await screen.findByRole("textbox");
   editor.focus();
   await act(async () => {
-    fireEvent.keyDown(editor, { key: "ArrowUp", code: "ArrowUp", altKey: true });
+    fireEvent.keyDown(editor, {
+      key: "ArrowUp",
+      code: "ArrowUp",
+      altKey: true,
+    });
   });
 
-  // 最后一条排队消息弹回输入框，并从队列移除
-  expect(editor).toHaveTextContent("第二条追加");
-  expect(onCancelSteer).toHaveBeenCalledWith("第二条追加", "q2");
+  expect(editor).not.toHaveTextContent("第二条追加");
+  expect(onCancelSteer).not.toHaveBeenCalled();
 });
 
 test("queue chip edit button loads that message into the composer", async () => {
@@ -148,13 +149,62 @@ test("queue chip edit button loads that message into the composer", async () => 
   );
 
   const editor = await screen.findByRole("textbox");
+  fireEvent.click(
+    screen.getByRole("button", { name: i18n.t("chat.queueMore") }),
+  );
   fireEvent.click(screen.getByTestId("queue-edit-trigger"));
 
   expect(editor).toHaveTextContent("要改的追加");
   expect(onCancelSteer).toHaveBeenCalledWith("要改的追加", "q1");
 });
 
-test("plain Enter during a running session supplements the current question", async () => {
+test("guiding a queued message preserves attachments and the current draft", async () => {
+  const onCancelSteer = vi.fn();
+  const onSupplement = vi.fn();
+  const attachments = [
+    {
+      id: "a",
+      key: "a",
+      name: "notes.txt",
+      type: "document" as const,
+      mimeType: "text/plain",
+      size: 12,
+    },
+  ];
+  render(
+    <ChatInput
+      onSend={vi.fn()}
+      onStop={vi.fn()}
+      isLoading
+      pendingInput="unfinished draft"
+      onCancelSteer={onCancelSteer}
+      onSupplement={onSupplement}
+      steerMessages={[
+        {
+          id: "q1",
+          content: "Use these notes",
+          attachments,
+          queued: true,
+          status: "deferred",
+          deferred: true,
+          timestamp: new Date(1),
+        },
+      ]}
+    />,
+  );
+  const editor = await screen.findByRole("textbox");
+  fireEvent.click(
+    screen.getByRole("button", { name: i18n.t("chat.queueGuide") }),
+  );
+  expect(onCancelSteer).toHaveBeenCalledWith("Use these notes", "q1");
+  expect(onSupplement).toHaveBeenCalledExactlyOnceWith(
+    "Use these notes",
+    attachments,
+  );
+  expect(editor).toHaveTextContent("unfinished draft");
+});
+
+test("plain Enter during a running session queues a follow-up", async () => {
   localStorage.setItem("newlineModifier", "enter");
   const { onSend, onQueueFollowUp, onSupplement } = renderRunningInput();
 
@@ -164,8 +214,7 @@ test("plain Enter during a running session supplements the current question", as
     fireEvent.keyDown(editor, { key: "Enter", code: "Enter" });
   });
 
-  expect(onSupplement).toHaveBeenCalledTimes(1);
-  expect(onSupplement.mock.calls[0]?.slice(0, 2)).toEqual(["hello", []]);
-  expect(onQueueFollowUp).not.toHaveBeenCalled();
+  expect(onQueueFollowUp).toHaveBeenCalledExactlyOnceWith("hello", []);
+  expect(onSupplement).not.toHaveBeenCalled();
   expect(onSend).not.toHaveBeenCalled();
 });
