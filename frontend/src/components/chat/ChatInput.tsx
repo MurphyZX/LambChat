@@ -65,8 +65,9 @@ import { ChatInputSteerQueue } from "./ChatInputSteerQueue";
 import { ChatInputDialogLayer } from "./ChatInputDialogLayer";
 import { areAttachmentsSendable } from "./attachmentValidation";
 import {
-  createRunningDraftSender,
+  createRunningSendToolkit,
   handleEnterSubmit,
+  isEditLastQueuedShortcut,
 } from "./chatInputRunningSend";
 import { useAcceptedDraftSubmission } from "./useAcceptedDraftSubmission";
 const RichChatComposer = lazy(async () => {
@@ -154,6 +155,9 @@ export const ChatInput = memo(function ChatInput({
   const [input, setInput] = useState("");
   const inputValueRef = useRef("");
   const composerRef = useRef<RichChatComposerHandle>(null);
+  const focusComposerAtEnd = useCallback(() => {
+    requestAnimationFrame(() => composerRef.current?.focus({ atEnd: true }));
+  }, []);
   const [activeReferenceIds, setActiveReferenceIds] = useState<string[]>([]);
   const longTextResourcesRef = useRef(new Map<string, LongTextPastePayload>());
   useEffect(() => {
@@ -162,11 +166,9 @@ export const ChatInput = memo(function ChatInput({
       inputValueRef.current = pendingInput;
       composerRef.current?.setPlainText(pendingInput);
       onPendingInputConsumed?.();
-      requestAnimationFrame(() => {
-        composerRef.current?.focus({ atEnd: true });
-      });
+      focusComposerAtEnd();
     }
-  }, [pendingInput, onPendingInputConsumed]);
+  }, [pendingInput, onPendingInputConsumed, focusComposerAtEnd]);
   const [activePanel, setActivePanel] = useState<FeaturePanel>(null);
   const [runEnabledSkillNames, setRunEnabledSkillNames] = useState<
     string[] | null
@@ -266,31 +268,19 @@ export const ChatInput = memo(function ChatInput({
   }, [mention.isActive, mention.query, onMentionQueryChange]);
   // 一轮对话结束后通知工具栏用量 chip 刷新当日金额
   useNotifyTodayUsageRefresh(isLoading);
+  // @人选定后把提及片段从草稿摘除并聚焦（人设/团队共用同一行为）
   useEffect(() => {
-    if (!onMentionQueryChange || !selectedPersonaPresetId || !mention.isActive)
-      return;
+    const selectedId =
+      mentionMode === "team" ? selectedTeamId : selectedPersonaPresetId;
+    if (!onMentionQueryChange || !selectedId || !mention.isActive) return;
     const before = input.substring(0, mention.atIndex);
     const after = input.substring(mention.atIndex + mention.query.length + 1);
     setComposerPlainText(before + after);
     setCursorPosition(before.length || 0);
-    requestAnimationFrame(() => {
-      composerRef.current?.focus({ atEnd: true });
-    });
+    focusComposerAtEnd();
     resetMention();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on preset selection
-  }, [selectedPersonaPresetId, setComposerPlainText]);
-  useEffect(() => {
-    if (!onMentionQueryChange || !selectedTeamId || !mention.isActive) return;
-    const before = input.substring(0, mention.atIndex);
-    const after = input.substring(mention.atIndex + mention.query.length + 1);
-    setComposerPlainText(before + after);
-    setCursorPosition(before.length || 0);
-    requestAnimationFrame(() => {
-      composerRef.current?.focus({ atEnd: true });
-    });
-    resetMention();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on team selection
-  }, [selectedTeamId, setComposerPlainText]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on selection
+  }, [selectedPersonaPresetId, selectedTeamId, setComposerPlainText]);
   useEffect(() => {
     const applySelectionActionPrompt = (prompt: string) => {
       const separator = inputValueRef.current.trim() ? "\n\n" : "";
@@ -404,13 +394,11 @@ export const ChatInput = memo(function ChatInput({
       const newInput = before + after;
       setComposerPlainText(newInput);
       setCursorPosition(before.length || 0);
-      requestAnimationFrame(() => {
-        composerRef.current?.focus({ atEnd: true });
-      });
+      focusComposerAtEnd();
       onUsePersonaPreset?.(preset);
       resetMention();
     },
-    [input, mention, onUsePersonaPreset, resetMention, setComposerPlainText],
+    [input, mention, focusComposerAtEnd, onUsePersonaPreset, resetMention, setComposerPlainText],
   );
   const applyTeamMentionSelection = useCallback(
     (team: Team) => {
@@ -420,13 +408,11 @@ export const ChatInput = memo(function ChatInput({
       const newInput = before + after;
       setComposerPlainText(newInput);
       setCursorPosition(before.length || 0);
-      requestAnimationFrame(() => {
-        composerRef.current?.focus({ atEnd: true });
-      });
+      focusComposerAtEnd();
       onSelectTeam?.(team.id);
       resetMention();
     },
-    [input, mention, onSelectTeam, resetMention, setComposerPlainText],
+    [input, mention, focusComposerAtEnd, onSelectTeam, resetMention, setComposerPlainText],
   );
   const handleComposerChange = useCallback((change: RichChatComposerChange) => {
     const { projection } = change;
@@ -521,12 +507,16 @@ export const ChatInput = memo(function ChatInput({
     (attachment) => attachment.uploadError,
   );
   const hasInvalidAttachment = !areAttachmentsSendable(visibleAttachments);
-  // 运行中发送（补充 / 追加提问）共用：按当前草稿发送并清空输入
-  const sendRunningDraft = createRunningDraftSender(
-    input,
-    visibleAttachments,
-    clearSteerDraft,
-  );
+  // 运行中发送（补充/追加）与排队消息编辑（Codex Tab-queue / Alt+↑）
+  const { sendRunningDraft, editQueuedMessage, editLastQueuedMessage } =
+    createRunningSendToolkit({
+      input,
+      visibleAttachments,
+      clearDraft: clearSteerDraft,
+      setComposerText: setComposerPlainText,
+      removeQueued: onCancelSteer,
+      focusComposer: focusComposerAtEnd,
+    });
   const handleComposerKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       // Lexical prevents Enter first; defaultPrevented cannot distinguish send intent.
@@ -547,6 +537,13 @@ export const ChatInput = memo(function ChatInput({
           resetMention();
           return;
         }
+      }
+      if (
+        isEditLastQueuedShortcut(event, mention.isActive, steerMessages.length)
+      ) {
+        event.preventDefault();
+        editLastQueuedMessage(steerMessages);
+        return;
       }
       if (event.key === "Enter") {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
@@ -576,6 +573,7 @@ export const ChatInput = memo(function ChatInput({
       applyMentionSelection,
       applyTeamMentionSelection,
       clearSteerDraft,
+      editLastQueuedMessage,
       hasFailedAttachment,
       hasUploadingAttachment,
       hasInvalidAttachment,
@@ -585,10 +583,11 @@ export const ChatInput = memo(function ChatInput({
       mention.isActive,
       mentionMode,
       mentionSearch.presets,
-      onQueueFollowUp,
       onSupplement,
+      onQueueFollowUp,
       resetMention,
       sendBlocked,
+      steerMessages,
       visibleAttachments,
       teamMentionSearch.teams,
     ],
@@ -615,7 +614,7 @@ export const ChatInput = memo(function ChatInput({
         direction === "up" ? navigateUp(input) : navigateDown();
       if (historyValue === null) return false;
       setComposerPlainText(historyValue);
-      requestAnimationFrame(() => composerRef.current?.focus({ atEnd: true }));
+      focusComposerAtEnd();
       return true;
     },
     [
@@ -623,6 +622,7 @@ export const ChatInput = memo(function ChatInput({
       isBrowsing,
       cursorPosition,
       availableRunSkills,
+      focusComposerAtEnd,
       mention.isActive,
       moveMentionHighlight,
       navigateDown,
@@ -699,7 +699,11 @@ export const ChatInput = memo(function ChatInput({
             document.body,
           )
         : null}
-      <ChatInputSteerQueue items={steerMessages} onCancel={onCancelSteer} />
+      <ChatInputSteerQueue
+        items={steerMessages}
+        onCancel={onCancelSteer}
+        onEdit={onCancelSteer ? editQueuedMessage : undefined}
+      />
       <form
         ref={formRef}
         onSubmit={handleSubmit}

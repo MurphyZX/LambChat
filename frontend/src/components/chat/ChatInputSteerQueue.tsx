@@ -1,4 +1,4 @@
-import { Clock, X } from "lucide-react";
+import { Clock, Pencil, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SteerItem } from "../../utils/mergeSteers";
 
@@ -9,11 +9,14 @@ import type { SteerItem } from "../../utils/mergeSteers";
 interface ChatInputSteerQueueProps {
   items: SteerItem[];
   onCancel?: (content: string, messageId?: string) => void;
+  /** Codex Tab-queue 对应物：把排队消息弹回输入框编辑（Alt+↑ 等效） */
+  onEdit?: (content: string, messageId: string) => void;
 }
 
 export function ChatInputSteerQueue({
   items,
   onCancel,
+  onEdit,
 }: ChatInputSteerQueueProps) {
   const { t } = useTranslation();
   if (items.length === 0) return null;
@@ -21,8 +24,14 @@ export function ChatInputSteerQueue({
   return (
     <div
       className="mx-auto mb-2 flex w-full max-w-4xl flex-col gap-1.5 px-1 lg:max-w-5xl xl:max-w-6xl"
-      aria-label={t("chat.steerQueue", "待发送的插话")}
+      aria-label={t("chat.steerQueue", "待发送的排队消息")}
     >
+      <div
+        className="text-12"
+        style={{ color: "var(--theme-text-secondary)" }}
+      >
+        {t("chat.queueGroup", "排队的后续输入")}
+      </div>
       {items.map((item) => {
         const failed = item.status === "failed";
         const deferred = item.status === "deferred" || item.deferred;
@@ -49,6 +58,18 @@ export function ChatInputSteerQueue({
                   ? t("chat.steerNext", "任务结束后发送")
                   : t("chat.steerQueued", "当前步骤后送达")}
             </span>
+            {onEdit && (
+              <button
+                type="button"
+                data-testid="queue-edit-trigger"
+                onClick={() => onEdit(item.content, item.id)}
+                className="shrink-0 rounded-full p-1 opacity-70 transition hover:bg-[color-mix(in_srgb,var(--theme-text)_8%,transparent)] hover:opacity-100"
+                aria-label={t("chat.queueEdit", "编辑这条排队消息")}
+                title={t("chat.queueEdit", "编辑这条排队消息")}
+              >
+                <Pencil size={14} />
+              </button>
+            )}
             {onCancel && (
               <button
                 type="button"
@@ -63,6 +84,14 @@ export function ChatInputSteerQueue({
           </div>
         );
       })}
+      {onEdit && (
+        <div
+          className="text-12"
+          style={{ color: "var(--theme-text-tertiary, var(--theme-text-secondary))" }}
+        >
+          {t("chat.queueEditHint", "Alt+↑ 编辑上一条排队消息")}
+        </div>
+      )}
     </div>
   );
 }
