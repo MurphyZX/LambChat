@@ -73,6 +73,10 @@ class _FakeDualWriter:
     def __init__(self):
         self.calls = []
 
+    async def read_session_events_snapshot(self, session_id: str, **kwargs):
+        events = await self.read_session_events(session_id, **kwargs)
+        return SimpleNamespace(events=events, events_truncated=False)
+
     async def read_session_events(self, session_id: str, **kwargs):
         self.calls.append({"session_id": session_id, **kwargs})
         return [
@@ -283,6 +287,10 @@ class _ManyEventsDualWriter:
     def __init__(self, count: int):
         self.calls = []
         self._count = count
+
+    async def read_session_events_snapshot(self, session_id: str, **kwargs):
+        events = await self.read_session_events(session_id, **kwargs)
+        return SimpleNamespace(events=events, events_truncated=False)
 
     async def read_session_events(self, session_id: str, **kwargs):
         self.calls.append({"session_id": session_id, **kwargs})

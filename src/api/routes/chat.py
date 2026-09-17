@@ -442,9 +442,10 @@ async def chat_stream(
         purge_stale_steers(session_id), _claim_attachments(), return_exceptions=True
     )
     if isinstance(purge_exc, BaseException) or isinstance(claim_exc, BaseException):
-        # 并行后 claim 可能已先行成功：失败路径必须释放已 claim 的引用，
-        # 否则引用计数永久 +1，文件存储永不回收
-        if file_records is not None and attachment_keys:
+        # 仅当 claim 成功（claim_exc 为空）而 purge 失败时才由路由释放：
+        # claim 自身失败（含取消）时其实现内部已回滚部分成功的前缀，
+        # 这里再全量释放会把其他消息仍在引用的附件计数误减、触发 GC 误删
+        if claim_exc is None and file_records is not None and attachment_keys:
             try:
                 await file_records.release_owned_references(attachment_keys, user.sub)
             except Exception:

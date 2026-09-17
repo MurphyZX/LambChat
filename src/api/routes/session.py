@@ -298,7 +298,7 @@ async def get_session_events(
         None,
         ge=1,
         le=SESSION_EVENT_RESPONSE_LIMIT_MAX,
-        description="最大返回事件数，不传则使用服务端默认上限（5000，可配置）",
+        description="最大返回事件数（按整轮预算，超限丢弃更旧的整轮）；不传则全量返回，分页走 trace 窗口",
     ),
     include_active_user_message: bool = Query(
         False,
