@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, Query
 
 from src.agents.core.base import get_agent_class
 from src.api.deps import get_current_user_optional, get_current_user_required
+from src.api.routes.session import _get_session_events_default_limit
 from src.infra.folder.storage import get_project_storage
 from src.infra.logging import get_logger
 from src.infra.session.dual_writer import get_dual_writer
@@ -247,6 +248,11 @@ async def _build_session_content(
         if share.share_scope == ShareScope.SESSION and share.share_type == ShareType.PARTIAL
         else None
     )
+    # 防御性默认上限：event_limit 不传时不再无上限全量返回（与 /sessions
+    # 的 events 接口同一默认值，可配置）；events_limited/events_limit 按
+    # 截断后值返回，前端可据此继续分页
+    if event_limit is None:
+        event_limit = _get_session_events_default_limit()
     read_events_kwargs: dict[str, Any] = {"completed_only": True}
     if event_limit is not None:
         read_events_kwargs["max_events"] = event_limit + 1

@@ -92,6 +92,18 @@ class SessionStorage(SessionAttachmentOperationsMixin):
     async def _ensure_indexes(self) -> bool:
         try:
             collection = self.collection
+            # 列表排序 (metadata.is_pinned desc, updated_at desc) 的组合索引：
+            # 等值前缀 (user_id, is_active) + 排序后缀，避免大列表内存排序
+            await collection.create_index(
+                [
+                    ("user_id", 1),
+                    ("is_active", 1),
+                    ("metadata.is_pinned", -1),
+                    ("updated_at", -1),
+                ],
+                name="user_status_pinned_updated_idx",
+                background=True,
+            )
             await collection.create_index(
                 [("user_id", 1), ("is_active", 1), ("updated_at", -1)],
                 name="user_status_updated_idx",

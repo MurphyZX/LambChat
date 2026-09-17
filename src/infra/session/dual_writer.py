@@ -93,14 +93,16 @@ def _get_redis_replay_batch_size() -> int:
 
 async def _serialize_event_data_for_redis(data: Any) -> str:
     if isinstance(data, dict):
-        return await run_blocking_io(json.dumps, data, ensure_ascii=False)
+        # json.dumps 是微秒级纯 CPU 调用，内联执行避免线程池往返
+        return json.dumps(data, ensure_ascii=False)
     return str(data)
 
 
 async def _parse_event_data_from_redis(data: Any) -> Any:
     if isinstance(data, str):
         try:
-            return await run_blocking_io(json.loads, data)
+            # json.loads 同上，内联执行
+            return json.loads(data)
         except json.JSONDecodeError:
             return data
     return data

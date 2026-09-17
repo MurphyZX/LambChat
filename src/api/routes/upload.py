@@ -300,7 +300,7 @@ async def _spool_upload_file_limited(
             total_size += len(chunk)
             if total_size > max_size_bytes:
                 raise AppError(ErrorCode.FILE_TOO_LARGE, args={"max": max_size_mb})
-            digest.update(chunk)
+            await run_blocking_io(digest.update, chunk)
             await run_blocking_io(spooled.write, chunk)
 
         if total_size == 0:
@@ -315,6 +315,10 @@ async def _spool_upload_file_limited(
 
 def _read_all(file: Any) -> bytes:
     return file.read()
+
+
+def _sha256_hexdigest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 async def _transcode_spooled_image(
@@ -338,14 +342,14 @@ async def _transcode_spooled_image(
     if len(transcoded) > max_size_bytes:
         raise AppError(ErrorCode.FILE_TOO_LARGE, args={"max": max_size_mb})
 
-    digest = hashlib.sha256(transcoded)
+    sha256_hex = await run_blocking_io(_sha256_hexdigest, transcoded)
     replacement = SpooledTemporaryFile(max_size=UPLOAD_SPOOL_MEMORY_LIMIT, mode="w+b")
     try:
         await run_blocking_io(replacement.write, transcoded)
         await run_blocking_io(replacement.seek, 0)
         new_upload = SpooledUpload(
             file=replacement,
-            sha256_hex=digest.hexdigest(),
+            sha256_hex=sha256_hex,
             size=len(transcoded),
         )
     except Exception:

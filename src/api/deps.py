@@ -27,10 +27,15 @@ _AUTH_CACHE_TTL_SECONDS = 45.0
 _AUTH_CACHE_MAX_ENTRIES = 2048
 _auth_cache: dict[str, tuple[float, TokenPayload]] = {}
 
+_ROLE_CACHE_TTL_SECONDS = 5.0
+_ROLE_CACHE_MAX_ENTRIES = 1024
+_role_cache: dict[str, tuple[float, object]] = {}
+
 
 def clear_auth_cache() -> None:
     """Clear per-process authenticated user cache after user/role changes."""
     _auth_cache.clear()
+    _role_cache.clear()
 
 
 def _get_cached_user(token: str) -> TokenPayload | None:
@@ -57,11 +62,46 @@ def _set_cached_user(token: str, payload: TokenPayload) -> None:
     _auth_cache[token] = (time.monotonic() + _AUTH_CACHE_TTL_SECONDS, payload.model_copy(deep=True))
 
 
+def _get_cached_role(role_name: str):
+    cached = _role_cache.get(role_name)
+    if not cached:
+        return None
+    expires_at, role = cached
+    if expires_at <= time.monotonic():
+        _role_cache.pop(role_name, None)
+        return None
+    return role
+
+
+def _set_cached_role(role_name: str, role: object) -> None:
+    if len(_role_cache) >= _ROLE_CACHE_MAX_ENTRIES:
+        now = time.monotonic()
+        expired = [key for key, (expires_at, _) in _role_cache.items() if expires_at <= now]
+        for key in expired:
+            _role_cache.pop(key, None)
+        while len(_role_cache) >= _ROLE_CACHE_MAX_ENTRIES:
+            _role_cache.pop(next(iter(_role_cache)))
+
+    _role_cache[role_name] = (time.monotonic() + _ROLE_CACHE_TTL_SECONDS, role)
+
+
+async def _fetch_role(role_storage: RoleStorage, role_name: str):
+    """查询单个角色，命中短 TTL 进程内缓存时跳过查库；角色不存在不缓存。"""
+    cached = _get_cached_role(role_name)
+    if cached is not None:
+        return cached
+    role = await role_storage.get_by_name(role_name)
+    if role is not None:
+        _set_cached_role(role_name, role)
+    return role
+
+
 async def _get_user_roles_and_permissions(user_roles: list[str]) -> tuple[list[str], list[str]]:
     """
     获取用户角色列表和合并后的权限列表
 
-    角色数据通过 RoleStorage 的 Redis 缓存获取，无需额外缓存层。
+    角色查询按 asyncio.gather 并行执行，合并顺序与逐个串行查询时一致
+    （gather 保序），角色不存在时同样跳过。
 
     Args:
         user_roles: 用户角色列表（从 token 中获取）
@@ -73,8 +113,11 @@ async def _get_user_roles_and_permissions(user_roles: list[str]) -> tuple[list[s
     roles = []
     permissions = set()
 
-    for role_name in user_roles:
-        role = await role_storage.get_by_name(role_name)
+    fetched = await asyncio.gather(
+        *(_fetch_role(role_storage, role_name) for role_name in user_roles)
+    )
+
+    for role in fetched:
         if role:
             roles.append(role.name)
             for perm in role.permissions:

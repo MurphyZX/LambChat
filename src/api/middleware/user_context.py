@@ -3,7 +3,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from src.infra.async_utils import run_blocking_io
+from src.api.deps import _get_cached_user
 from src.infra.auth.jwt import verify_token
 from src.infra.backend.context import clear_user_context, set_user_context
 from src.infra.logging import get_logger
@@ -29,7 +29,11 @@ class UserContextMiddleware(BaseHTTPMiddleware):
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]  # Remove "Bearer " prefix
             try:
-                payload = await run_blocking_io(verify_token, token)
+                # verify_token 是纯 CPU 微秒级操作，无需线程池跳变；
+                # 命中路由层 deps._auth_cache 时直接复用，TTL 语义不变
+                payload = _get_cached_user(token)
+                if payload is None:
+                    payload = verify_token(token)
                 request.state.auth_payload = payload
                 user_id = str(payload.sub) if payload.sub else None
             except Exception as e:

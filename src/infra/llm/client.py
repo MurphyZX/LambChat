@@ -13,6 +13,7 @@ from collections import OrderedDict
 from functools import lru_cache
 from typing import Any, Optional
 
+import httpx
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.language_models.model_profile import ModelProfile as LangChainModelProfile
 from pydantic import SecretStr
@@ -474,12 +475,19 @@ def _has_env_provider_auth(protocol: str) -> bool:
 
 
 def _safe_close_client(model_instance: BaseChatModel) -> None:
-    """Safely close HTTP client with error logging."""
+    """Safely close HTTP client with error logging.
+
+    Pooled httpx clients (shared across model instances by connection key)
+    are never closed here — the pool owns their lifecycle.
+    """
     try:
         _client = getattr(model_instance, "async_client", None) or getattr(
             model_instance, "client", None
         )
         if _client and hasattr(_client, "aclose"):
+            underlying = getattr(_client, "_client", None) or _client
+            if id(underlying) in _pooled_client_ids():
+                return
 
             def _on_close_done(t: asyncio.Future[None]) -> None:
                 _close_tasks.discard(t)
@@ -493,6 +501,89 @@ def _safe_close_client(model_instance: BaseChatModel) -> None:
             task.add_done_callback(_on_close_done)
     except Exception as e:
         logger.debug(f"Failed to close LLM client connections: {e}")
+
+
+# ── Shared httpx connection pools ──
+# The model cache is keyed by the full parameter set (temperature, thinking,
+# profile…), so one provider with several parameter combinations occupies
+# several slots — each with its own httpx pool rebuilt on LRU churn. Only
+# connection-relevant fields (api_key/api_base) determine the underlying HTTP
+# connection, so OpenAI-protocol models with identical connection fields share
+# one pooled httpx.AsyncClient; parameter differences stay on the model
+# instances (二級缓存), which remain cheap to rebuild.
+_httpx_pool_cache: "OrderedDict[tuple[Optional[str], Optional[str]], httpx.AsyncClient]" = (
+    OrderedDict()
+)
+_httpx_pool_refs: dict[tuple[Optional[str], Optional[str]], int] = {}
+# id(cached model instance) -> pool key it acquired a reference for
+_model_pool_keys: dict[int, tuple[Optional[str], Optional[str]]] = {}
+
+
+def _pool_key(
+    api_key: Optional[str], api_base: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    """Connection-relevant cache key: only fields that determine the HTTP
+    connection (credentials + endpoint) participate — per-request parameters
+    like temperature/thinking/profile do not."""
+    return (api_key, api_base)
+
+
+def _pooled_client_ids() -> set[int]:
+    return {id(client) for client in _httpx_pool_cache.values()}
+
+
+def _acquire_pooled_http_async_client(
+    api_key: Optional[str], api_base: Optional[str]
+) -> httpx.AsyncClient:
+    """Get (or create) the shared async httpx client for this connection key.
+
+    Mirrors the OpenAI SDK's default client: 600s total timeout (per-request
+    timeouts are applied by the SDK on top of it) with generous pool limits.
+    Refcounted against cached model instances; released on their eviction.
+    """
+    key = _pool_key(api_key, api_base)
+    client = _httpx_pool_cache.get(key)
+    if client is None:
+        client = httpx.AsyncClient(
+            timeout=httpx.Timeout(timeout=600.0, connect=5.0),
+            limits=httpx.Limits(max_connections=1000, max_keepalive_connections=100),
+        )
+        _httpx_pool_cache[key] = client
+    else:
+        _httpx_pool_cache.move_to_end(key)
+    _httpx_pool_refs[key] = _httpx_pool_refs.get(key, 0) + 1
+    return client
+
+
+def _release_pool_client(
+    key: tuple[Optional[str], Optional[str]], model_instance: Optional[Any] = None
+) -> None:
+    """Drop one reference; close the pooled client when the last one is gone."""
+    if model_instance is not None:
+        _model_pool_keys.pop(id(model_instance), None)
+    refs = _httpx_pool_refs.get(key)
+    if refs is None:
+        return
+    if refs > 1:
+        _httpx_pool_refs[key] = refs - 1
+        return
+    _httpx_pool_refs.pop(key, None)
+    client = _httpx_pool_cache.pop(key, None)
+    if client is not None:
+        try:
+            task = asyncio.ensure_future(client.aclose())
+            _close_tasks.add(task)
+            task.add_done_callback(lambda t: _close_tasks.discard(t))
+        except Exception as e:
+            logger.debug(f"Failed to close pooled LLM httpx client: {e}")
+
+
+def _evict_model_instance(model_instance: BaseChatModel) -> None:
+    """Eviction bookkeeping shared by LRU eviction and explicit cache clears."""
+    pool_key = _model_pool_keys.pop(id(model_instance), None)
+    if pool_key is not None:
+        _release_pool_client(pool_key)
+    _safe_close_client(model_instance)
 
 
 class LLMClient:
@@ -518,6 +609,7 @@ class LLMClient:
         profile: Optional[dict] = None,
         api_format: Optional[str] = None,
         request_headers: Optional[dict[str, str]] = None,
+        pooled_http_async_client: Optional[httpx.AsyncClient] = None,
         **kwargs: Any,
     ) -> BaseChatModel:
         """根据 provider 创建对应的 LangChain 模型。
@@ -601,6 +693,10 @@ class LLMClient:
             "non_streaming_timeout": _effective_timeout(settings.LLM_REQUEST_TIMEOUT),
             "stream_idle_timeout": _effective_timeout(settings.LLM_STREAM_IDLE_TIMEOUT),
         }
+        # Share one httpx connection pool across parameter variants of the
+        # same endpoint (see _acquire_pooled_http_async_client).
+        if pooled_http_async_client is not None:
+            openai_kwargs["http_async_client"] = pooled_http_async_client
         # /v1/responses 线格式开关（模型级 api_format > 全局默认）。
         # 显式传 bool：None 会让 langchain-openai 自动探测，不满足确定性。
         openai_kwargs["use_responses_api"] = _resolve_use_responses(protocol, api_format)
@@ -876,27 +972,35 @@ class LLMClient:
         # LRU 淘汰：如果缓存满了，删除最久未使用的
         max_cache_size = LLMClient._get_max_cache_size()
         if len(LLMClient._model_cache) >= max_cache_size:
-            oldest_key, oldest_model = LLMClient._model_cache.popitem(last=False)
-
-            # 尝试关闭 HTTP 客户端连接池，防止连接泄漏
-            _safe_close_client(oldest_model)
-
+            _, oldest_model = LLMClient._model_cache.popitem(last=False)
+            _evict_model_instance(oldest_model)
             logger.info(f"LLM cache full ({max_cache_size}), evicted oldest model")
 
         logger.info(f"Creating {provider} model: {model_name}")
-        instance = LLMClient._create_model(
-            provider,
-            model_name,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            api_key=api_key,
-            api_base=api_base,
-            thinking=thinking,
-            profile=profile,
-            api_format=api_format,
-            request_headers=model_request_headers,
-            **kwargs,
-        )
+        pooled_client: Optional[httpx.AsyncClient] = None
+        if protocol == "openai":
+            pooled_client = _acquire_pooled_http_async_client(api_key, api_base)
+        try:
+            instance = LLMClient._create_model(
+                provider,
+                model_name,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_key=api_key,
+                api_base=api_base,
+                thinking=thinking,
+                profile=profile,
+                api_format=api_format,
+                request_headers=model_request_headers,
+                pooled_http_async_client=pooled_client,
+                **kwargs,
+            )
+        except Exception:
+            if pooled_client is not None:
+                _release_pool_client(_pool_key(api_key, api_base))
+            raise
+        if pooled_client is not None:
+            _model_pool_keys[id(instance)] = _pool_key(api_key, api_base)
         LLMClient._model_cache[cache_key] = instance
         return instance
 
@@ -930,7 +1034,7 @@ class LLMClient:
         for key in to_delete:
             evicted = LLMClient._model_cache.pop(key, None)
             if evicted:
-                _safe_close_client(evicted)
+                _evict_model_instance(evicted)
 
         return len(to_delete)
 
@@ -940,7 +1044,12 @@ class LLMClient:
         cached_models = list(LLMClient._model_cache.values())
         LLMClient._model_cache.clear()
         for model in cached_models:
-            _safe_close_client(model)
+            _evict_model_instance(model)
+        # Any pool entries left (references from instances outside the cache)
+        # are closed too on full shutdown.
+        _model_pool_keys.clear()
+        for key in list(_httpx_pool_cache):
+            _release_pool_client(key)
         return len(cached_models)
 
     @staticmethod

@@ -42,10 +42,21 @@ def normalize_title_language(lang: str) -> str:
 
 SESSION_EVENT_TYPE_FILTER_LIMIT = 100
 SESSION_EVENT_RESPONSE_LIMIT_MAX = 10000
+# events 接口 limit 不传时的服务端默认上限（防御性，正常使用碰不到；
+# 可通过 settings.SESSION_EVENTS_DEFAULT_LIMIT 覆盖）
+SESSION_EVENTS_DEFAULT_LIMIT = 5000
 SESSION_RAW_TRACE_RESPONSE_LIMIT_MAX = 20
 SESSION_RAW_TRACE_EVENTS_LIMIT_MAX = 200
 # 按 trace(run) 窗口分页读取历史事件：单页最多返回的轮次数
 SESSION_TRACE_WINDOW_LIMIT_MAX = 200
+
+
+def _get_session_events_default_limit() -> int:
+    """events 接口默认事件返回上限（可配置，防长会话无上限全量返回）。"""
+    return max(
+        int(getattr(settings, "SESSION_EVENTS_DEFAULT_LIMIT", SESSION_EVENTS_DEFAULT_LIMIT) or 0),
+        1,
+    )
 
 
 class MessageCheckpointCreatePayload(BaseModel):
@@ -298,7 +309,7 @@ async def get_session_events(
         None,
         ge=1,
         le=SESSION_EVENT_RESPONSE_LIMIT_MAX,
-        description="最大返回事件数，不传则不限制",
+        description="最大返回事件数，不传则使用服务端默认上限（5000，可配置）",
     ),
     include_active_user_message: bool = Query(
         False,
@@ -363,6 +374,10 @@ async def get_session_events(
         except (TypeError, ValueError):
             raise AppError(ErrorCode.INVALID_BEFORE_TRACE_STARTED_AT)
 
+    # 防御性默认上限：limit 不传时不再无上限全量返回；分页语义
+    # （events_limited/events_limit/trace 窗口游标）按截断后值计算
+    limit = limit if limit is not None else _get_session_events_default_limit()
+
     current_run_id = session.metadata.get("current_run_id") if session.metadata else None
     events_probe_limit = (limit + 1) if limit is not None else None
     trace_window_requested = trace_limit_value is not None or before_trace_started_at_dt is not None
@@ -403,7 +418,7 @@ async def get_session_events(
                 completed_only=True,
                 max_events=events_probe_limit,
             )
-    events_limited = limit is not None and len(events) > limit
+    events_limited = len(events) > limit
     if events_limited:
         events = events[:limit]
     if compact_message_chunks:

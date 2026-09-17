@@ -487,7 +487,7 @@ async def test_get_session_events_opt_in_returns_race_safe_snapshot_metadata(
         "session_id": "session-1",
         "run_id": "run-active",
         "events_limited": False,
-        "events_limit": None,
+        "events_limit": session_routes._get_session_events_default_limit(),
         "history_mode": "active_user_only",
         "stream_run_id": "run-active",
     }
@@ -498,7 +498,7 @@ async def test_get_session_events_opt_in_returns_race_safe_snapshot_metadata(
             "run_id": None,
             "exclude_run_id": None,
             "completed_only": True,
-            "max_events": None,
+            "max_events": session_routes._get_session_events_default_limit() + 1,
             "active_run_id": "run-active",
             "trace_limit": None,
             "before_trace_started_at": None,
@@ -614,3 +614,84 @@ async def test_get_session_raw_traces_slices_events_in_mongo_projection(
         "limit": 2,
         "events_limit": 3,
     }
+
+
+class _ManyEventsDualWriter:
+    def __init__(self, count: int):
+        self.calls = []
+        self._count = count
+
+    async def read_session_events(self, session_id: str, event_types=None, **kwargs):
+        self.calls.append({"session_id": session_id, "event_types": event_types, **kwargs})
+        return [
+            {"event_type": "message:chunk", "data": {"content": f"e{i}"}, "seq": i}
+            for i in range(1, self._count + 1)
+        ]
+
+
+@pytest.mark.asyncio
+async def test_get_session_events_applies_default_limit_when_limit_omitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_routes = _load_session_routes_module(monkeypatch)
+    dual_writer_module = sys.modules["src.infra.session.dual_writer"]
+    monkeypatch.setattr(session_routes, "_get_session_events_default_limit", lambda: 3)
+    writer = _ManyEventsDualWriter(count=5)
+    monkeypatch.setattr(session_routes, "SessionManager", lambda: _FakeSessionManager())
+    monkeypatch.setattr(dual_writer_module, "get_dual_writer", lambda: writer)
+
+    response = await session_routes.get_session_events(
+        "session-1",
+        event_types=None,
+        run_id=None,
+        exclude_run_id=None,
+        limit=None,
+        include_active_user_message=False,
+        compact_message_chunks=False,
+        user=SimpleNamespace(sub="user-1"),
+    )
+
+    # 不带 limit 的长会话：服务端默认上限截断，分页字段按截断后值算
+    assert writer.calls[0]["max_events"] == 4  # default + 1 探测
+    assert len(response["events"]) == 3
+    assert response["events"][-1]["seq"] == 3
+    assert response["events_limited"] is True
+    assert response["events_limit"] == 3
+
+
+@pytest.mark.asyncio
+async def test_get_session_events_default_limit_from_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_routes = _load_session_routes_module(monkeypatch)
+    default_limit = session_routes._get_session_events_default_limit()
+
+    assert isinstance(default_limit, int)
+    assert default_limit >= 5000
+
+
+@pytest.mark.asyncio
+async def test_get_session_events_explicit_limit_still_wins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_routes = _load_session_routes_module(monkeypatch)
+    dual_writer_module = sys.modules["src.infra.session.dual_writer"]
+    monkeypatch.setattr(session_routes, "_get_session_events_default_limit", lambda: 3)
+    writer = _ManyEventsDualWriter(count=5)
+    monkeypatch.setattr(session_routes, "SessionManager", lambda: _FakeSessionManager())
+    monkeypatch.setattr(dual_writer_module, "get_dual_writer", lambda: writer)
+
+    response = await session_routes.get_session_events(
+        "session-1",
+        event_types=None,
+        run_id=None,
+        exclude_run_id=None,
+        limit=2,
+        include_active_user_message=False,
+        compact_message_chunks=False,
+        user=SimpleNamespace(sub="user-1"),
+    )
+
+    assert writer.calls[0]["max_events"] == 3
+    assert len(response["events"]) == 2
+    assert response["events_limit"] == 2

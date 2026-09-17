@@ -34,6 +34,7 @@ from src.api.routes.chat_stream_terminal import (
 from src.api.routes.chat_validation import validate_team_agent_request
 from src.api.routes.session import verify_session_ownership
 from src.infra.async_utils import run_blocking_io
+from src.infra.async_utils.background_tasks import BestEffortTaskLimiter
 from src.infra.chat.session_baseline import (
     _time_report_due,
     _turn_context_signature,
@@ -58,6 +59,32 @@ from src.kernel.schemas.user import TokenPayload
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+# 会话配置写入的后台任务池：响应返回前不再阻塞等待，失败仅记日志
+_session_config_tasks = BestEffortTaskLimiter("session config update", max_tasks=64)
+
+
+def _schedule_session_config_update(
+    session_id: str,
+    run_id: str,
+    agent_id: str,
+    request: AgentRequest,
+    language: str,
+    trace_id: str | None = None,
+    prompt_state: dict | None = None,
+) -> None:
+    """Fire-and-forget 会话配置写入（数据最终仍落库，不阻塞响应）。"""
+    _session_config_tasks.create_task(
+        _update_session_config(
+            session_id,
+            run_id,
+            agent_id,
+            request,
+            language,
+            trace_id=trace_id,
+            prompt_state=prompt_state,
+        )
+    )
 
 
 def resolve_default_agent_id(agent_id: str | None) -> str:
@@ -131,10 +158,12 @@ async def validate_agent_model_access(
     if not model_id and not selected_model:
         if allowed_model_ids is None:
             return
+        # 批量解析 allowed 模型（一次 $in 查询），逐个 get/get_by_value 是 N+1
+        by_id, by_value = await storage.get_many_by_ids_and_values(allowed_model_ids)
         for allowed_model_id in allowed_model_ids:
-            model = await storage.get(allowed_model_id)
-            if not model:
-                model = await storage.get_by_value(allowed_model_id)
+            model = by_id.get(allowed_model_id)
+            if model is None:
+                model = by_value.get(allowed_model_id)
             if model and model.enabled:
                 await _attach_resolved_model_options(agent_options, model)
                 return
@@ -394,16 +423,6 @@ async def chat_stream(
     # 队列避免新 run 首次模型调用重复注入；HITL 恢复不经过这里
     from src.infra.task.steer import purge_stale_steers
 
-    await purge_stale_steers(session_id)
-
-    # Prepare attachments (needed for both queued and direct paths)
-    attachments_data = (
-        [a.model_dump() for a in request.attachments] if request.attachments else None
-    )
-    attachment_keys = _extract_attachment_keys(attachments_data, limit=None)
-    attachment_references_claimed = bool(attachment_keys)
-    file_records: FileRecordStorage | None = None
-
     # Build task context for queued dispatch (stored in Redis, multi-worker safe)
     # trace_id is generated early so it can be passed to the executor for trace reuse
     from src.infra.writer.present import Presenter, PresenterConfig
@@ -420,6 +439,29 @@ async def chat_stream(
     )
     trace_id = _pre_presenter.trace_id
 
+    # Prepare attachments (needed for both queued and direct paths)
+    attachments_data = (
+        [a.model_dump() for a in request.attachments] if request.attachments else None
+    )
+    attachment_keys = _extract_attachment_keys(attachments_data, limit=None)
+    attachment_references_claimed = bool(attachment_keys)
+    file_records: FileRecordStorage | None = None
+
+    async def _claim_attachments() -> None:
+        nonlocal file_records
+        if not attachment_keys:
+            return
+        records = FileRecordStorage()
+        file_records = records
+        try:
+            await records.claim_owned_references(attachment_keys, user.sub)
+        except AttachmentClaimError:
+            raise AppError(ErrorCode.INVALID_ATTACHMENTS) from None
+
+    # purge 与附件 claim 互不依赖，并行执行
+    await asyncio.gather(purge_stale_steers(session_id), _claim_attachments())
+
+    # Build task context for queued dispatch (stored in Redis, multi-worker safe)
     task_context = {
         "executor_key": "agent_stream",
         "agent_id": agent_id,
@@ -442,13 +484,6 @@ async def chat_stream(
         "auto_mode": request.auto_mode,
         "base_url": base_url,
     }
-
-    if attachment_keys:
-        file_records = FileRecordStorage()
-        try:
-            await file_records.claim_owned_references(attachment_keys, user.sub)
-        except AttachmentClaimError:
-            raise AppError(ErrorCode.INVALID_ATTACHMENTS) from None
 
     # 检查并发限制
     limiter = get_concurrency_limiter()
@@ -524,8 +559,8 @@ async def chat_stream(
                 "attachment_references_claimed": attachment_references_claimed,
             }
 
-            # 更新 session metadata，存储完整的对话配置（排队状态）
-            await _update_session_config(
+            # 更新 session metadata，存储完整的对话配置（排队状态；后台执行）
+            _schedule_session_config_update(
                 session_id,
                 run_id,
                 agent_id,
@@ -614,8 +649,8 @@ async def chat_stream(
             await limiter.release(user.sub, run_id)
             raise
 
-    # 更新 session metadata，存储完整的对话配置
-    await _update_session_config(
+    # 更新 session metadata，存储完整的对话配置（后台执行，不阻塞响应）
+    _schedule_session_config_update(
         session_id,
         run_id,
         agent_id,

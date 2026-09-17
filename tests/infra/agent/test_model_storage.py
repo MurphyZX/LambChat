@@ -403,3 +403,117 @@ async def test_exists_uses_count_documents_with_limit_and_avoids_loading_doc() -
     absent = _ExistsCollection(count=0)
     storage._collection = absent
     assert await storage.exists("missing/model") is False
+
+
+class _ManyLookupCursor:
+    def __init__(self, docs: list[dict[str, Any]]) -> None:
+        self._docs = [dict(doc) for doc in docs]
+        self.sort_calls: list[tuple[str, int]] = []
+
+    def sort(self, key: str, direction: int):
+        self.sort_calls.append((key, direction))
+        self._docs.sort(key=lambda doc: doc.get(key, 0), reverse=direction < 0)
+        return self
+
+    def __aiter__(self):
+        self._iter = iter(self._docs)
+        return self
+
+    async def __anext__(self):
+        try:
+            return dict(next(self._iter))
+        except StopIteration:
+            raise StopAsyncIteration from None
+
+
+class _ManyLookupCollection:
+    """Fake collection feeding a fixed doc set through find().sort()."""
+
+    def __init__(self, docs: list[dict[str, Any]]) -> None:
+        self.docs = docs
+        self.queries: list[dict[str, Any]] = []
+        self.cursor = _ManyLookupCursor(docs)
+
+    def find(self, query: dict[str, Any]):
+        self.queries.append(query)
+        return self.cursor
+
+
+@pytest.mark.asyncio
+async def test_get_many_by_ids_and_values_buckets_like_get_and_get_by_value() -> None:
+    storage = ModelStorage()
+    collection = _ManyLookupCollection(
+        [
+            {
+                "id": "model-1",
+                "value": "openai/gpt-4.1",
+                "label": "GPT 4.1",
+                "enabled": False,
+                "order": 0,
+            },
+            # 同一 value 的多渠道记录：get_by_value 语义应取 order 最小的启用记录
+            {
+                "id": "model-2a",
+                "value": "anthropic/claude",
+                "label": "Claude direct",
+                "enabled": True,
+                "order": 2,
+            },
+            {
+                "id": "model-2b",
+                "value": "anthropic/claude",
+                "label": "Claude proxy",
+                "enabled": True,
+                "order": 1,
+            },
+            {
+                "id": "model-3",
+                "value": "google/gemini",
+                "label": "Gemini",
+                "enabled": True,
+                "order": 3,
+            },
+        ]
+    )
+    storage._collection = collection
+
+    by_id, by_value = await storage.get_many_by_ids_and_values(
+        ["model-1", "anthropic/claude", "google/gemini", "missing-id"]
+    )
+
+    # by_id 与 get() 语义一致：按 id 命中，保留禁用状态
+    assert by_id["model-1"].enabled is False
+    assert "missing-id" not in by_id
+    # by_value 与 get_by_value() 语义一致：仅启用记录，取 order 最小者
+    assert by_value["anthropic/claude"].id == "model-2b"
+    assert by_value["google/gemini"].id == "model-3"
+    # 单次批量查询
+    assert len(collection.queries) == 1
+    query = collection.queries[0]
+    assert set(query["$or"][0]["id"]["$in"]) == {
+        "model-1",
+        "anthropic/claude",
+        "google/gemini",
+        "missing-id",
+    }
+    assert set(query["$or"][1]["value"]["$in"]) == set(query["$or"][0]["id"]["$in"])
+    assert query["$or"][1]["enabled"] is True
+    assert collection.cursor.sort_calls == [("order", 1)]
+
+
+@pytest.mark.asyncio
+async def test_get_many_by_ids_and_values_caps_in_query_and_dedupes() -> None:
+    storage = ModelStorage()
+    collection = _ManyLookupCollection([])
+    storage._collection = collection
+
+    values = ["dup"] * 3 + [f"model-{i}" for i in range(model_storage.MODEL_RESTRICTED_LIST_LIMIT)]
+
+    by_id, by_value = await storage.get_many_by_ids_and_values(values)
+
+    assert by_id == {} and by_value == {}
+    query = collection.queries[0]
+    in_list = query["$or"][0]["id"]["$in"]
+    assert len(in_list) == model_storage.MODEL_RESTRICTED_LIST_LIMIT
+    assert len(set(in_list)) == len(in_list)
+    assert in_list[0] == "dup"
