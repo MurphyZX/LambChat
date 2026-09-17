@@ -505,7 +505,8 @@ async def test_get_session_events_clamps_requested_max_events() -> None:
 
     events = await storage.get_session_events("session-1", max_events=1)
 
-    assert len(events) == 1
+    # 预算按整轮消费：单轮超预算也完整返回（每个 run 必须完整显示）
+    assert len(events) == 2
 
 
 @pytest.mark.asyncio
@@ -530,7 +531,8 @@ async def test_get_session_events_streams_trace_metadata_cursor() -> None:
 
     events = await storage.get_session_events("session-1", max_events=1)
 
-    assert len(events) == 1
+    # 预算按整轮消费：单轮超预算也完整返回（每个 run 必须完整显示）
+    assert len(events) == 2
 
 
 @pytest.mark.asyncio

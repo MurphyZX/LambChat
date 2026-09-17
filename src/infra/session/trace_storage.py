@@ -89,6 +89,8 @@ class SessionEventsSnapshot:
     has_more_traces: bool = False
     oldest_trace_started_at: Optional[datetime] = None
     oldest_trace_id: Optional[str] = None
+    # 事件预算按 trace 整轮消费：True 表示窗口内还有更旧的整轮因预算被丢弃
+    events_truncated: bool = False
 
 
 class TraceStorage(
@@ -860,10 +862,16 @@ class TraceStorage(
                     traces,
                     event_types=event_types,
                 )
-            events: List[Dict[str, Any]] = []
+            collected_chunks: List[List[Dict[str, Any]]] = []
+            remaining_budget: Optional[int] = max_events
+            events_truncated = False
             history_mode: Literal["complete", "active_user_only"] = "complete"
             stream_run_id: Optional[str] = None
-            for trace in traces:
+            # 预算按 trace 整轮消费（每个 run 的事件必须完整显示）：从新到旧
+            # 逐轮纳入，预算装不下下一整轮就停止并丢弃更旧的整轮，翻页走
+            # trace 游标；唯一例外是最新的单轮自身超预算时仍完整返回（保证
+            # 最新一轮永远可见）。旧实现早退保的是最旧端且会拦腰切断 run。
+            for trace in reversed(traces):
                 trace_id = trace.get("trace_id")
                 if not trace_id:
                     continue
@@ -923,6 +931,7 @@ class TraceStorage(
                             or trace.get("started_at"),
                         }
                     )
+                chunk: List[Dict[str, Any]] = []
                 for event in trace_events:
                     item = {
                         "trace_id": trace_id,
@@ -936,20 +945,21 @@ class TraceStorage(
                     else:
                         item["seq"] = next_seq
                         next_seq += 1
-                    events.append(item)
-                    if max_events is not None and len(events) >= max_events:
-                        logger.debug(
-                            f"Session {session_id} (run_id={run_id}) returned {len(events)} bounded events"
-                        )
-                        return SessionEventsSnapshot(
-                            events=events,
-                            history_mode=history_mode,
-                            stream_run_id=stream_run_id,
-                            has_more_traces=has_more_traces,
-                            oldest_trace_started_at=oldest_trace_started_at,
-                            oldest_trace_id=oldest_trace_id,
-                        )
+                    chunk.append(item)
+                if remaining_budget is not None and len(chunk) > remaining_budget:
+                    if collected_chunks:
+                        # 预算装不下下一整轮：丢弃该轮及更旧轮次，翻页走 trace 游标
+                        events_truncated = True
+                        break
+                    # 空前不裁：最新单轮超预算也完整返回
+                    remaining_budget = 0
+                if remaining_budget is not None:
+                    remaining_budget -= len(chunk)
+                collected_chunks.append(chunk)
 
+            events: List[Dict[str, Any]] = [
+                item for chunk in reversed(collected_chunks) for item in chunk
+            ]
             logger.debug(
                 f"Session {session_id} (run_id={run_id}) returned {len(events)} bounded events"
             )
@@ -960,6 +970,7 @@ class TraceStorage(
                 has_more_traces=has_more_traces,
                 oldest_trace_started_at=oldest_trace_started_at,
                 oldest_trace_id=oldest_trace_id,
+                events_truncated=events_truncated,
             )
         except Exception as e:
             logger.error(f"Failed to get session events: {e}")

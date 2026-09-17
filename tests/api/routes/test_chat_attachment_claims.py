@@ -572,3 +572,72 @@ async def test_purge_error_takes_priority_over_invalid_attachments(
             file_records=_FileRecords(reject=True),
             purge=_failing_purge,
         )
+
+
+@pytest.mark.asyncio
+async def test_purge_failure_releases_already_claimed_attachments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """并行后 purge 失败时，已成功的 claim 必须回滚（引用计数不能永久 +1）。"""
+
+    async def _failing_purge(session_id: str) -> None:
+        raise RuntimeError("purge failed")
+
+    file_records = _FileRecords()
+    with pytest.raises(RuntimeError, match="purge failed"):
+        await _invoke_chat(
+            monkeypatch,
+            attachments=[_attachment("key-1")],
+            limiter_result=ConcurrencyResult.STARTED,
+            file_records=file_records,
+            purge=_failing_purge,
+        )
+
+    assert file_records.claims == [(["key-1"], "owner-1")]
+    assert file_records.releases == [(["key-1"], "owner-1")]
+
+
+@pytest.mark.asyncio
+async def test_session_config_writes_for_same_session_execute_in_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """同会话背靠背两次提交：后台配置写必须串行、按提交顺序落库（防旧写后落覆盖新写）。"""
+    order: list[str] = []
+    first_started = asyncio.Event()
+    second_submitted = asyncio.Event()
+
+    async def _slow_update(*args: Any, **kwargs: Any) -> None:
+        order.append("first:start")
+        first_started.set()
+        await asyncio.wait_for(second_submitted.wait(), timeout=5)
+        order.append("first:done")
+
+    async def _fast_update(*args: Any, **kwargs: Any) -> None:
+        order.append("second:start")
+        order.append("second:done")
+
+    result1, *_ = await _invoke_chat(
+        monkeypatch,
+        attachments=None,
+        limiter_result=ConcurrencyResult.STARTED,
+        drain_config=False,
+        update_config=_slow_update,
+    )
+    await asyncio.wait_for(first_started.wait(), timeout=5)
+    assert result1["status"] == "pending"
+
+    second_submitted.set()
+    # 第二次提交挂入串行链后立即返回（不等第一个写完成）
+    result2, *_ = await _invoke_chat(
+        monkeypatch,
+        attachments=None,
+        limiter_result=ConcurrencyResult.STARTED,
+        drain_config=False,
+        update_config=_fast_update,
+    )
+    assert result2["status"] == "pending"
+
+    await asyncio.wait_for(chat._session_config_tasks.drain(timeout=5), timeout=10)
+
+    # 串行且有序：first 完成前 second 不得开始
+    assert order == ["first:start", "first:done", "second:start", "second:done"]

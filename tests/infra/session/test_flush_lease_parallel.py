@@ -101,3 +101,44 @@ def _base(item: Any) -> str:
     from src.infra.session.dual_writer import _buffer_item_base
 
     return _buffer_item_base(item)[3]
+
+
+@pytest.mark.asyncio
+async def test_flush_release_failure_is_logged_not_swallowed_silently() -> None:
+    """release 失败必须记 warning（租约泄漏会永久阻塞附件删除 fence），且不影响已成功的写入。"""
+
+    class _ReleaseFailingTrace(_ParallelProbeTrace):
+        def __init__(self) -> None:
+            super().__init__(expected_sessions=1)
+            self.warnings: list[str] = []
+
+        async def release_session_trace_write(self, session_id: str) -> None:
+            raise RuntimeError("mongo down")
+
+    probe = _ReleaseFailingTrace()
+    writer = dual_writer.DualEventWriter()
+    writer._mongo_buffer = [_buffer_item("s1")]
+    writer._trace = probe  # type: ignore[assignment]
+
+    flushed: list[Any] = []
+
+    async def _flush(batch: list[Any]) -> None:
+        flushed.append(batch)
+
+    writer._flush_mongo_batch = _flush  # type: ignore[method-assign]
+
+    records: list[Any] = []
+
+    class _Handler:
+        def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
+            records.append(msg % args if args else msg)
+
+    logger = dual_writer.logger
+    dual_writer.logger = _Handler()  # type: ignore[assignment]
+    try:
+        await asyncio.wait_for(writer._do_flush(), timeout=4)
+    finally:
+        dual_writer.logger = logger  # type: ignore[assignment]
+
+    assert len(flushed) == 1  # 写入本身成功，不被 release 失败误报
+    assert any("s1" in str(r) and "release" in str(r).lower() for r in records)

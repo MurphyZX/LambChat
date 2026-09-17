@@ -341,32 +341,45 @@ class DualEventWriter:
         session_ids = list(dict.fromkeys(_buffer_item_base(item)[3] for item in batch))
         leased_session_ids: list[str] = []
         try:
-            # 批内不同会话的租约互相独立，并行获取/释放（串行是 2N+1 次 Mongo 往返）
+            # 批内不同会话的租约互相独立，并行获取/释放（串行是 2N+1 次 Mongo 往返）；
+            # 每个子任务成功后同步登记，外层取消（shutdown）时 finally 仍能释放已拿到的租约
+            async def _acquire(sid: str) -> bool:
+                acquired = await self.trace.acquire_session_trace_write(sid)
+                if acquired:
+                    leased_session_ids.append(sid)
+                return acquired
+
             acquire_results = await asyncio.gather(
-                *(self.trace.acquire_session_trace_write(sid) for sid in session_ids),
+                *(_acquire(sid) for sid in session_ids),
                 return_exceptions=True,
             )
             acquire_failure = next(
                 (r for r in acquire_results if isinstance(r, BaseException)), None
             )
             if acquire_failure is not None or not all(r is True for r in acquire_results):
-                for session_id, result in zip(session_ids, acquire_results):
-                    if result is True:
-                        leased_session_ids.append(session_id)
                 async with self._mongo_lock:
                     self._mongo_buffer = batch + self._mongo_buffer
                 self._flush_event.set()
                 if acquire_failure is not None:
                     raise acquire_failure
                 return
-            leased_session_ids = list(session_ids)
             await self._flush_mongo_batch(batch)
         finally:
             if leased_session_ids:
-                await asyncio.gather(
+                release_results = await asyncio.gather(
                     *(self.trace.release_session_trace_write(sid) for sid in leased_session_ids),
                     return_exceptions=True,
                 )
+                # release 失败 = active_trace_writers 泄漏（附件删除 fence 会被永久阻塞），
+                # 必须留下可见的告警；不再向外传播以免把已成功的写入误报为失败
+                for sid, result in zip(leased_session_ids, release_results):
+                    if isinstance(result, BaseException):
+                        logger.warning(
+                            "Failed to release trace write lease for session %s "
+                            "(attachment deletion may be blocked); error: %s",
+                            sid,
+                            result,
+                        )
 
     async def _flush_mongo_batch(self, batch: list[MongoBufferItem]) -> None:
         """Write one drained batch while its session writer leases are held."""

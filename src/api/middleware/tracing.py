@@ -82,11 +82,15 @@ class TracingMiddleware:
         # 记录开始时间
         start_time = time.time()
         status_code_holder: list[int] = []
+        # 首字节时间（响应头写出时刻）：成功日志的 duration 语义与基类中间件版
+        # 基类中间件版一致（≈TTFB），不随流式 body 拖长
+        ttfb_holder: list[float] = []
 
         async def send_with_headers(message) -> None:
             if message["type"] == "http.response.start":
                 status_code_holder.append(message["status"])
                 process_time = time.time() - start_time
+                ttfb_holder.append(process_time)
                 headers = MutableHeaders(scope=message)
                 headers["X-Request-ID"] = request_id
                 headers["X-Trace-ID"] = trace_id
@@ -112,8 +116,8 @@ class TracingMiddleware:
             )
             raise
         else:
-            # 计算处理时间
-            process_time = time.time() - start_time
+            # 计算处理时间：用首字节时刻（长连 SSE 的 body 流不拖长该值）
+            process_time = ttfb_holder[0] if ttfb_holder else time.time() - start_time
             status_code = status_code_holder[0] if status_code_holder else 0
             client_host = request.client.host if request.client else "-"
 

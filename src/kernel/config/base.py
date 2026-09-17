@@ -68,7 +68,6 @@ class Settings(BaseSettings):
     SESSION_EVENT_CHUNK_DUAL_WRITE_LEGACY: bool = False
     SESSION_EVENT_CHUNK_SIZE: int = 5000
     SESSION_ACTIVE_RUN_STALE_MINUTES: int = 10  # running trace 超过该时长未更新则视为已终止
-    SESSION_EVENTS_DEFAULT_LIMIT: int = 5000  # events 接口不传 limit 时的服务端防御性上限
     FEISHU_UPLOAD_BYTES_MAX_SIZE: int = 20 * 1024 * 1024
 
     # ============================================

@@ -42,21 +42,10 @@ def normalize_title_language(lang: str) -> str:
 
 SESSION_EVENT_TYPE_FILTER_LIMIT = 100
 SESSION_EVENT_RESPONSE_LIMIT_MAX = 10000
-# events 接口 limit 不传时的服务端默认上限（防御性，正常使用碰不到；
-# 可通过 settings.SESSION_EVENTS_DEFAULT_LIMIT 覆盖）
-SESSION_EVENTS_DEFAULT_LIMIT = 5000
 SESSION_RAW_TRACE_RESPONSE_LIMIT_MAX = 20
 SESSION_RAW_TRACE_EVENTS_LIMIT_MAX = 200
 # 按 trace(run) 窗口分页读取历史事件：单页最多返回的轮次数
 SESSION_TRACE_WINDOW_LIMIT_MAX = 200
-
-
-def _get_session_events_default_limit() -> int:
-    """events 接口默认事件返回上限（可配置，防长会话无上限全量返回）。"""
-    return max(
-        int(getattr(settings, "SESSION_EVENTS_DEFAULT_LIMIT", SESSION_EVENTS_DEFAULT_LIMIT) or 0),
-        1,
-    )
 
 
 class MessageCheckpointCreatePayload(BaseModel):
@@ -374,13 +363,12 @@ async def get_session_events(
         except (TypeError, ValueError):
             raise AppError(ErrorCode.INVALID_BEFORE_TRACE_STARTED_AT)
 
-    # 防御性默认上限：limit 不传时不再无上限全量返回；分页语义
-    # （events_limited/events_limit/trace 窗口游标）按截断后值计算
-    limit = limit if limit is not None else _get_session_events_default_limit()
-
     current_run_id = session.metadata.get("current_run_id") if session.metadata else None
-    events_probe_limit = (limit + 1) if limit is not None else None
     trace_window_requested = trace_limit_value is not None or before_trace_started_at_dt is not None
+    # 事件按全量返回（每个 run 完整显示），分页单位是 trace 窗口；
+    # 仅当调用方显式传 limit 时才施加预算，且预算按整轮丢弃（不切断 run）
+    events_probe_limit = (limit + 1) if limit is not None else None
+    events_truncated_by_budget = False
     history_mode = None
     stream_run_id = None
     has_more_traces = False
@@ -401,6 +389,7 @@ async def get_session_events(
                 before_trace_id=before_trace_id_param,
             )
             events = snapshot.events
+            events_truncated_by_budget = snapshot.events_truncated
             if include_active_user_message:
                 history_mode = snapshot.history_mode
                 stream_run_id = snapshot.stream_run_id
@@ -418,9 +407,9 @@ async def get_session_events(
                 completed_only=True,
                 max_events=events_probe_limit,
             )
-    events_limited = len(events) > limit
-    if events_limited:
-        events = events[:limit]
+    # 预算按 trace 整轮消费：每个 run 的事件完整返回（最新单轮超预算也完整），
+    # 超限丢弃的是更旧的整轮；这里不再二次切片以免切断 run
+    events_limited = limit is not None and (events_truncated_by_budget or len(events) > limit)
     if compact_message_chunks:
         from src.infra.session.history_compaction import compact_history_events
 
@@ -438,12 +427,13 @@ async def get_session_events(
         response["stream_run_id"] = stream_run_id
     if trace_window_requested:
         response["has_more_traces"] = has_more_traces
+        # 契约（frontend SessionTraceWindow 注释）：已到最早一页时游标为 null
         response["trace_window"] = (
             {
                 "oldest_trace_started_at": to_iso(oldest_trace_started_at),
                 "oldest_trace_id": oldest_trace_id,
             }
-            if oldest_trace_started_at and oldest_trace_id
+            if has_more_traces and oldest_trace_started_at and oldest_trace_id
             else None
         )
     return response

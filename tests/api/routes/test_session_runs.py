@@ -59,6 +59,7 @@ class _FakeSessionSnapshotDualWriter:
             events=[{"event_type": "user:message", "data": {"content": "active"}}],
             history_mode="active_user_only",
             stream_run_id="run-active",
+            events_truncated=False,
         )
 
 
@@ -431,9 +432,11 @@ async def test_get_session_events_uses_bounded_history_read(
     )
 
     assert response == {
+        # 整轮预算：run 内事件完整返回，不在路由层二次切片
         "events": [
             {"event_type": "user:message", "data": {"content": "one"}},
             {"event_type": "message:chunk", "data": {"content": "two"}},
+            {"event_type": "done", "data": {}},
         ],
         "session_id": "session-1",
         "run_id": "run-1",
@@ -487,7 +490,7 @@ async def test_get_session_events_opt_in_returns_race_safe_snapshot_metadata(
         "session_id": "session-1",
         "run_id": "run-active",
         "events_limited": False,
-        "events_limit": session_routes._get_session_events_default_limit(),
+        "events_limit": None,
         "history_mode": "active_user_only",
         "stream_run_id": "run-active",
     }
@@ -498,7 +501,7 @@ async def test_get_session_events_opt_in_returns_race_safe_snapshot_metadata(
             "run_id": None,
             "exclude_run_id": None,
             "completed_only": True,
-            "max_events": session_routes._get_session_events_default_limit() + 1,
+            "max_events": None,
             "active_run_id": "run-active",
             "trace_limit": None,
             "before_trace_started_at": None,
@@ -630,12 +633,11 @@ class _ManyEventsDualWriter:
 
 
 @pytest.mark.asyncio
-async def test_get_session_events_applies_default_limit_when_limit_omitted(
+async def test_get_session_events_returns_full_history_when_limit_omitted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session_routes = _load_session_routes_module(monkeypatch)
     dual_writer_module = sys.modules["src.infra.session.dual_writer"]
-    monkeypatch.setattr(session_routes, "_get_session_events_default_limit", lambda: 3)
     writer = _ManyEventsDualWriter(count=5)
     monkeypatch.setattr(session_routes, "SessionManager", lambda: _FakeSessionManager())
     monkeypatch.setattr(dual_writer_module, "get_dual_writer", lambda: writer)
@@ -651,23 +653,11 @@ async def test_get_session_events_applies_default_limit_when_limit_omitted(
         user=SimpleNamespace(sub="user-1"),
     )
 
-    # 不带 limit 的长会话：服务端默认上限截断，分页字段按截断后值算
-    assert writer.calls[0]["max_events"] == 4  # default + 1 探测
-    assert len(response["events"]) == 3
-    assert response["events"][-1]["seq"] == 3
-    assert response["events_limited"] is True
-    assert response["events_limit"] == 3
-
-
-@pytest.mark.asyncio
-async def test_get_session_events_default_limit_from_settings(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    session_routes = _load_session_routes_module(monkeypatch)
-    default_limit = session_routes._get_session_events_default_limit()
-
-    assert isinstance(default_limit, int)
-    assert default_limit >= 5000
+    # 不传 limit = 全量返回（分页单位是 trace 窗口），不施加事件预算
+    assert writer.calls[0]["max_events"] is None
+    assert len(response["events"]) == 5
+    assert response["events_limited"] is False
+    assert response["events_limit"] is None
 
 
 @pytest.mark.asyncio
@@ -676,7 +666,6 @@ async def test_get_session_events_explicit_limit_still_wins(
 ) -> None:
     session_routes = _load_session_routes_module(monkeypatch)
     dual_writer_module = sys.modules["src.infra.session.dual_writer"]
-    monkeypatch.setattr(session_routes, "_get_session_events_default_limit", lambda: 3)
     writer = _ManyEventsDualWriter(count=5)
     monkeypatch.setattr(session_routes, "SessionManager", lambda: _FakeSessionManager())
     monkeypatch.setattr(dual_writer_module, "get_dual_writer", lambda: writer)
@@ -693,5 +682,7 @@ async def test_get_session_events_explicit_limit_still_wins(
     )
 
     assert writer.calls[0]["max_events"] == 3
-    assert len(response["events"]) == 2
+    # 整轮预算：显式 limit 由存储层按整轮执行，路由不切片（fake 5 条全回）
+    assert len(response["events"]) == 5
+    assert response["events_limited"] is True
     assert response["events_limit"] == 2

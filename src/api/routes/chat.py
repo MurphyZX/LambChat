@@ -64,6 +64,9 @@ _SESSION_CONFIG_MAX_TASKS = 64
 _session_config_tasks = BestEffortTaskLimiter(
     "session config update", max_tasks=_SESSION_CONFIG_MAX_TASKS
 )
+# 同一会话的后台写串行链：防止背靠背请求的两个后台写并发在飞导致
+# 旧写后落覆盖新写（metadata.current_run_id 回退到旧 run）
+_session_config_chains: dict[str, "asyncio.Task[None]"] = {}
 
 
 async def drain_session_config_tasks() -> None:
@@ -80,21 +83,39 @@ async def _schedule_session_config_update(
     trace_id: str | None = None,
     prompt_state: dict | None = None,
 ) -> None:
-    """会话配置写入调度：默认 fire-and-forget，任务池满时降级为内联等待（绝不静默丢写）。"""
-    awaitable = _update_session_config(
-        session_id,
-        run_id,
-        agent_id,
-        request,
-        language,
-        trace_id=trace_id,
-        prompt_state=prompt_state,
-    )
-    # 检查与 create_task 之间无 await，单事件循环下原子；满时内联 await 保证写入
+    """会话配置写入调度：默认 fire-and-forget（同会话串行），任务池满时降级为内联等待（绝不静默丢写）。"""
+    previous_task = _session_config_chains.get(session_id)
+
+    async def _chained_write() -> None:
+        if previous_task is not None:
+            try:
+                await previous_task
+            except (Exception, asyncio.CancelledError):
+                # 前一个写失败不影响本次；limiter 本身也会记录异常日志
+                pass
+        await _update_session_config(
+            session_id,
+            run_id,
+            agent_id,
+            request,
+            language,
+            trace_id=trace_id,
+            prompt_state=prompt_state,
+        )
+
+    # 检查与 create_task 之间无 await，单事件循环下原子；满时内联等待保证写入
+    # （内联路径同样先等前一个写完成，保持同会话串行）
     if _session_config_tasks.active_count >= _SESSION_CONFIG_MAX_TASKS:
-        await awaitable
+        await _chained_write()
         return
-    _session_config_tasks.create_task(awaitable)
+    task = _session_config_tasks.create_task(_chained_write())
+    _session_config_chains[session_id] = task
+
+    def _cleanup_chain(done_task: "asyncio.Task[None]") -> None:
+        if _session_config_chains.get(session_id) is done_task:
+            _session_config_chains.pop(session_id, None)
+
+    task.add_done_callback(_cleanup_chain)
 
 
 def resolve_default_agent_id(agent_id: str | None) -> str:
@@ -472,10 +493,22 @@ async def chat_stream(
     purge_exc, claim_exc = await asyncio.gather(
         purge_stale_steers(session_id), _claim_attachments(), return_exceptions=True
     )
-    if isinstance(purge_exc, BaseException):
-        raise purge_exc
-    if isinstance(claim_exc, BaseException):
-        raise claim_exc
+    if isinstance(purge_exc, BaseException) or isinstance(claim_exc, BaseException):
+        # 并行后 claim 可能已先行成功：失败路径必须释放已 claim 的引用，
+        # 否则引用计数永久 +1，文件存储永不回收
+        if file_records is not None and attachment_keys:
+            try:
+                await file_records.release_owned_references(attachment_keys, user.sub)
+            except Exception:
+                logger.warning(
+                    "Failed to release claimed attachments on submit failure",
+                    exc_info=True,
+                )
+        if isinstance(purge_exc, BaseException):
+            raise purge_exc
+        if isinstance(claim_exc, BaseException):
+            raise claim_exc
+        return
 
     # Build task context for queued dispatch (stored in Redis, multi-worker safe)
     task_context = {

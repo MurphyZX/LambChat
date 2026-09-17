@@ -14,7 +14,6 @@ from fastapi import APIRouter, Depends, Query
 
 from src.agents.core.base import get_agent_class
 from src.api.deps import get_current_user_optional, get_current_user_required
-from src.api.routes.session import _get_session_events_default_limit
 from src.infra.folder.storage import get_project_storage
 from src.infra.logging import get_logger
 from src.infra.session.dual_writer import get_dual_writer
@@ -248,11 +247,8 @@ async def _build_session_content(
         if share.share_scope == ShareScope.SESSION and share.share_type == ShareType.PARTIAL
         else None
     )
-    # 防御性默认上限：event_limit 不传时不再无上限全量返回（与 /sessions
-    # 的 events 接口同一默认值，可配置）；events_limited/events_limit 按
-    # 截断后值返回，前端可据此继续分页
-    if event_limit is None:
-        event_limit = _get_session_events_default_limit()
+    # 事件按全量返回（每个 run 完整显示）；仅显式传 event_limit 时施加
+    # 整轮预算（丢弃更旧的整轮，不切断 run）
     read_events_kwargs: dict[str, Any] = {"completed_only": True}
     if event_limit is not None:
         read_events_kwargs["max_events"] = event_limit + 1
@@ -263,9 +259,9 @@ async def _build_session_content(
         )
     else:
         events = await dual_writer.read_session_events(session.id, **read_events_kwargs)
+    # 与 events 接口同一「整轮预算」语义：每个 run 的事件完整返回，超限丢弃
+    # 更旧的整轮；这里不再二次切片以免切断 run
     events_limited = event_limit is not None and len(events) > event_limit
-    if events_limited and event_limit is not None:
-        events = events[:event_limit]
 
     owner = await UserStorage().get_by_id(share.owner_id)
     owner_info = SharedContentOwner(

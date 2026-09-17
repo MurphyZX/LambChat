@@ -221,17 +221,10 @@ async def test_get_shared_content_returns_all_events_when_limit_is_omitted(
 
     response = await share_route.get_shared_content("share-1", user=None)
 
-    default_limit = share_route._get_session_events_default_limit()
-    assert dual_writer.calls == [
-        {
-            "session_id": "session-1",
-            "completed_only": True,
-            "max_events": default_limit + 1,
-        }
-    ]
+    assert dual_writer.calls == [{"session_id": "session-1", "completed_only": True}]
     assert len(response.events) == 3
     assert response.events_limited is False
-    assert response.events_limit == default_limit
+    assert response.events_limit is None
 
 
 @pytest.mark.asyncio
@@ -280,7 +273,8 @@ async def test_get_shared_content_caps_full_share_events_with_probe_limit(
             "max_events": 3,
         }
     ]
-    assert len(response.events) == 2
+    # 整轮预算：run 内事件完整返回，路由不二次切片
+    assert len(response.events) == 3
     assert response.events_limited is True
     assert response.events_limit == 2
 
@@ -299,11 +293,10 @@ class _ManyEventsDualWriter:
 
 
 @pytest.mark.asyncio
-async def test_get_shared_content_applies_default_event_limit_when_omitted(
+async def test_get_shared_content_returns_full_events_when_event_limit_omitted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    default_limit = share_route._get_session_events_default_limit()
-    writer = _ManyEventsDualWriter(count=default_limit + 2)
+    writer = _ManyEventsDualWriter(count=7)
     monkeypatch.setattr(share_route, "ShareStorage", _FakeShareStorage)
     monkeypatch.setattr(share_route, "SessionManager", _FakeSessionManager)
     monkeypatch.setattr(share_route, "get_dual_writer", lambda: writer)
@@ -312,8 +305,8 @@ async def test_get_shared_content_applies_default_event_limit_when_omitted(
 
     response = await share_route.get_shared_content("share-1", user=None)
 
-    # 不带 event_limit 的公开分享：服务端默认上限截断，可继续翻页
-    assert writer.calls[0]["max_events"] == default_limit + 1
-    assert len(response.events) == default_limit
-    assert response.events_limited is True
-    assert response.events_limit == default_limit
+    # 不带 event_limit 的公开分享：全量返回（每个 run 完整显示），无预算
+    assert "max_events" not in writer.calls[0]
+    assert len(response.events) == 7
+    assert response.events_limited is False
+    assert response.events_limit is None
