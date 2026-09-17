@@ -57,7 +57,11 @@ async def test_missing_roles_are_skipped_and_merge_order_kept(
 
 
 @pytest.mark.asyncio
-async def test_role_cache_hits_within_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_no_process_level_role_cache_keeps_permission_changes_immediate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """角色查询不加进程内 TTL 缓存：每次请求都走 RoleStorage（其自身有全局失效缓存），
+    保证角色权限变更（Redis 失效广播）即时生效。"""
     calls: list[str] = []
 
     class _RoleStorage:
@@ -66,38 +70,9 @@ async def test_role_cache_hits_within_ttl(monkeypatch: pytest.MonkeyPatch) -> No
             return _role(name, [f"{name}:read"])
 
     monkeypatch.setattr(deps, "RoleStorage", _RoleStorage)
-    deps.clear_auth_cache()
 
     await deps._get_user_roles_and_permissions(["admin", "user"])
     await deps._get_user_roles_and_permissions(["admin", "user"])
 
-    assert sorted(calls) == ["admin", "user"]
-
-    # clear_auth_cache（用户/角色变更）后必须重新查库
-    deps.clear_auth_cache()
-    await deps._get_user_roles_and_permissions(["admin", "user"])
+    # 每次请求都查库，无进程级缓存窗口
     assert sorted(calls) == ["admin", "admin", "user", "user"]
-
-
-@pytest.mark.asyncio
-async def test_role_cache_does_not_cache_missing_roles(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    class _RoleStorage:
-        async def get_by_name(self, name: str) -> SimpleNamespace | None:
-            calls.append(name)
-            return None
-
-    monkeypatch.setattr(deps, "RoleStorage", _RoleStorage)
-    deps.clear_auth_cache()
-
-    roles, permissions = await deps._get_user_roles_and_permissions(["ghost"])
-    assert roles == []
-    assert permissions == []
-
-    # 角色不存在的路径不缓存，下一次请求仍查库（行为与无缓存时一致）
-    roles, permissions = await deps._get_user_roles_and_permissions(["ghost"])
-    assert roles == []
-    assert calls == ["ghost", "ghost"]

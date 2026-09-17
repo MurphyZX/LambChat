@@ -507,13 +507,66 @@ async def test_get_many_by_ids_and_values_caps_in_query_and_dedupes() -> None:
     collection = _ManyLookupCollection([])
     storage._collection = collection
 
-    values = ["dup"] * 3 + [f"model-{i}" for i in range(model_storage.MODEL_RESTRICTED_LIST_LIMIT)]
+    limit = model_storage.MODEL_RESTRICTED_LIST_LIMIT
+    values = ["dup"] * 3 + [f"model-{i}" for i in range(limit + 25)]
 
     by_id, by_value = await storage.get_many_by_ids_and_values(values)
 
     assert by_id == {} and by_value == {}
-    query = collection.queries[0]
-    in_list = query["$or"][0]["id"]["$in"]
-    assert len(in_list) == model_storage.MODEL_RESTRICTED_LIST_LIMIT
-    assert len(set(in_list)) == len(in_list)
-    assert in_list[0] == "dup"
+    # 超限时必须分批覆盖全部 id，而不是截断丢弃
+    assert len(collection.queries) == 2
+    for query in collection.queries:
+        in_list = query["$or"][0]["id"]["$in"]
+        assert len(in_list) <= limit
+        assert len(set(in_list)) == len(in_list)
+    assert collection.queries[0]["$or"][0]["id"]["$in"][0] == "dup"
+
+
+class _BatchingLookupCollection:
+    """按查询的 $in 列表过滤文档的 fake collection（模拟真实 find 语义）。"""
+
+    def __init__(self, docs: list[dict[str, Any]]) -> None:
+        self.docs = docs
+        self.queries: list[dict[str, Any]] = []
+
+    def find(self, query: dict[str, Any]):
+        self.queries.append(query)
+        ids = set(query["$or"][0]["id"]["$in"])
+        values = set(query["$or"][1]["value"]["$in"])
+        matched = [
+            doc
+            for doc in self.docs
+            if doc.get("id") in ids or (doc.get("value") in values and doc.get("enabled"))
+        ]
+        return _ManyLookupCursor(matched)
+
+
+@pytest.mark.asyncio
+async def test_get_many_by_ids_and_values_resolves_model_beyond_first_batch() -> None:
+    """回归：allowed 列表超过单批上限时，第 100 名之后的模型仍可命中（与逐个遍历等价）。"""
+    limit = model_storage.MODEL_RESTRICTED_LIST_LIMIT
+    target = {
+        "id": "model-late",
+        "value": "model-late",
+        "enabled": True,
+        "order": 1,
+        "label": "late",
+    }
+    others = [
+        {
+            "id": f"model-{i}",
+            "value": f"model-{i}",
+            "enabled": True,
+            "order": i + 2,
+            "label": f"m{i}",
+        }
+        for i in range(limit + 10)
+    ]
+    storage = ModelStorage()
+    storage._collection = _BatchingLookupCollection([target, *others])
+
+    values = [f"model-{i}" for i in range(limit + 10)] + ["model-late"]
+    by_id, by_value = await storage.get_many_by_ids_and_values(values)
+
+    assert by_id["model-late"].value == "model-late"
+    assert by_value["model-late"].value == "model-late"

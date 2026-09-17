@@ -516,3 +516,59 @@ async def test_queued_branch_schedules_session_config_update(
     assert result["status"] == "queued"
     await asyncio.wait_for(chat._session_config_tasks.drain(timeout=2), timeout=5)
     assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_session_config_update_runs_inline_when_task_pool_full(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """任务池打满时降级为内联 await，绝不静默丢会话配置写入。"""
+    calls: list[dict[str, Any]] = []
+
+    async def _record_update(*args: Any, **kwargs: Any) -> None:
+        calls.append({"args": args, "kwargs": kwargs})
+
+    release = asyncio.Event()
+    blockers: list[asyncio.Task[None]] = []
+
+    async def _block() -> None:
+        await release.wait()
+
+    for _ in range(chat._SESSION_CONFIG_MAX_TASKS):
+        blockers.append(chat._session_config_tasks.create_task(_block()))
+    assert chat._session_config_tasks.active_count >= chat._SESSION_CONFIG_MAX_TASKS
+
+    try:
+        await _invoke_chat(
+            monkeypatch,
+            attachments=None,
+            limiter_result=ConcurrencyResult.STARTED,
+            drain_config=False,
+            update_config=_record_update,
+        )
+        # 池满 → 内联执行：chat_stream 返回前写入必须已发生（未 drain）
+        assert len(calls) == 1
+    finally:
+        release.set()
+        await chat._session_config_tasks.drain(timeout=5)
+        for task in blockers:
+            task.cancel()
+
+
+@pytest.mark.asyncio
+async def test_purge_error_takes_priority_over_invalid_attachments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """两者都失败时，purge 的异常优先暴露（与原串行顺序一致）。"""
+
+    async def _failing_purge(session_id: str) -> None:
+        raise RuntimeError("purge failed")
+
+    with pytest.raises(RuntimeError, match="purge failed"):
+        await _invoke_chat(
+            monkeypatch,
+            attachments=[_attachment("key-1")],
+            limiter_result=ConcurrencyResult.STARTED,
+            file_records=_FileRecords(reject=True),
+            purge=_failing_purge,
+        )

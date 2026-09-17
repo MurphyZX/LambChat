@@ -61,10 +61,18 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 # 会话配置写入的后台任务池：响应返回前不再阻塞等待，失败仅记日志
-_session_config_tasks = BestEffortTaskLimiter("session config update", max_tasks=64)
+_SESSION_CONFIG_MAX_TASKS = 64
+_session_config_tasks = BestEffortTaskLimiter(
+    "session config update", max_tasks=_SESSION_CONFIG_MAX_TASKS
+)
 
 
-def _schedule_session_config_update(
+async def drain_session_config_tasks() -> None:
+    """进程退出前等未完成的会话配置写入落库，避免丢数据。"""
+    await _session_config_tasks.drain()
+
+
+async def _schedule_session_config_update(
     session_id: str,
     run_id: str,
     agent_id: str,
@@ -73,18 +81,21 @@ def _schedule_session_config_update(
     trace_id: str | None = None,
     prompt_state: dict | None = None,
 ) -> None:
-    """Fire-and-forget 会话配置写入（数据最终仍落库，不阻塞响应）。"""
-    _session_config_tasks.create_task(
-        _update_session_config(
-            session_id,
-            run_id,
-            agent_id,
-            request,
-            language,
-            trace_id=trace_id,
-            prompt_state=prompt_state,
-        )
+    """会话配置写入调度：默认 fire-and-forget，任务池满时降级为内联等待（绝不静默丢写）。"""
+    awaitable = _update_session_config(
+        session_id,
+        run_id,
+        agent_id,
+        request,
+        language,
+        trace_id=trace_id,
+        prompt_state=prompt_state,
     )
+    # 检查与 create_task 之间无 await，单事件循环下原子；满时内联 await 保证写入
+    if _session_config_tasks.active_count >= _SESSION_CONFIG_MAX_TASKS:
+        await awaitable
+        return
+    _session_config_tasks.create_task(awaitable)
 
 
 def resolve_default_agent_id(agent_id: str | None) -> str:
@@ -458,8 +469,14 @@ async def chat_stream(
         except AttachmentClaimError:
             raise AppError(ErrorCode.INVALID_ATTACHMENTS) from None
 
-    # purge 与附件 claim 互不依赖，并行执行
-    await asyncio.gather(purge_stale_steers(session_id), _claim_attachments())
+    # purge 与附件 claim 互不依赖，并行执行；异常优先级与原串行一致（purge 错误优先）
+    purge_exc, claim_exc = await asyncio.gather(
+        purge_stale_steers(session_id), _claim_attachments(), return_exceptions=True
+    )
+    if isinstance(purge_exc, BaseException):
+        raise purge_exc
+    if isinstance(claim_exc, BaseException):
+        raise claim_exc
 
     # Build task context for queued dispatch (stored in Redis, multi-worker safe)
     task_context = {
@@ -560,7 +577,7 @@ async def chat_stream(
             }
 
             # 更新 session metadata，存储完整的对话配置（排队状态；后台执行）
-            _schedule_session_config_update(
+            await _schedule_session_config_update(
                 session_id,
                 run_id,
                 agent_id,
@@ -650,7 +667,7 @@ async def chat_stream(
             raise
 
     # 更新 session metadata，存储完整的对话配置（后台执行，不阻塞响应）
-    _schedule_session_config_update(
+    await _schedule_session_config_update(
         session_id,
         run_id,
         agent_id,

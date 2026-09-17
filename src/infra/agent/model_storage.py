@@ -240,33 +240,34 @@ class ModelStorage:
                 continue
             seen.add(value)
             unique.append(value)
-            if len(unique) >= MODEL_RESTRICTED_LIST_LIMIT:
-                break
         if not unique:
             return {}, {}
 
         by_id: dict[str, ModelConfig] = {}
         by_value: dict[str, ModelConfig] = {}
-        cursor = (
-            self._get_collection()
-            .find(
-                {
-                    "$or": [
-                        {"id": {"$in": unique}},
-                        {"value": {"$in": unique}, "enabled": True},
-                    ]
-                }
+        # 分批 $in 覆盖全部 id（与逐个遍历的旧语义一致），批大小仅约束单次查询体积
+        for start in range(0, len(unique), MODEL_RESTRICTED_LIST_LIMIT):
+            batch = unique[start : start + MODEL_RESTRICTED_LIST_LIMIT]
+            cursor = (
+                self._get_collection()
+                .find(
+                    {
+                        "$or": [
+                            {"id": {"$in": batch}},
+                            {"value": {"$in": batch}, "enabled": True},
+                        ]
+                    }
+                )
+                .sort("order", 1)
             )
-            .sort("order", 1)
-        )
-        async for doc in cursor:
-            doc.pop("_id", None)
-            model = ModelConfig(**await self._decrypt_doc(doc))
-            if model.id is not None:
-                by_id.setdefault(model.id, model)
-            value = model.value
-            if model.enabled and value is not None and value in seen:
-                by_value.setdefault(value, model)
+            async for doc in cursor:
+                doc.pop("_id", None)
+                model = ModelConfig(**await self._decrypt_doc(doc))
+                if model.id is not None:
+                    by_id.setdefault(model.id, model)
+                value = model.value
+                if model.enabled and value is not None and value in seen:
+                    by_value.setdefault(value, model)
         return by_id, by_value
 
     async def get(self, model_id: str) -> Optional[ModelConfig]:

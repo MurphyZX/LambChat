@@ -283,9 +283,7 @@ async def test_default_model_branch_falls_through_disabled_id_to_next_allowed(
 
     async def _get_by_value(value: str) -> ModelConfig | None:
         if value == "openai/gpt-allowed":
-            return ModelConfig(
-                id="allowed-enabled", value=value, label="Allowed", enabled=True
-            )
+            return ModelConfig(id="allowed-enabled", value=value, label="Allowed", enabled=True)
         return None
 
     storage.get = _get  # type: ignore[method-assign]
@@ -316,9 +314,7 @@ async def test_default_model_branch_resolves_value_only_entry(
 
     async def _get_by_value(value: str) -> ModelConfig | None:
         if value == "by-value-only":
-            return ModelConfig(
-                id="value-only-1", value=value, label="ValueOnly", enabled=True
-            )
+            return ModelConfig(id="value-only-1", value=value, label="ValueOnly", enabled=True)
         return None
 
     storage.get = _get  # type: ignore[method-assign]
