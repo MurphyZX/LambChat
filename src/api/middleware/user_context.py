@@ -1,6 +1,5 @@
 """API middleware for request processing."""
 
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from src.api.deps import _get_cached_user
@@ -12,15 +11,25 @@ from src.infra.logging.context import TraceContext
 logger = get_logger(__name__)
 
 
-class UserContextMiddleware(BaseHTTPMiddleware):
+class UserContextMiddleware:
     """
     Middleware to set user context for each request.
 
     This middleware extracts user_id from JWT token and sets it in the context
     for backend operations. Context is always cleared after the request completes.
+
+    纯 ASGI 实现（避免基类中间件每请求的 task 与流拷贝开销）。
     """
 
-    async def dispatch(self, request: Request, call_next):
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope)
         user_id = None
         session_id = request.headers.get("X-Session-Id")
 
@@ -51,8 +60,7 @@ class UserContextMiddleware(BaseHTTPMiddleware):
                 user_id=user_id,
                 trace_id=getattr(request.state, "trace_id", None),
             )
-            response = await call_next(request)
-            return response
+            await self.app(scope, receive, send)
         finally:
             clear_user_context()
             TraceContext.clear_request_context()

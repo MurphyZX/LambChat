@@ -33,7 +33,6 @@ from src.api.routes.chat_stream_terminal import (
 )
 from src.api.routes.chat_validation import validate_team_agent_request
 from src.api.routes.session import verify_session_ownership
-from src.infra.async_utils import run_blocking_io
 from src.infra.async_utils.background_tasks import BestEffortTaskLimiter
 from src.infra.chat.session_baseline import (
     _time_report_due,
@@ -729,7 +728,7 @@ async def session_stream(
                         terminal,
                         event["event_type"],
                     )
-                    yield await run_blocking_io(_format_sse_event, event)
+                    yield _format_sse_event(event)
                     return
 
             # 使用 run_id 读取特定轮次的事件
@@ -745,7 +744,7 @@ async def session_stream(
                     continue
 
                 event_count += 1
-                yield await run_blocking_io(_format_sse_event, event)
+                yield _format_sse_event(event)
 
             logger.info(f"[SSE] Stream ended after {event_count} events")
 

@@ -341,24 +341,32 @@ class DualEventWriter:
         session_ids = list(dict.fromkeys(_buffer_item_base(item)[3] for item in batch))
         leased_session_ids: list[str] = []
         try:
-            for session_id in session_ids:
-                try:
-                    acquired = await self.trace.acquire_session_trace_write(session_id)
-                except BaseException:
-                    async with self._mongo_lock:
-                        self._mongo_buffer = batch + self._mongo_buffer
-                    self._flush_event.set()
-                    raise
-                if not acquired:
-                    async with self._mongo_lock:
-                        self._mongo_buffer = batch + self._mongo_buffer
-                    self._flush_event.set()
-                    return
-                leased_session_ids.append(session_id)
+            # 批内不同会话的租约互相独立，并行获取/释放（串行是 2N+1 次 Mongo 往返）
+            acquire_results = await asyncio.gather(
+                *(self.trace.acquire_session_trace_write(sid) for sid in session_ids),
+                return_exceptions=True,
+            )
+            acquire_failure = next(
+                (r for r in acquire_results if isinstance(r, BaseException)), None
+            )
+            if acquire_failure is not None or not all(r is True for r in acquire_results):
+                for session_id, result in zip(session_ids, acquire_results):
+                    if result is True:
+                        leased_session_ids.append(session_id)
+                async with self._mongo_lock:
+                    self._mongo_buffer = batch + self._mongo_buffer
+                self._flush_event.set()
+                if acquire_failure is not None:
+                    raise acquire_failure
+                return
+            leased_session_ids = list(session_ids)
             await self._flush_mongo_batch(batch)
         finally:
-            for session_id in reversed(leased_session_ids):
-                await self.trace.release_session_trace_write(session_id)
+            if leased_session_ids:
+                await asyncio.gather(
+                    *(self.trace.release_session_trace_write(sid) for sid in leased_session_ids),
+                    return_exceptions=True,
+                )
 
     async def _flush_mongo_batch(self, batch: list[MongoBufferItem]) -> None:
         """Write one drained batch while its session writer leases are held."""
