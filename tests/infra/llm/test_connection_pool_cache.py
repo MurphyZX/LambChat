@@ -11,8 +11,8 @@ httpx.AsyncClient; parameter differences stay on the (cheap) model instances.
 
 import pytest
 
-from src.infra.llm.client import (
-    LLMClient,
+from src.infra.llm.client import LLMClient
+from src.infra.llm.httpx_pool import (
     _httpx_pool_cache,
     _httpx_pool_refs,
     _model_pool_keys,

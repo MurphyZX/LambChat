@@ -1,8 +1,4 @@
-"""
-File upload API routes
-
-Provides endpoints for file uploads to S3-compatible storage.
-"""
+"""文件上传 API 路由（S3 兼容存储）。"""
 
 import hashlib
 import uuid
@@ -54,6 +50,7 @@ from src.infra.storage.s3 import (
 )
 from src.infra.storage.s3.base import BinaryReadFile
 from src.infra.upload.file_record import FileRecordStorage
+from src.infra.utils.hashing import sha256_hexdigest
 from src.kernel.config import settings
 from src.kernel.errors import AppError, ErrorCode
 from src.kernel.schemas.user import TokenPayload
@@ -317,10 +314,6 @@ def _read_all(file: Any) -> bytes:
     return file.read()
 
 
-def _sha256_hexdigest(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
 async def _transcode_spooled_image(
     spooled_upload: SpooledUpload,
     *,
@@ -342,7 +335,7 @@ async def _transcode_spooled_image(
     if len(transcoded) > max_size_bytes:
         raise AppError(ErrorCode.FILE_TOO_LARGE, args={"max": max_size_mb})
 
-    sha256_hex = await run_blocking_io(_sha256_hexdigest, transcoded)
+    sha256_hex = await run_blocking_io(sha256_hexdigest, transcoded)
     replacement = SpooledTemporaryFile(max_size=UPLOAD_SPOOL_MEMORY_LIMIT, mode="w+b")
     try:
         await run_blocking_io(replacement.write, transcoded)

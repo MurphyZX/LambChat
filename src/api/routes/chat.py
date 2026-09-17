@@ -33,7 +33,6 @@ from src.api.routes.chat_stream_terminal import (
 )
 from src.api.routes.chat_validation import validate_team_agent_request
 from src.api.routes.session import verify_session_ownership
-from src.infra.async_utils.background_tasks import BestEffortTaskLimiter
 from src.infra.chat.session_baseline import (
     _time_report_due,
     _turn_context_signature,
@@ -59,63 +58,12 @@ from src.kernel.schemas.user import TokenPayload
 router = APIRouter()
 logger = get_logger(__name__)
 
-# 会话配置写入的后台任务池：响应返回前不再阻塞等待，失败仅记日志
-_SESSION_CONFIG_MAX_TASKS = 64
-_session_config_tasks = BestEffortTaskLimiter(
-    "session config update", max_tasks=_SESSION_CONFIG_MAX_TASKS
+from src.api.routes.chat_session_config import (  # noqa: E402
+    _SESSION_CONFIG_MAX_TASKS,  # noqa: F401  # 测试经 chat 模块访问
+    _schedule_session_config_update,
+    _session_config_tasks,  # noqa: F401
+    drain_session_config_tasks,  # noqa: F401
 )
-# 同一会话的后台写串行链：防止背靠背请求的两个后台写并发在飞导致
-# 旧写后落覆盖新写（metadata.current_run_id 回退到旧 run）
-_session_config_chains: dict[str, "asyncio.Task[None]"] = {}
-
-
-async def drain_session_config_tasks() -> None:
-    """进程退出前等未完成的会话配置写入落库，避免丢数据。"""
-    await _session_config_tasks.drain()
-
-
-async def _schedule_session_config_update(
-    session_id: str,
-    run_id: str,
-    agent_id: str,
-    request: AgentRequest,
-    language: str,
-    trace_id: str | None = None,
-    prompt_state: dict | None = None,
-) -> None:
-    """会话配置写入调度：默认 fire-and-forget（同会话串行），任务池满时降级为内联等待（绝不静默丢写）。"""
-    previous_task = _session_config_chains.get(session_id)
-
-    async def _chained_write() -> None:
-        if previous_task is not None:
-            try:
-                await previous_task
-            except (Exception, asyncio.CancelledError):
-                # 前一个写失败不影响本次；limiter 本身也会记录异常日志
-                pass
-        await _update_session_config(
-            session_id,
-            run_id,
-            agent_id,
-            request,
-            language,
-            trace_id=trace_id,
-            prompt_state=prompt_state,
-        )
-
-    # 检查与 create_task 之间无 await，单事件循环下原子；满时内联等待保证写入
-    # （内联路径同样先等前一个写完成，保持同会话串行）
-    if _session_config_tasks.active_count >= _SESSION_CONFIG_MAX_TASKS:
-        await _chained_write()
-        return
-    task = _session_config_tasks.create_task(_chained_write())
-    _session_config_chains[session_id] = task
-
-    def _cleanup_chain(done_task: "asyncio.Task[None]") -> None:
-        if _session_config_chains.get(session_id) is done_task:
-            _session_config_chains.pop(session_id, None)
-
-    task.add_done_callback(_cleanup_chain)
 
 
 def resolve_default_agent_id(agent_id: str | None) -> str:
