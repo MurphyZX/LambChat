@@ -31,6 +31,22 @@ def test_block_renders_type_date_title_and_summary() -> None:
     assert "</memory_context>" in block
 
 
+def test_block_uses_backend_type_field_when_memory_type_is_absent() -> None:
+    block = mc.build_memory_context_block(
+        [
+            {
+                "type": "feedback",
+                "updated_at": "2026-09-19T12:34:56+00:00",
+                "title": "Correction",
+                "summary": "Prefer the project constraint",
+            }
+        ],
+        1200,
+    )
+
+    assert "[feedback|2026-09-19] Correction — Prefer the project constraint" in block
+
+
 def test_block_respects_max_chars_and_drops_tail_items() -> None:
     memories = [_memory(f"Memory {index}", "detail " * 20) for index in range(3)]
     block = mc.build_memory_context_block(memories, 360)

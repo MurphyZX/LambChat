@@ -64,7 +64,12 @@ def build_memory_context_block(memories: list[dict], max_chars: int) -> str:
         if not isinstance(memory, dict):
             continue
         updated = _clean_field(memory.get("updated_at"))[:10]
-        memory_type = _clean_field(memory.get("memory_type") or "user") or "user"
+        # Native recall serializes this field as ``type``; accept the
+        # internal ``memory_type`` spelling too for alternate backends and
+        # older fixtures.
+        memory_type = (
+            _clean_field(memory.get("memory_type") or memory.get("type") or "user") or "user"
+        )
         title = _clean_field(memory.get("title"))
         summary = _clean_field(memory.get("summary"))
         if not title and not summary:
