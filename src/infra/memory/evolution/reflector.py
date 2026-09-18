@@ -376,7 +376,8 @@ async def _load_exchange(run_id: str, session_id: str = "", user_id: str = "") -
     parts: list[str] = []
     total_len = 0
     for tid in reversed(_assistant_order):
-        text = _assistant_chunks[tid]
+        # Strip complete frames before clipping can discard their closing tags.
+        text = _strip_injected_blocks(_assistant_chunks[tid])
         if total_len + len(text) > EXCHANGE_CLIP_CHARS:
             text = text[: max(0, EXCHANGE_CLIP_CHARS - total_len)]
         parts.append(text)

@@ -333,7 +333,10 @@ async def test_load_exchange_strips_todo_and_goal_context_blocks(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_load_exchange_strips_injected_blocks_from_assistant_output(monkeypatch):
+@pytest.mark.parametrize("injected_chars", [10, 3000])
+async def test_load_exchange_strips_injected_blocks_from_assistant_output(
+    monkeypatch, injected_chars
+):
     class _FakeTraceCol:
         async def find_one(self, _query, *_a, **_k):
             return {
@@ -346,7 +349,11 @@ async def test_load_exchange_strips_injected_blocks_from_assistant_output(monkey
                         "event_type": "message:chunk",
                         "data": {
                             "text_id": "t1",
-                            "content": "有效回答\n<memory_index_context>不要保存</memory_index_context>",
+                            "content": (
+                                "<memory_index_context>"
+                                + "x" * injected_chars
+                                + "</memory_index_context>\n有效回答"
+                            ),
                         },
                     },
                 ]
