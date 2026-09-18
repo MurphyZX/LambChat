@@ -165,14 +165,22 @@ def prioritize_sources(memories: list[dict]) -> list[dict]:
         "user": 1,
         "reference": 1,
     }
-    return sorted(
-        memories,
-        key=lambda memory: (
-            source_order.get(str(memory.get("source", "")), 50),
+
+    def ranking_key(memory: dict) -> tuple[int, int, int, float, str]:
+        context = str(memory.get("context") or "")
+        # Project context is the strongest boundary. Within a boundary,
+        # explicit feedback rules outrank generic preferences because they
+        # encode corrections learned from earlier interactions.
+        lesson_rank = 0 if context.startswith("feedback") else 1
+        return (
             scope_order.get(str(memory.get("scope") or "user"), 1),
+            lesson_rank,
+            source_order.get(str(memory.get("source", "")), 50),
             -float(memory.get("score", 0.0) or 0.0),
-        ),
-    )
+            str(memory.get("updated_at") or ""),
+        )
+
+    return sorted(memories, key=ranking_key)
 
 
 def is_context_overview_query(query: str) -> bool:

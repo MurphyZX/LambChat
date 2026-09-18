@@ -78,6 +78,8 @@ def test_native_memory_guide_preserves_compact_behavior_contract() -> None:
         "30 days",
         "stale",
         "/memories/",
+        "Todo",
+        "session state",
     )
 
     assert all(marker.lower() in NATIVE_MEMORY_GUIDE.lower() for marker in required)

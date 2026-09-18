@@ -333,6 +333,29 @@ def test_prioritize_sources_prefers_current_project_scope():
     assert ranked[0]["memory_id"] == "m-proj"
 
 
+def test_prioritize_sources_prefers_feedback_lessons_over_generic_user_memory():
+    memories = [
+        {
+            "memory_id": "m-user",
+            "source": "manual",
+            "context": "user_preference",
+            "score": 0.95,
+            "scope": "user",
+        },
+        {
+            "memory_id": "m-feedback",
+            "source": "auto_retained",
+            "context": "feedback_rule",
+            "score": 0.4,
+            "scope": "user",
+        },
+    ]
+
+    ranked = prioritize_sources(memories)
+
+    assert ranked[0]["memory_id"] == "m-feedback"
+
+
 def test_format_memory_exposes_scope_fields():
     doc = {
         "memory_id": "m1",

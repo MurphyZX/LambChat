@@ -103,6 +103,22 @@ async def test_index_frame_keeps_security_fence_without_usage_dup(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_memory_index_guides_todo_and_scope_separation(monkeypatch):
+    async def fake_index(
+        user_id: str, *, session_id: str | None = None, project_id: str | None = None
+    ) -> str:
+        return "<memory_index>x</memory_index>"
+
+    monkeypatch.setattr(pi, "_build_memory_index_for_user", fake_index)
+
+    frame = await pi.build_memory_recall_index_context("u1", session_id="s1", project_id="p1")
+
+    assert "project" in frame.lower()
+    assert "todo" in frame.lower()
+    assert "session state" in frame.lower()
+
+
+@pytest.mark.asyncio
 async def test_memory_index_middleware_attaches_index_only_to_recall_tool(monkeypatch):
     async def fake_index(
         user_id: str, *, session_id: str | None = None, project_id: str | None = None
