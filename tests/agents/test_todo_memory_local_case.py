@@ -1,8 +1,13 @@
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
-from langchain_core.messages import HumanMessage
+from deepagents import create_deep_agent
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import BaseTool
+from langgraph.checkpoint.memory import MemorySaver
 
 
 @pytest.mark.asyncio
@@ -78,6 +83,67 @@ async def test_local_two_turn_todo_memory_workflow(monkeypatch):
         ]
     )
     assert ranked[0]["memory_id"] == "project"
+
+
+class _TodoScriptModel(BaseChatModel):
+    script: list[BaseMessage]
+    cursor: int = 0
+
+    @property
+    def _llm_type(self) -> str:
+        return "todo-script"
+
+    def bind_tools(self, tools: Any, **kwargs: Any) -> "_TodoScriptModel":
+        return self
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        del messages, stop, run_manager, kwargs
+        message = self.script[min(self.cursor, len(self.script) - 1)]
+        self.cursor += 1
+        return ChatResult(generations=[ChatGeneration(message=message)])
+
+
+@pytest.mark.asyncio
+async def test_real_deep_agent_persists_todos_across_turns():
+    from src.agents.core.todo_middleware import create_todo_middleware
+
+    model = _TodoScriptModel(
+        script=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "write_todos",
+                        "args": {
+                            "todos": [
+                                {"content": "Inspect project", "status": "in_progress"},
+                                {"content": "Run tests", "status": "pending"},
+                            ]
+                        },
+                        "id": "todo-call-1",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="The plan is recorded."),
+        ]
+    )
+    agent = create_deep_agent(
+        model=model,
+        tools=[],
+        middleware=[create_todo_middleware()],
+        checkpointer=MemorySaver(),
+    )
+    config = {"configurable": {"thread_id": "todo-local-session"}}
+
+    first = await agent.ainvoke({"messages": [HumanMessage(content="Plan this project")]}, config)
+    second = await agent.ainvoke({"messages": [HumanMessage(content="Continue")]}, config)
+
+    assert first["todos"] == [
+        {"content": "Inspect project", "status": "in_progress"},
+        {"content": "Run tests", "status": "pending"},
+    ]
+    assert second["todos"] == first["todos"]
 
 
 async def _project_id(session_id: str | None) -> str:
