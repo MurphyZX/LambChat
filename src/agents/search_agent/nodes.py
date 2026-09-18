@@ -344,6 +344,7 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
             MemoryRecallIndexMiddleware(
                 user_id=context.user_id,
                 session_id=str(state.get("session_id") or "") or None,
+                active_goal=active_goal,
             )
         )
     if sandbox_backend:

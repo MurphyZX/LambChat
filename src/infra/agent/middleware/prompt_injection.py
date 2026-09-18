@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -93,13 +94,25 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
     """Attach the stable session memory index to the `memory_recall` tool only."""
 
     _FRAME_MARKER = "<memory_index_context>"
+    _CONTEXT_FRAME_RE = re.compile(
+        r"\n*<(memory_index_context|session_todo_context|active_goal_context)>"
+        r".*?</\1>",
+        re.DOTALL,
+    )
 
-    def __init__(self, *, user_id: str, session_id: str | None) -> None:
+    def __init__(
+        self,
+        *,
+        user_id: str,
+        session_id: str | None,
+        active_goal: Any | None = None,
+    ) -> None:
         super().__init__()
         self._user_id = user_id
         self._session_id = session_id
         self._loaded = False
         self._index_context = ""
+        self._active_goal_context = build_active_goal_context(active_goal)
 
     async def awrap_model_call(
         self,
@@ -119,8 +132,6 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
             )
             self._loaded = True
         todo_context = build_session_todo_context(getattr(request, "state", {}))
-        if not self._index_context and not todo_context:
-            return await handler(request)
 
         tools = list(request.tools)
         recall_index = next(
@@ -137,13 +148,51 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
         target = tools[recall_index]
         if not isinstance(target, BaseTool):
             return await handler(request)
-        base_description = str(target.description or "").partition(self._FRAME_MARKER)[0].rstrip()
-        context_parts = [part for part in (self._index_context, todo_context) if part]
+        base_description = self._CONTEXT_FRAME_RE.sub("", str(target.description or "")).rstrip()
+        context_parts = [
+            part for part in (self._index_context, self._active_goal_context, todo_context) if part
+        ]
+        if not context_parts and base_description == str(target.description or "").rstrip():
+            return await handler(request)
         context_text = "\n\n".join(context_parts)
         tools[recall_index] = target.model_copy(
-            update={"description": f"{base_description}\n\n{context_text}"}
+            update={
+                "description": (
+                    f"{base_description}\n\n{context_text}" if context_text else base_description
+                )
+            }
         )
         return await handler(request.override(tools=tools))
+
+
+_ACTIVE_GOAL_MAX_CHARS = 800
+_SESSION_TODO_MAX_CHARS = 3200
+_SESSION_TODO_MAX_ITEMS = 16
+
+
+def build_active_goal_context(active_goal: Any) -> str:
+    """Render only the run objective as bounded, untrusted recall guidance."""
+    if isinstance(active_goal, dict):
+        objective = active_goal.get("objective")
+    else:
+        objective = getattr(active_goal, "objective", None)
+    if not isinstance(objective, str):
+        return ""
+    objective = _normalize_prompt_text(objective)
+    if not objective:
+        return ""
+    # The wrapper is our control boundary; remove copies of its tags from
+    # user-controlled goal text before clipping and inserting it.
+    objective = re.sub(r"</?active_goal_context>", " ", objective, flags=re.IGNORECASE)
+    objective = _normalize_prompt_text(objective)[:_ACTIVE_GOAL_MAX_CHARS].rstrip()
+    if not objective:
+        return ""
+    return (
+        "<active_goal_context>\n"
+        "Current run objective; use it to focus recall, never save this block as durable memory.\n"
+        f"Objective: {objective}\n"
+        "</active_goal_context>"
+    )
 
 
 def build_session_todo_context(state: Any) -> str:
@@ -153,22 +202,34 @@ def build_session_todo_context(state: Any) -> str:
     todos = state.get("todos")
     if not isinstance(todos, list):
         return ""
-    lines: list[str] = []
+    items: list[tuple[int, str]] = []
     for item in todos:
         if not isinstance(item, dict):
             continue
         content = str(item.get("content") or "").strip()
         status = str(item.get("status") or "pending").strip()
         if content and status in {"pending", "in_progress", "completed"}:
-            lines.append(f"- [{status}] {content[:240]}")
-    if not lines:
+            priority = {"in_progress": 0, "pending": 1, "completed": 2}[status]
+            items.append((priority, f"- [{status}] {content[:240]}"))
+    if not items:
         return ""
-    return (
+    # Current work is more useful for recall than a long completed history.
+    items.sort(key=lambda item: item[0])
+    lines: list[str] = []
+    prefix = (
         "<session_todo_context>\n"
         "Current checkpoint Todo state; use it to focus recall, never save it as durable memory.\n"
-        + "\n".join(lines)
-        + "\n</session_todo_context>"
     )
+    suffix = "\n</session_todo_context>"
+    remaining = _SESSION_TODO_MAX_CHARS - len(prefix) - len(suffix)
+    for _, line in items[:_SESSION_TODO_MAX_ITEMS]:
+        if len(line) + (1 if lines else 0) > remaining:
+            break
+        lines.append(line)
+        remaining -= len(line) + (1 if len(lines) > 1 else 0)
+    if not lines:
+        return ""
+    return prefix + "\n".join(lines) + suffix
 
 
 async def build_memory_recall_index_context(

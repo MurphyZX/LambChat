@@ -308,6 +308,7 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
             MemoryRecallIndexMiddleware(
                 user_id=context.user_id,
                 session_id=str(state.get("session_id") or "") or None,
+                active_goal=active_goal,
             )
         )
     if context.deferred_manager is not None:
