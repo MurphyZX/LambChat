@@ -410,6 +410,38 @@ async def test_vector_search_qdrant_hidden_hits_fall_back_to_mongo(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_vector_search_atlas_scope_filter_empty_falls_back_to_cosine(monkeypatch):
+    """An Atlas vector stage filtered empty must still scan visible embeddings."""
+    from src.infra.memory.client.native import search, vector_store
+
+    async def no_qdrant(**kw):
+        return None
+
+    monkeypatch.setattr(vector_store, "index_search", no_qdrant)
+    visible = _mem_doc("a" * 32, "visible", embedding=[1.0, 0.0])
+
+    class AtlasCollection(_FakeCollection):
+        def aggregate(self, pipeline):
+            return _FakeCursor([])  # cross-project ANN hits removed by $match
+
+    col = AtlasCollection([visible])
+
+    async def embed(_q):
+        return [1.0, 0.0]
+
+    backend = SimpleNamespace(
+        _maybe_embed=embed,
+        _collection=col,
+        _logger=SimpleNamespace(debug=lambda *a, **k: None),
+    )
+
+    out = await search.vector_search(backend, "u1", "查询", 5, None, project_id="p1")
+
+    assert [d["memory_id"] for d in out] == ["a" * 32]
+    assert col.find_queries
+
+
+@pytest.mark.asyncio
 async def test_vector_search_qdrant_none_falls_back_to_cosine(monkeypatch):
     from src.infra.memory.client.native import search, vector_store
 

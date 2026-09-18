@@ -466,7 +466,12 @@ async def vector_search(
         ]
         cursor = backend._collection.aggregate(pipeline)
         docs = await cursor.to_list(length=limit)
-        return [format_memory(doc, doc.get("score", 1.0)) for doc in docs]
+        if docs:
+            return [format_memory(doc, doc.get("score", 1.0)) for doc in docs]
+        # The Atlas stage can spend its candidate budget on vectors that the
+        # post-filter rejects (especially when scope is not pushed down). Let
+        # the bounded Python cosine scan fill visible results instead of
+        # treating the filtered stage as an authoritative empty answer.
     except Exception:
         pass
 
