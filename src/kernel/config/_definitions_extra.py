@@ -651,6 +651,7 @@ EXTRA_SETTING_DEFINITIONS: dict[str, dict] = {
         "description": "settingDesc.NATIVE_MEMORY_QUERY_CONTEXT_ENABLED",
         "default": False,
         "depends_on": "ENABLE_MEMORY",
+        "frontend_visible": True,
     },
     "NATIVE_MEMORY_QUERY_CONTEXT_TOP_K": {
         "type": SettingType.NUMBER,
@@ -659,6 +660,7 @@ EXTRA_SETTING_DEFINITIONS: dict[str, dict] = {
         "description": "settingDesc.NATIVE_MEMORY_QUERY_CONTEXT_TOP_K",
         "default": 3,
         "depends_on": "ENABLE_MEMORY",
+        "frontend_visible": True,
     },
     "NATIVE_MEMORY_QUERY_CONTEXT_MAX_CHARS": {
         "type": SettingType.NUMBER,
@@ -667,6 +669,7 @@ EXTRA_SETTING_DEFINITIONS: dict[str, dict] = {
         "description": "settingDesc.NATIVE_MEMORY_QUERY_CONTEXT_MAX_CHARS",
         "default": 1200,
         "depends_on": "ENABLE_MEMORY",
+        "frontend_visible": True,
     },
     "NATIVE_MEMORY_SELF_EVOLVE_ENABLED": {
         "type": SettingType.BOOLEAN,

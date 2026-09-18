@@ -22,6 +22,7 @@ def test_memory_query_context_defaults_match_definitions() -> None:
         assert getattr(configured, name) == value
         assert SETTING_DEFINITIONS[name]["default"] == value
         assert SETTING_DEFINITIONS[name]["depends_on"] == "ENABLE_MEMORY"
+        assert SETTING_DEFINITIONS[name]["frontend_visible"] is True
 
 
 def test_memory_embedding_dimensions_default_matches_definition() -> None:
