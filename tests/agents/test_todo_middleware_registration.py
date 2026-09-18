@@ -25,6 +25,9 @@ def test_todo_middleware_factory_exposes_write_todos() -> None:
     assert middleware.system_prompt == ""
     assert [tool.name for tool in middleware.tools] == ["write_todos"]
     assert "todos" in middleware.state_schema.__annotations__
+    assert "multi-step" in middleware.tool_description
+    assert "at most once per model turn" in middleware.tool_description
+    assert "replaces the entire list" in middleware.tool_description
 
 
 def test_memory_compaction_does_not_register_todo_middleware() -> None:
