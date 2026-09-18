@@ -255,9 +255,7 @@ async def _build_session_content(
         read_events_kwargs["max_events"] = event_limit + 1
     if partial_run_ids:
         read_events_kwargs["run_ids"] = partial_run_ids
-    snapshot = await dual_writer.read_session_events_snapshot(
-        session.id, **read_events_kwargs
-    )
+    snapshot = await dual_writer.read_session_events_snapshot(session.id, **read_events_kwargs)
     events = snapshot.events
     events_limited = event_limit is not None and (
         snapshot.events_truncated or len(events) > event_limit
