@@ -121,6 +121,21 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
         request: ModelRequest[ContextT],
         handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
     ) -> ModelResponse[ResponseT]:
+        tools = list(request.tools)
+        recall_index = next(
+            (
+                index
+                for index, tool in enumerate(tools)
+                if getattr(tool, "name", "") == "memory_recall"
+            ),
+            None,
+        )
+        if recall_index is None:
+            return await handler(request)
+        target = tools[recall_index]
+        if not isinstance(target, BaseTool):
+            return await handler(request)
+
         if not self._loaded:
             # 项目归属在会话首构建时解析一次并随快照固化：会话内归属不变，
             # 前缀字节保持稳定（解析本身也受 2s 硬超时保护）
@@ -135,21 +150,6 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
             self._loaded = True
         todo_context = build_session_todo_context(getattr(request, "state", {}))
 
-        tools = list(request.tools)
-        recall_index = next(
-            (
-                index
-                for index, tool in enumerate(tools)
-                if getattr(tool, "name", "") == "memory_recall"
-            ),
-            None,
-        )
-        if recall_index is None:
-            return await handler(request)
-
-        target = tools[recall_index]
-        if not isinstance(target, BaseTool):
-            return await handler(request)
         base_description = self._CONTEXT_FRAME_RE.sub("", str(target.description or "")).rstrip()
         context_parts = [
             part for part in (self._index_context, self._active_goal_context, todo_context) if part

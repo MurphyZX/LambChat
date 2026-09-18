@@ -167,6 +167,23 @@ async def test_memory_index_middleware_attaches_index_only_to_recall_tool(monkey
 
 
 @pytest.mark.asyncio
+async def test_memory_index_skips_build_when_recall_tool_is_unavailable(monkeypatch):
+    async def unexpected_index(*args, **kwargs):
+        raise AssertionError("memory index must not build without memory_recall")
+
+    monkeypatch.setattr(pi, "build_memory_recall_index_context", unexpected_index)
+    middleware = pi.MemoryRecallIndexMiddleware(user_id="u1", session_id="s1")
+    request = type("Request", (), {"tools": [_tool("other", "Other")], "state": {}})()
+
+    async def handler(updated):
+        return updated
+
+    result = await middleware.awrap_model_call(request, handler)
+
+    assert result is request
+
+
+@pytest.mark.asyncio
 async def test_memory_index_middleware_is_stable_for_same_session(monkeypatch):
     calls = 0
 
