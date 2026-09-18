@@ -343,7 +343,10 @@ async def keyword_fallback(
     except TypeError:
         cursor = collection.find(base)
     cursor = cursor.sort("updated_at", -1).limit(limit)
-    return await cursor.to_list(length=limit)
+    docs = await cursor.to_list(length=limit)
+    for doc in docs:
+        doc["score"] = _keyword_match_score(query, doc)
+    return docs
 
 
 async def vector_search(
@@ -495,7 +498,34 @@ def _field_overlap_score(query_terms: set[str], text: str) -> float:
     overlap = len(query_terms & field_terms)
     coverage = overlap / max(len(query_terms), 1)
     density = overlap / max(len(field_terms), 1)
-    return coverage * 0.7 + density * 0.3
+    # Query coverage is the gate: matching one frequent word in a six-word
+    # query must not look relevant merely because the candidate field is short.
+    return coverage * (0.7 + density * 0.3)
+
+
+def _keyword_match_score(query: str, doc: dict[str, Any]) -> float:
+    """Score a Mongo regex fallback using the strongest matching field.
+
+    Mongo's ``$text`` metadata score is unavailable in the regex fallback. A
+    bounded lexical score keeps exact tag/title matches useful while ensuring
+    a single common word cannot pass a multi-term query's relevance threshold.
+    """
+    query_terms = _query_terms(query)
+    if not query_terms:
+        return 0.0
+    raw_tags = doc.get("tags") or []
+    tags_text = (
+        " ".join(str(tag) for tag in raw_tags) if isinstance(raw_tags, list) else str(raw_tags)
+    )
+    return max(
+        (
+            _field_overlap_score(query_terms, str(doc.get("title", ""))),
+            _field_overlap_score(query_terms, str(doc.get("summary", ""))),
+            _field_overlap_score(query_terms, str(doc.get("content", ""))),
+            _field_overlap_score(query_terms, tags_text),
+        ),
+        default=0.0,
+    )
 
 
 def local_rerank(query: str, candidates: list[dict], max_results: int) -> list[dict]:

@@ -137,3 +137,55 @@ async def test_local_mongo_keyword_fallback_matches_memory_tags(local_collection
     )
 
     assert [doc["memory_id"] for doc in docs] == ["correction"]
+
+
+@pytest.mark.parametrize("enable_rerank", [False, True])
+@pytest.mark.parametrize("query", ["kubernetes", "发布前检查预发布环境"])
+async def test_local_mongo_final_recall_keeps_keyword_hits(
+    local_collection, monkeypatch, query, enable_rerank
+):
+    """No text index or embedding: the final recall must still deliver a real match."""
+    from src.infra.memory.client.native.backend import NativeMemoryBackend
+
+    monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
+    monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RERANK_MODEL", "")
+    await local_collection.update_one(
+        {"memory_id": "correction"},
+        {"$set": {"content": "发布前检查预发布环境", "summary": "发布流程要求"}},
+    )
+    # Same tag in another project/user must not enter the delivered result or access stats.
+    await local_collection.update_one(
+        {"memory_id": "other-project"}, {"$set": {"tags": ["kubernetes"]}}
+    )
+    outsider = {**_documents()[2], "user_id": "another-user", "memory_id": "outsider"}
+    await local_collection.insert_one(outsider)
+    backend = NativeMemoryBackend()
+    backend._collection = local_collection
+
+    result = await search.recall_memories(
+        backend, "local-case-user", query, project_id="billing", enable_rerank=enable_rerank
+    )
+
+    assert [m["memory_id"] for m in result["memories"]] == ["correction"]
+    memory = result["memories"][0]
+    assert memory["text"] == "发布前检查预发布环境"
+    assert memory["text_complete"] is True
+    assert 0.3 <= memory["score"] <= 1.0
+    saved = await local_collection.find_one({"memory_id": "correction"})
+    assert saved["access_count"] == 1
+    assert await local_collection.count_documents({"access_count": {"$gt": 0}}) == 1
+
+
+async def test_local_mongo_final_recall_rejects_weak_keyword_match(local_collection, monkeypatch):
+    from src.infra.memory.client.native.backend import NativeMemoryBackend
+
+    monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
+    monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RERANK_MODEL", "")
+    backend = NativeMemoryBackend()
+    backend._collection = local_collection
+    # One common word must not make unrelated content pass a relevance threshold.
+    result = await backend.recall(
+        "local-case-user", "deployment cafeteria menu allergy opening hours", project_id="billing"
+    )
+    assert result["memories"] == []
+    assert await local_collection.count_documents({"access_count": {"$gt": 0}}) == 0

@@ -99,6 +99,19 @@ def test_local_rerank_uses_memory_tags_when_body_does_not_match():
     assert [item["memory_id"] for item in ranked] == ["tag-only", "body-only"]
 
 
+def test_keyword_fallback_score_requires_query_coverage():
+    from src.infra.memory.client.native.search import _keyword_match_score
+
+    assert _keyword_match_score("kubernetes", {"tags": ["kubernetes"]}) == 1.0
+    assert (
+        _keyword_match_score(
+            "deployment cafeteria menu allergy opening hours",
+            {"content": "deployment uses staging"},
+        )
+        < 0.3
+    )
+
+
 @pytest.mark.asyncio
 async def test_recall_memories_uses_rerank_model_when_enabled(monkeypatch):
     from src.infra.memory.client.native import search as search_module
