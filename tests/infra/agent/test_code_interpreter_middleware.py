@@ -322,6 +322,20 @@ def test_resolve_snapshot_key_is_none_without_stable_secret() -> None:
     assert _resolve_snapshot_key(explicit="", jwt_secret="") is None
 
 
+def test_generated_jwt_secret_is_not_treated_as_stable(monkeypatch) -> None:
+    from src.infra.agent.middleware import code_interpreter as ci
+
+    monkeypatch.setattr(ci.settings, "_jwt_secret_key_generated", True, raising=False)
+    assert ci._jwt_secret_is_explicit() is False
+
+
+def test_explicit_jwt_secret_is_treated_as_stable(monkeypatch) -> None:
+    from src.infra.agent.middleware import code_interpreter as ci
+
+    monkeypatch.setattr(ci.settings, "_jwt_secret_key_generated", False, raising=False)
+    assert ci._jwt_secret_is_explicit() is True
+
+
 async def test_routing_appends_ptc_bridge_guidance_when_enabled() -> None:
     from src.infra.agent.middleware.code_interpreter import CodeInterpreterRoutingMiddleware
 

@@ -82,7 +82,7 @@ def _resolve_snapshot_key(*, explicit: str, jwt_secret: str | None) -> str | Non
 
 def _jwt_secret_is_explicit() -> bool:
     """Whether JWT_SECRET_KEY was provided via env/config rather than randomly generated."""
-    return "JWT_SECRET_KEY" in settings.model_fields_set
+    return not getattr(settings, "_jwt_secret_key_generated", False)
 
 
 def _build_ptc_frame(ptc_tools: Sequence[str]) -> str:
