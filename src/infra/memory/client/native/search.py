@@ -118,6 +118,7 @@ def build_keyword_clauses(query: str) -> list[dict[str, Any]]:
         clauses.append({"content": {"$regex": escaped, "$options": "i"}})
         clauses.append({"summary": {"$regex": escaped, "$options": "i"}})
         clauses.append({"title": {"$regex": escaped, "$options": "i"}})
+        clauses.append({"tags": {"$regex": escaped, "$options": "i"}})
     return clauses
 
 
@@ -133,6 +134,7 @@ def format_memory(doc: dict, score: float, now: datetime | None = None) -> dict:
         "preview": doc.get("content", ""),
         "summary": doc["summary"],
         "title": doc.get("title", ""),
+        "tags": doc.get("tags") or [],
         "type": doc["memory_type"],
         "scope": doc.get("scope") or "user",
         "project_id": doc.get("project_id"),
@@ -222,6 +224,7 @@ async def recent_context_fallback(
                 "title": 1,
                 "memory_type": 1,
                 "source": 1,
+                "tags": 1,
                 "scope": 1,
                 "project_id": 1,
                 "context": 1,
@@ -314,6 +317,7 @@ async def keyword_fallback(
         "title": 1,
         "memory_type": 1,
         "source": 1,
+        "tags": 1,
         "scope": 1,
         "project_id": 1,
         "context": 1,
@@ -436,6 +440,7 @@ async def vector_search(
         "summary": 1,
         "memory_type": 1,
         "source": 1,
+        "tags": 1,
         "scope": 1,
         "project_id": 1,
         "context": 1,

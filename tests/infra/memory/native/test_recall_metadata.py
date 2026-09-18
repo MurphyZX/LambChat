@@ -21,6 +21,7 @@ def _documents():
             "content": content,
             "summary": content,
             "title": "deployment",
+            "tags": ["deployment", "kubernetes"] if mid == "correction" else ["deployment"],
             "memory_type": "user",
             "source": "manual",
             "scope": scope,
@@ -123,3 +124,16 @@ async def test_local_mongo_recall_preserves_project_corrections(
     assert ranked[0]["scope"] == "project"
     assert ranked[0]["project_id"] == "billing"
     assert ranked[0]["context"] == "feedback_rule"
+
+
+async def test_local_mongo_keyword_fallback_matches_memory_tags(local_collection):
+    docs = await search.keyword_fallback(
+        local_collection,
+        "local-case-user",
+        "kubernetes",
+        10,
+        None,
+        project_id="billing",
+    )
+
+    assert [doc["memory_id"] for doc in docs] == ["correction"]

@@ -22,6 +22,12 @@ def test_build_keyword_clauses_supports_english_queries():
     assert any("summary" in clause for clause in clauses)
 
 
+def test_build_keyword_clauses_searches_memory_tags():
+    clauses = build_keyword_clauses("kubernetes")
+
+    assert any("tags" in clause for clause in clauses)
+
+
 def test_format_memory_sets_staleness_warning_for_old_memories():
     doc = {
         "memory_id": "m1",
