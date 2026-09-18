@@ -250,7 +250,10 @@ async def recent_context_fallback(
         .limit(limit)
     )
     docs = await cursor.to_list(length=limit)
-    return [format_memory(doc, 0.0) for doc in docs]
+    # This is a recency-based overview fallback, not a semantic match. Give
+    # selected documents a neutral passing score so the normal relevance gate
+    # does not erase the overview that explicitly requested them.
+    return [format_memory(doc, 1.0) for doc in docs]
 
 
 async def text_search(
@@ -745,8 +748,12 @@ async def recall_memories(
     memories = rrf_merge(text_results, vector_results, max_results * 2)
 
     if not memories and is_context_overview_query(query):
+        # Overview fallback is ranked by scope/context after retrieval. Keep a
+        # useful candidate pool even for max_results=1 so a recent generic
+        # memory cannot crowd out a more valuable feedback/project lesson.
+        overview_limit = max(max_results * 2, 10)
         memories = await recent_context_fallback(
-            backend._collection, user_id, max_results * 2, memory_types, context_filter, project_id
+            backend._collection, user_id, overview_limit, memory_types, context_filter, project_id
         )
 
     # rerank 全池排序（不提前截断），让 min_score 过滤后仍有足额候选回填 top-N

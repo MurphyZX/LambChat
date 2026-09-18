@@ -172,6 +172,42 @@ async def test_text_search_without_context_filter_unchanged():
 
 
 @pytest.mark.asyncio
+async def test_recent_context_fallback_assigns_passing_overview_score():
+    from src.infra.memory.client.native.search import recent_context_fallback
+
+    now = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+    class FakeCursor:
+        def sort(self, *_args, **_kwargs):
+            return self
+
+        def limit(self, *_args, **_kwargs):
+            return self
+
+        async def to_list(self, length):
+            return [
+                {
+                    "memory_id": "overview",
+                    "user_id": "u1",
+                    "content": "A durable preference",
+                    "summary": "A durable preference",
+                    "title": "Preference",
+                    "memory_type": "user",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            ]
+
+    class FakeCollection:
+        def find(self, *_args, **_kwargs):
+            return FakeCursor()
+
+    memories = await recent_context_fallback(FakeCollection(), "u1", 5, None)
+
+    assert memories[0]["score"] >= 0.3
+
+
+@pytest.mark.asyncio
 async def test_recall_memories_threads_context_filter(monkeypatch):
     from src.infra.memory.client.native import search as search_module
     from src.infra.memory.client.native.search import recall_memories

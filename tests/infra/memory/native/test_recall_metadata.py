@@ -139,6 +139,27 @@ async def test_local_mongo_keyword_fallback_matches_memory_tags(local_collection
     assert [doc["memory_id"] for doc in docs] == ["correction"]
 
 
+async def test_local_mongo_overview_recall_delivers_recent_context(local_collection, monkeypatch):
+    from src.infra.memory.client.native.backend import NativeMemoryBackend
+
+    monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
+    backend = NativeMemoryBackend()
+    backend._collection = local_collection
+
+    result = await search.recall_memories(
+        backend,
+        "local-case-user",
+        "memory overview",
+        max_results=1,
+        project_id="billing",
+        enable_rerank=False,
+    )
+
+    assert result["memories"]
+    assert result["memories"][0]["memory_id"] == "correction"
+    assert result["memories"][0]["score"] >= 0.3
+
+
 @pytest.mark.parametrize("enable_rerank", [False, True])
 @pytest.mark.parametrize("query", ["kubernetes", "发布前检查预发布环境"])
 async def test_local_mongo_final_recall_keeps_keyword_hits(
