@@ -15,6 +15,7 @@ from langchain_core.runnables import RunnableConfig
 
 from src.agents.core.base import get_presenter
 from src.agents.core.node_utils import (
+    append_memory_recall_middleware,
     build_human_message,
     build_nested_graph_configurable,
     emit_token_usage,
@@ -534,14 +535,9 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                 from src.infra.agent.middleware import SandboxWorkspaceMiddleware
 
                 mw.append(SandboxWorkspaceMiddleware(policy_text=subagent_runtime_section))
-        if settings.ENABLE_MEMORY and context.user_id:
-            mw.append(
-                MemoryRecallIndexMiddleware(
-                    user_id=context.user_id,
-                    session_id=str(session_id or "") or None,
-                    active_goal=active_goal,
-                )
-            )
+        append_memory_recall_middleware(
+            mw, settings.ENABLE_MEMORY, context.user_id, session_id, active_goal
+        )
         if context.deferred_manager is not None:
             from src.infra.agent.middleware import ToolSearchMiddleware
 

@@ -29,6 +29,27 @@ IMAGE_DATA_URL_SPOOL_MAX_MEMORY_BYTES = 256 * 1024
 IMAGE_DATA_URL_ENCODE_CHUNK_BYTES = 192 * 1024
 
 
+def append_memory_recall_middleware(
+    middleware: list[Any],
+    enabled: bool,
+    user_id: str | None,
+    session_id: Any,
+    active_goal: Any,
+) -> None:
+    """Give an Agent or sub-agent the same scoped recall context."""
+    if not enabled or not user_id:
+        return
+    from src.infra.agent.middleware import MemoryRecallIndexMiddleware
+
+    middleware.append(
+        MemoryRecallIndexMiddleware(
+            user_id=user_id,
+            session_id=str(session_id or "") or None,
+            active_goal=active_goal,
+        )
+    )
+
+
 def get_image_download_max_bytes() -> int:
     """Return the configured image upload limit in bytes."""
     try:
