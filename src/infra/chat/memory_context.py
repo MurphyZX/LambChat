@@ -30,7 +30,8 @@ _HEADER = (
 _FOOTER = "\n</memory_context>"
 _FRAME_TAG_RE = re.compile(
     r"</?(?:memory_context|memory_index|memory_index_context|"
-    r"session_todo_context|active_goal_context)(?:\s[^>]*)?>",
+    r"turn_context|session_todo_context|active_goal_context|active_goal|"
+    r"env_var_keys_context|sandbox_workspace_context)(?:\s[^>]*)?>",
     re.IGNORECASE,
 )
 
