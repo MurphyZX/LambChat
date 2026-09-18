@@ -372,7 +372,10 @@ async def test_vector_search_qdrant_hidden_hits_fall_back_to_mongo(monkeypatch):
     from src.infra.memory.client.native import search, vector_store
     from src.infra.memory.client.native.vector_store import VectorHit
 
+    captured: dict = {}
+
     async def fake_index_search(**kw):
+        captured.update(kw)
         return [VectorHit(memory_id="hidden" * 6 + "ab", score=0.99)]
 
     monkeypatch.setattr(vector_store, "index_search", fake_index_search)
@@ -407,6 +410,7 @@ async def test_vector_search_qdrant_hidden_hits_fall_back_to_mongo(monkeypatch):
 
     assert [d["memory_id"] for d in out] == ["a" * 32]
     assert col.find_count >= 2
+    assert captured["limit"] == 20  # 4x ANN overfetch for project-scope hydration
 
 
 @pytest.mark.asyncio

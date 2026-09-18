@@ -24,6 +24,8 @@ from src.kernel.schemas.conversation_history import ConversationSourceRef
 
 NATIVE_MEMORY_RECALL_MAX_RESULTS = 20
 NATIVE_MEMORY_RECALL_QUERY_MAX_CHARS = 2_000
+_VECTOR_SCOPE_OVERFETCH_FACTOR = 4
+_VECTOR_MAX_CANDIDATES = 100
 logger = get_logger(__name__)
 
 
@@ -408,11 +410,19 @@ async def vector_search(
     qdrant_hits = None
     if not context_prefetch_failed:
         # scope 过滤不在 Qdrant 下推（旧 point 缺 scope 字段的语义不可靠），
-        # 由下方 Mongo hydration 查询做权威过滤；limit 已放大缓解召回不足
+        # 由下方 Mongo hydration 查询做权威过滤；项目检索多取几倍 ANN 候选，
+        # 避免其他项目的近邻占满 limit 后把当前项目的可见结果挤掉。
+        ann_limit = min(
+            max(
+                limit * (_VECTOR_SCOPE_OVERFETCH_FACTOR if project_id else 1),
+                limit,
+            ),
+            _VECTOR_MAX_CANDIDATES,
+        )
         qdrant_hits = await index_search(
             vector=query_vec,
             user_id=user_id,
-            limit=limit,
+            limit=ann_limit,
             memory_types=memory_types,
             context_values=context_values,
         )
@@ -431,10 +441,12 @@ async def vector_search(
             hydration_query["context"] = build_context_clause(context_filter)
         hydration_query.update(build_scope_clause(project_id))
         cursor = backend._collection.find(hydration_query, {"embedding": 0})
-        docs = await cursor.to_list(length=limit)
+        docs = await cursor.to_list(length=ann_limit)
         if docs:
             docs.sort(key=lambda d: -order.get(d.get("memory_id"), 0.0))
-            return [format_memory(doc, order.get(doc.get("memory_id"), 1.0)) for doc in docs]
+            return [
+                format_memory(doc, order.get(doc.get("memory_id"), 1.0)) for doc in docs[:limit]
+            ]
         # Qdrant does not yet enforce the full scope clause (legacy points may
         # lack scope payloads). If every ANN hit is rejected by authoritative
         # Mongo hydration, continue through the Mongo vector/cosine fallback so
@@ -452,22 +464,29 @@ async def vector_search(
     base.update(build_scope_clause(project_id))
 
     try:
+        ann_limit = min(
+            max(
+                limit * (_VECTOR_SCOPE_OVERFETCH_FACTOR if project_id else 1),
+                limit,
+            ),
+            _VECTOR_MAX_CANDIDATES,
+        )
         pipeline = [
             {
                 "$vectorSearch": {
                     "index": "native_mem_vector_idx",
                     "path": "embedding",
                     "queryVector": query_vec,
-                    "numCandidates": limit * 5,
-                    "limit": limit,
+                    "numCandidates": ann_limit * 5,
+                    "limit": ann_limit,
                 }
             },
             {"$match": base},
         ]
         cursor = backend._collection.aggregate(pipeline)
-        docs = await cursor.to_list(length=limit)
+        docs = await cursor.to_list(length=ann_limit)
         if docs:
-            return [format_memory(doc, doc.get("score", 1.0)) for doc in docs]
+            return [format_memory(doc, doc.get("score", 1.0)) for doc in docs[:limit]]
         # The Atlas stage can spend its candidate budget on vectors that the
         # post-filter rejects (especially when scope is not pushed down). Let
         # the bounded Python cosine scan fill visible results instead of
