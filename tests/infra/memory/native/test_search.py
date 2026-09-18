@@ -5,6 +5,7 @@ import pytest
 from src.infra.memory.client.native.search import (
     build_keyword_clauses,
     format_memory,
+    prioritize_sources,
 )
 
 
@@ -47,6 +48,30 @@ def test_format_memory_sets_staleness_warning_for_old_memories():
 
     assert memory["memory_id"] == "m1"
     assert "staleness_warning" in memory
+
+
+def test_prioritize_sources_prefers_newer_equivalent_memory():
+    base = {
+        "user_id": "u1",
+        "content": "The deployment policy is staging first.",
+        "summary": "Deployment policy",
+        "title": "Deployment",
+        "memory_type": "user",
+        "source": "manual",
+        "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+    }
+    older = format_memory(
+        {**base, "memory_id": "older", "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc)},
+        score=0.8,
+    )
+    newer = format_memory(
+        {**base, "memory_id": "newer", "updated_at": datetime(2026, 2, 1, tzinfo=timezone.utc)},
+        score=0.8,
+    )
+
+    ranked = prioritize_sources([older, newer])
+
+    assert [memory["memory_id"] for memory in ranked] == ["newer", "older"]
 
 
 @pytest.mark.asyncio

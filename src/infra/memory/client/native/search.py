@@ -146,6 +146,9 @@ def format_memory(doc: dict, score: float, now: datetime | None = None) -> dict:
         "created_at": doc["created_at"].isoformat()
         if isinstance(doc["created_at"], datetime)
         else str(doc["created_at"]),
+        "updated_at": doc["updated_at"].isoformat()
+        if isinstance(doc["updated_at"], datetime)
+        else str(doc["updated_at"]),
         "score": score,
     }
     if staleness_days > staleness_days_cfg:
@@ -169,18 +172,26 @@ def prioritize_sources(memories: list[dict]) -> list[dict]:
         "reference": 1,
     }
 
-    def ranking_key(memory: dict) -> tuple[int, int, int, float, str]:
+    def ranking_key(memory: dict) -> tuple[int, int, int, float, float]:
         context = str(memory.get("context") or "")
         # Project context is the strongest boundary. Within a boundary,
         # explicit feedback rules outrank generic preferences because they
         # encode corrections learned from earlier interactions.
         lesson_rank = 0 if context.startswith("feedback") else 1
+        updated_at = memory.get("updated_at")
+        try:
+            if isinstance(updated_at, datetime):
+                updated_timestamp = updated_at.timestamp()
+            else:
+                updated_timestamp = datetime.fromisoformat(str(updated_at)).timestamp()
+        except (TypeError, ValueError, OverflowError):
+            updated_timestamp = 0.0
         return (
             scope_order.get(str(memory.get("scope") or "user"), 1),
             lesson_rank,
             source_order.get(str(memory.get("source", "")), 50),
             -float(memory.get("score", 0.0) or 0.0),
-            str(memory.get("updated_at") or ""),
+            -updated_timestamp,
         )
 
     return sorted(memories, key=ranking_key)
