@@ -20,6 +20,26 @@ def test_empty_memories_returns_empty() -> None:
     assert mc.build_memory_context_block([], 1200) == ""
 
 
+def test_memory_query_includes_active_goal_for_goal_driven_turns() -> None:
+    query = mc.build_memory_query(
+        "继续处理",
+        {"objective": "迁移 billing 服务并验证回滚流程"},
+    )
+
+    assert query == "继续处理\nGoal: 迁移 billing 服务并验证回滚流程"
+
+
+def test_memory_query_keeps_short_input_bounded_and_deduplicated() -> None:
+    query = mc.build_memory_query(
+        "  deploy  billing  ",
+        {"objective": " deploy billing "},
+        max_chars=32,
+    )
+
+    assert query == "deploy billing"
+    assert len(query) <= 32
+
+
 def test_block_renders_type_date_title_and_summary() -> None:
     block = mc.build_memory_context_block(
         [_memory("Preferred stack", "Use Python 3.12", memory_type="preference")], 1200

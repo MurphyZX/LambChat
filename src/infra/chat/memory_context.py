@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 MEMORY_CONTEXT_TIMEOUT_SECONDS = 1.5
 MIN_QUERY_CHARS = 4
+MEMORY_QUERY_MAX_CHARS = 1_200
 QUERY_CONTEXT_MAX_TOP_K = 10
 QUERY_CONTEXT_MAX_CHARS = 4_000
 
@@ -46,6 +47,29 @@ def _clean_field(value: Any) -> str:
 
 def _render(lines: list[str]) -> str:
     return _HEADER + "\n".join(lines) + _FOOTER
+
+
+def build_memory_query(
+    raw_query: str,
+    active_goal: Any | None = None,
+    *,
+    max_chars: int = MEMORY_QUERY_MAX_CHARS,
+) -> str:
+    """Build a bounded recall query from the turn and its active objective.
+
+    Short follow-ups such as ``继续处理`` carry little retrieval signal on
+    their own.  The active goal supplies that missing signal while remaining a
+    search hint only; it is never written back to the user message here.
+    """
+    query = " ".join(str(raw_query or "").split())
+    if isinstance(active_goal, dict):
+        objective = active_goal.get("objective")
+    else:
+        objective = getattr(active_goal, "objective", None)
+    objective = " ".join(str(objective or "").split())
+    if objective and objective not in query:
+        query = f"{query}\nGoal: {objective}" if query else f"Goal: {objective}"
+    return query[: max(0, int(max_chars))].rstrip()
 
 
 def _bounded_int(value: Any, *, default: int, minimum: int, maximum: int) -> int:
@@ -103,6 +127,7 @@ async def append_memory_context(
     user_id: str,
     raw_query: str | None = None,
     *,
+    active_goal: Any | None = None,
     project_id: str | None = None,
     session_id: str | None = None,
 ) -> str:
@@ -111,7 +136,7 @@ async def append_memory_context(
         settings, "NATIVE_MEMORY_QUERY_CONTEXT_ENABLED", False
     ):
         return message
-    query = (raw_query or message).strip()
+    query = build_memory_query(raw_query or message, active_goal)
     if len(query) < MIN_QUERY_CHARS:
         return message
 

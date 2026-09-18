@@ -33,7 +33,7 @@ from src.api.routes.chat_stream_terminal import (
 )
 from src.api.routes.chat_validation import validate_team_agent_request
 from src.api.routes.session import verify_session_ownership
-from src.infra.chat.memory_context import append_memory_context
+from src.infra.chat.memory_context import append_memory_context, build_memory_query
 from src.infra.chat.session_baseline import (
     _time_report_due,
     _turn_context_signature,
@@ -383,7 +383,7 @@ async def chat_stream(
     formatted_message = await append_memory_context(
         formatted_message,
         user.sub,
-        raw_query=request.message,
+        raw_query=build_memory_query(request.message, active_goal),
         project_id=memory_project_id,
         session_id=session_id,
     )
