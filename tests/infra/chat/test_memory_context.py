@@ -193,3 +193,31 @@ async def test_append_resolves_session_project_when_request_has_no_project(
 
     assert "Project rule" in result
     assert captured["project_id"] == "project-1"
+
+
+@pytest.mark.asyncio
+async def test_append_clamps_admin_limits_before_recall(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mc.settings, "ENABLE_MEMORY", True)
+    monkeypatch.setattr(mc.settings, "NATIVE_MEMORY_QUERY_CONTEXT_ENABLED", True, raising=False)
+    monkeypatch.setattr(mc.settings, "NATIVE_MEMORY_QUERY_CONTEXT_TOP_K", 999, raising=False)
+    monkeypatch.setattr(
+        mc.settings, "NATIVE_MEMORY_QUERY_CONTEXT_MAX_CHARS", 999_999, raising=False
+    )
+    captured: dict = {}
+
+    class Backend:
+        async def recall(self, **kwargs):
+            captured.update(kwargs)
+            return {"memories": [_memory("Bounded", "Safe defaults")]}
+
+    async def backend():
+        return Backend()
+
+    monkeypatch.setattr("src.infra.memory.tools._get_backend", backend)
+    result = await mc.append_memory_context("find the bounded setting", "u1")
+
+    assert result != "find the bounded setting"
+    assert captured["max_results"] == mc.QUERY_CONTEXT_MAX_TOP_K
+    assert len(result) <= mc.QUERY_CONTEXT_MAX_CHARS + len("find the bounded setting") + 2

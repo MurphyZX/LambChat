@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 MEMORY_CONTEXT_TIMEOUT_SECONDS = 1.5
 MIN_QUERY_CHARS = 4
+QUERY_CONTEXT_MAX_TOP_K = 10
+QUERY_CONTEXT_MAX_CHARS = 4_000
 
 _HEADER = (
     "<memory_context>\n"
@@ -43,6 +45,13 @@ def _clean_field(value: Any) -> str:
 
 def _render(lines: list[str]) -> str:
     return _HEADER + "\n".join(lines) + _FOOTER
+
+
+def _bounded_int(value: Any, *, default: int, minimum: int, maximum: int) -> int:
+    try:
+        return max(minimum, min(int(value), maximum))
+    except (TypeError, ValueError):
+        return default
 
 
 def build_memory_context_block(memories: list[dict], max_chars: int) -> str:
@@ -134,10 +143,22 @@ async def _recall_and_render(
     backend = await _get_backend()
     if backend is None:
         return ""
+    max_results = _bounded_int(
+        getattr(settings, "NATIVE_MEMORY_QUERY_CONTEXT_TOP_K", 3),
+        default=3,
+        minimum=1,
+        maximum=QUERY_CONTEXT_MAX_TOP_K,
+    )
+    max_chars = _bounded_int(
+        getattr(settings, "NATIVE_MEMORY_QUERY_CONTEXT_MAX_CHARS", 1200),
+        default=1200,
+        minimum=0,
+        maximum=QUERY_CONTEXT_MAX_CHARS,
+    )
     result = await backend.recall(
         user_id=user_id,
         query=query,
-        max_results=getattr(settings, "NATIVE_MEMORY_QUERY_CONTEXT_TOP_K", 3),
+        max_results=max_results,
         touch_access=False,
         enable_rerank=False,
         project_id=project_id,
@@ -145,5 +166,5 @@ async def _recall_and_render(
     memories = result.get("memories", []) if isinstance(result, dict) else list(result or [])
     return build_memory_context_block(
         memories,
-        getattr(settings, "NATIVE_MEMORY_QUERY_CONTEXT_MAX_CHARS", 1200),
+        max_chars,
     )
