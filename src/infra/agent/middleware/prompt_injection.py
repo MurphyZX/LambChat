@@ -170,6 +170,10 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
 _ACTIVE_GOAL_MAX_CHARS = 800
 _SESSION_TODO_MAX_CHARS = 3200
 _SESSION_TODO_MAX_ITEMS = 16
+_CONTEXT_FRAME_TAG_RE = re.compile(
+    r"</?(?:memory_index_context|session_todo_context|active_goal_context)>",
+    re.IGNORECASE,
+)
 
 
 def build_active_goal_context(active_goal: Any) -> str:
@@ -185,7 +189,7 @@ def build_active_goal_context(active_goal: Any) -> str:
         return ""
     # The wrapper is our control boundary; remove copies of its tags from
     # user-controlled goal text before clipping and inserting it.
-    objective = re.sub(r"</?active_goal_context>", " ", objective, flags=re.IGNORECASE)
+    objective = _CONTEXT_FRAME_TAG_RE.sub(" ", objective)
     objective = _normalize_prompt_text(objective)[:_ACTIVE_GOAL_MAX_CHARS].rstrip()
     if not objective:
         return ""
@@ -208,7 +212,7 @@ def build_session_todo_context(state: Any) -> str:
     for item in todos:
         if not isinstance(item, dict):
             continue
-        content = str(item.get("content") or "").strip()
+        content = _CONTEXT_FRAME_TAG_RE.sub(" ", str(item.get("content") or "")).strip()
         status = str(item.get("status") or "pending").strip()
         if content and status in {"pending", "in_progress", "completed"}:
             priority = {"in_progress": 0, "pending": 1, "completed": 2}[status]
