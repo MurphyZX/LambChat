@@ -183,20 +183,26 @@ def create_code_interpreter_middleware(
         jwt_secret=settings.JWT_SECRET_KEY if _jwt_secret_is_explicit() else None,
     )
 
-    return [
+    interpreter_kwargs: dict[str, Any] = {
         # subagents=False：不装 JS task() 桥。开启时上游会往每次模型调用的
         # system message 注入约 9.8k 字符的 JS 子代理编排教程（dynamic
         # subagents），且 JS 内派发绕过父级 interrupt_on/HITL 审批；本项目的
         # 子代理统一走正常 task 工具。
+        "subagents": False,
         # ptc：只读检索工具白名单（web_search/web_fetch 等），让模型在一次
         # eval 内并发批量调用并聚合结果；白名单工具均无 interrupt_on 门控
         # 与副作用，PTC 桥绕过 HITL 的限制对它们不构成风险。
+        "ptc": ptc_allowlist,
         # snapshot_signing_key：thread 模式 REPL 快照会持久化进 checkpointer，
         # 签名后篡改的快照会被拒绝执行而非静默恢复。
-        CodeInterpreterMiddleware(
-            subagents=False,
-            ptc=ptc_allowlist,
-            snapshot_signing_key=snapshot_key,
-        ),
+        "snapshot_signing_key": snapshot_key,
+    }
+    if ptc_allowlist:
+        # PTC 聚合场景的返回体（多路搜索结果合并去重）远大于纯算术结果，
+        # 上游 4000 默认截断过紧；仅在启用白名单时放宽，仍为有界上限。
+        interpreter_kwargs["max_result_chars"] = 8000
+
+    return [
+        CodeInterpreterMiddleware(**interpreter_kwargs),
         CodeInterpreterRoutingMiddleware(sandbox_active=sandbox_active, ptc_tools=ptc_tools),
     ]

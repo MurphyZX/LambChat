@@ -219,6 +219,8 @@ def test_factory_passes_ptc_allowlist_and_snapshot_key(monkeypatch):
         "subagents": False,
         "ptc": ["web_search", "web_fetch"],
         "snapshot_signing_key": "explicit-key",
+        # PTC 聚合场景放宽结果截断上限。
+        "max_result_chars": 8000,
     }
     assert isinstance(middleware[1], ci.CodeInterpreterRoutingMiddleware)
     assert middleware[1].ptc_tools == ["web_search", "web_fetch"]
@@ -243,6 +245,8 @@ def test_factory_disables_ptc_when_allowlist_empty(monkeypatch):
 
     middleware = ci.create_code_interpreter_middleware({"enable_code_interpreter": True})
 
+    # PTC 关闭时不额外传 max_result_chars，维持上游 4000 默认。
+    assert "max_result_chars" not in middleware[0].kwargs
     assert middleware[0].kwargs["ptc"] is None
     assert middleware[1].ptc_tools == []
 
@@ -375,3 +379,5 @@ async def test_real_ptc_enablement_injects_bridged_tool_reference() -> None:
     assert "### Interpreter" in injected
     assert "tools.webSearch" in injected
     assert "Dispatching Subagents" not in injected
+    # PTC 注入只含白名单工具的 API 引用，远小于 JS 子代理编排教程（~9.8k）。
+    assert len(injected) < 4000
