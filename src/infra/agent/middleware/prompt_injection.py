@@ -171,7 +171,9 @@ _ACTIVE_GOAL_MAX_CHARS = 800
 _SESSION_TODO_MAX_CHARS = 3200
 _SESSION_TODO_MAX_ITEMS = 16
 _CONTEXT_FRAME_TAG_RE = re.compile(
-    r"</?(?:memory_index_context|session_todo_context|active_goal_context)"
+    r"</?(?:memory_context|memory_index|memory_index_context|turn_context|"
+    r"session_todo_context|active_goal_context|active_goal|env_var_keys_context|"
+    r"sandbox_workspace_context)"
     r"(?:\s[^>]*)?>",
     re.IGNORECASE,
 )
