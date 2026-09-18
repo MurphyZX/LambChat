@@ -127,6 +127,8 @@ async def _invoke_chat(
     app_base_url: str = "",
     http_request: SimpleNamespace | None = None,
     memory_append=None,
+    session_id: str | None = None,
+    project_id: str | None = None,
 ) -> _TaskManager:
     limiter = _Limiter(limiter_result)
     task_manager = _TaskManager()
@@ -153,7 +155,7 @@ async def _invoke_chat(
     if memory_append is not None:
         monkeypatch.setattr(chat, "append_memory_context", memory_append)
 
-    request = AgentRequest(message="hello")
+    request = AgentRequest(message="hello", session_id=session_id, project_id=project_id)
     await chat.chat_stream(
         request,
         http_request or _http_request(),
@@ -185,6 +187,34 @@ async def test_chat_stream_appends_memory_to_model_message_only(
     assert calls["raw_query"] == "hello"
     assert calls["project_id"] is None
     assert calls["session_id"]
+
+
+async def test_existing_session_uses_persisted_project_scope_for_memory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, Any] = {}
+
+    async def _append(message: str, user_id: str, **kwargs: Any) -> str:
+        calls.update({"message": message, "user_id": user_id, **kwargs})
+        return message
+
+    class _SessionManager:
+        async def get_session(self, _session_id: str):
+            return SimpleNamespace(metadata={})
+
+    monkeypatch.setattr(chat, "SessionManager", lambda: _SessionManager())
+    monkeypatch.setattr(chat, "verify_session_ownership", lambda *_args: None)
+
+    await _invoke_chat(
+        monkeypatch,
+        limiter_result=ConcurrencyResult.STARTED,
+        memory_append=_append,
+        session_id="existing-session",
+        project_id="untrusted-request-project",
+    )
+
+    assert calls["project_id"] is None
+    assert calls["session_id"] == "existing-session"
 
 
 async def test_chat_stream_passes_base_url_to_local_submit(

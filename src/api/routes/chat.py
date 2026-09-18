@@ -377,11 +377,14 @@ async def chat_stream(
         include_timestamp=time_due,
         last_tc_signature=(existing_metadata or {}).get("prompt_turn_context_signature"),
     )
+    # Existing sessions resolve project scope from persisted metadata; only a
+    # brand-new session may use the request's project assignment.
+    memory_project_id = request.project_id if not request.session_id else None
     formatted_message = await append_memory_context(
         formatted_message,
         user.sub,
         raw_query=request.message,
-        project_id=request.project_id,
+        project_id=memory_project_id,
         session_id=session_id,
     )
 
