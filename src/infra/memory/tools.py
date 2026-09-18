@@ -250,7 +250,14 @@ async def memory_delete(
         return await _json_dumps_result({"success": False, "error": "Memory service not available"})
 
     try:
-        result = await backend.delete(user_id, memory_id)
+        delete_scoped = getattr(backend, "delete_scoped", None)
+        if callable(delete_scoped):
+            from src.infra.memory.scope import resolve_session_project_id
+
+            project_id = await resolve_session_project_id(get_session_id_from_runtime(runtime))
+            result = await delete_scoped(user_id, memory_id, project_id=project_id)
+        else:
+            result = await backend.delete(user_id, memory_id)
         return await _json_dumps_result(result)
     except Exception as e:
         logger.error(f"[Memory] Failed to delete memory: {e}")

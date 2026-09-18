@@ -453,11 +453,41 @@ class NativeMemoryBackend(MemoryBackend):
         user_id: str,
         memory_id: str,
     ) -> dict[str, Any]:
-        existing_doc = await self._collection.find_one(
+        return await self._delete_matching_memory(
+            user_id,
+            memory_id,
             {"user_id": user_id, "memory_id": memory_id},
+        )
+
+    async def delete_scoped(
+        self,
+        user_id: str,
+        memory_id: str,
+        *,
+        project_id: Optional[str],
+    ) -> dict[str, Any]:
+        """Delete only memories visible in the current project scope."""
+        return await self._delete_matching_memory(
+            user_id,
+            memory_id,
+            {
+                "user_id": user_id,
+                "memory_id": memory_id,
+                **build_scope_clause(project_id),
+            },
+        )
+
+    async def _delete_matching_memory(
+        self,
+        user_id: str,
+        memory_id: str,
+        query: dict[str, Any],
+    ) -> dict[str, Any]:
+        existing_doc = await self._collection.find_one(
+            query,
             {"content_storage_mode": 1, "content_store_key": 1},
         )
-        result = await self._collection.delete_one({"user_id": user_id, "memory_id": memory_id})
+        result = await self._collection.delete_one(query)
         if result.deleted_count > 0:
             if existing_doc and existing_doc.get("content_storage_mode") == "store":
                 await delete_memory_content(self, user_id, existing_doc.get("content_store_key"))

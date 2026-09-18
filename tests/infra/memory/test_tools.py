@@ -496,6 +496,47 @@ async def test_memory_recall_without_session_uses_user_scope(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_memory_delete_applies_session_project_scope(monkeypatch):
+    from src.infra.memory import scope as scope_module
+    from src.infra.memory import tools as memory_tools
+
+    seen = {}
+
+    class FakeBackend:
+        async def delete_scoped(self, user_id, memory_id, *, project_id):
+            seen["args"] = (user_id, memory_id)
+            seen["project_id"] = project_id
+            return {"success": True}
+
+        async def delete(self, *_args, **_kwargs):
+            raise AssertionError("scoped deletion must be used when available")
+
+    async def fake_get_backend():
+        return FakeBackend()
+
+    async def fake_resolve(session_id):
+        seen["resolved_session"] = session_id
+        return "proj-delete"
+
+    monkeypatch.setattr(memory_tools, "_get_backend", fake_get_backend)
+    monkeypatch.setattr(scope_module, "resolve_session_project_id", fake_resolve)
+
+    result = json.loads(
+        await memory_tools.memory_delete.coroutine(
+            "memory-1",
+            runtime=_Runtime("u1", session_id="sess-delete"),
+        )
+    )
+
+    assert result == {"success": True}
+    assert seen == {
+        "args": ("u1", "memory-1"),
+        "project_id": "proj-delete",
+        "resolved_session": "sess-delete",
+    }
+
+
+@pytest.mark.asyncio
 async def test_memory_retain_degrades_project_scope_without_project_context(monkeypatch):
     """无项目会话中 agent 显式 scope='project' → 降级 user 存储，不再硬拒绝。
 
