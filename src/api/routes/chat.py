@@ -395,20 +395,17 @@ async def chat_stream(
     # 生成 run_id（不管是否排队都需要唯一 ID）
     run_id = _generate_run_id()
 
-    # base_url：生成文件 URL（reveal/产物投递）的前缀。排队执行器脱离请求上下文，
-    # 必须在入队时捕获；优先 APP_BASE_URL，回退 request.base_url
+    # Capture the base URL before queueing so artifact links survive worker dispatch.
     base_url = getattr(settings, "APP_BASE_URL", "").rstrip("/")
     if not base_url:
         base_url = str(getattr(http_request, "base_url", "") or "").rstrip("/")
         if base_url == "http://None":
             base_url = ""
 
-    # 残留插话随旧 run 结束已失效（前端会补发为普通消息），清空后端
-    # 队列避免新 run 首次模型调用重复注入；HITL 恢复不经过这里
+    # Drop stale steer items so a new run does not repeat them.
     from src.infra.task.steer import purge_stale_steers
 
-    # Build task context for queued dispatch (stored in Redis, multi-worker safe)
-    # trace_id is generated early so it can be passed to the executor for trace reuse
+    # Build queued task context; trace_id is generated early for executor reuse.
     from src.infra.writer.present import Presenter, PresenterConfig
 
     _pre_presenter = Presenter(
