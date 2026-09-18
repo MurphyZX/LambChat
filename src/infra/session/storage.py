@@ -537,7 +537,6 @@ class SessionStorage(SessionAttachmentOperationsMixin):
 
     async def clear_project_id(self, project_id: str, user_id: str) -> int:
         """Clear project_id for all sessions in a project (when project is deleted).
-
         Args:
             project_id: The project ID to clear
             user_id: The user ID to filter sessions
@@ -551,17 +550,9 @@ class SessionStorage(SessionAttachmentOperationsMixin):
             {"$set": {"metadata.project_id": None, "updated_at": utc_now()}},
         )
         if result.modified_count:
-            try:
-                from src.infra.memory.scope import invalidate_session_project_cache
+            from src.infra.session.memory_scope import invalidate_memory_scope_caches
 
-                invalidate_session_project_cache()
-                from src.infra.agent.middleware.prompt_injection import (
-                    invalidate_memory_index_snapshot,
-                )
-
-                invalidate_memory_index_snapshot(user_id)
-            except Exception:
-                pass
+            invalidate_memory_scope_caches(user_id=user_id, all_sessions=True)
         return result.modified_count
 
     async def increment_unread_count(self, session_id: str) -> bool:
@@ -691,17 +682,11 @@ class SessionStorage(SessionAttachmentOperationsMixin):
         if not result:
             return None
 
-        try:
-            from src.infra.memory.scope import invalidate_session_project_cache
+        from src.infra.session.memory_scope import invalidate_memory_scope_caches
 
-            invalidate_session_project_cache(str(result.get("session_id") or session_id))
-            from src.infra.agent.middleware.prompt_injection import (
-                invalidate_memory_index_snapshot,
-            )
-
-            invalidate_memory_index_snapshot(user_id)
-        except Exception:
-            pass
+        invalidate_memory_scope_caches(
+            user_id=user_id, session_id=str(result.get("session_id") or session_id)
+        )
         return self._build_session(result)
 
     async def append_user_message_search_content(self, session_id: str, content: str) -> bool:
