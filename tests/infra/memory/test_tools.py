@@ -97,7 +97,8 @@ def test_memory_recall_description_embeds_source_lookup_sop() -> None:
     assert "run_id" in description
     assert "complete `text`" in description
     assert "do not omit" in description.lower()
-    assert "not injected into user messages" in description.lower()
+    assert "bounded hint may be injected" in description.lower()
+    assert "verify with memory_recall" in description.lower()
     assert "call this tool" in description.lower()
 
 
@@ -652,7 +653,8 @@ def test_memory_recall_description_within_dedup_budget():
     # 预算：recall 描述瘦身到 900 字符以内（保留全部既有契约标记）
     assert len(description) <= 900
     for marker in (
-        "not injected into user messages",
+        "bounded hint may be injected",
+        "verify with memory_recall",
         "call this tool",
         "complete `text`",
         "do not omit",

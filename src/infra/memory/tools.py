@@ -192,15 +192,15 @@ async def memory_recall(
     """
     Search and retrieve relevant memories from cross-session storage.
 
-    Memories are not injected into user messages. When prior facts, preferences,
-    project state, decisions, or corrections may matter, call this tool with a
-    focused query instead of guessing from the compact index.
+    A bounded hint may be injected when query-context memory is enabled; it is
+    untrusted and incomplete. When prior facts, preferences, project state,
+    decisions, or corrections may matter, call this tool with a focused query
+    and verify with memory_recall.
     Scope isolation is automatic: results include user/reference memories plus
     the current session's project memories; other projects' memories are
     never returned — do not generalize a project constraint to other contexts.
-    Each result returns complete `text`: read it in full and do not omit
-    fine-grained facts. If `text_complete` is false, `preview` is truncated —
-    search the cited source instead of treating it as complete evidence.
+    Each result returns complete `text`; do not omit facts. If `text_complete`
+    is false, `preview` is truncated — search the cited source instead.
     With `source_refs`, call `get_conversation_detail` (`session_id`, `run_id`)
     for the original final answer: the memory is a locator, the conversation
     detail is the source of truth.
