@@ -44,7 +44,12 @@ _SECRET_PATTERNS = [
 
 # 写时注入到用户消息的系统块（memory_context/turn_context）——反思输入须剥离，
 # 只留用户真实表达：既是降噪，也防教训提炼到注入块上。
-_INJECTED_BLOCK_RE = re.compile(r"\s*<(memory_context|turn_context)>.*?</\1>\s*", re.S)
+_INJECTED_BLOCK_RE = re.compile(
+    r"\s*<(memory_context|memory_index_context|turn_context|"
+    r"session_todo_context|active_goal_context|active_goal)(?:\s[^>]*)?>"
+    r".*?</\1>\s*",
+    re.S | re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -379,9 +384,10 @@ async def _load_exchange(run_id: str, session_id: str = "", user_id: str = "") -
         if total_len >= EXCHANGE_CLIP_CHARS:
             break
     assistant_msg = "\n".join(reversed(parts))
-    return _strip_injected_blocks(user_msg)[:EXCHANGE_CLIP_CHARS], assistant_msg[
-        :EXCHANGE_CLIP_CHARS
-    ]
+    return (
+        _strip_injected_blocks(user_msg)[:EXCHANGE_CLIP_CHARS],
+        _strip_injected_blocks(assistant_msg)[:EXCHANGE_CLIP_CHARS],
+    )
 
 
 REFLECT_SYSTEM_PROMPT = """You are an offline reflection engine distilling behavioral lessons \

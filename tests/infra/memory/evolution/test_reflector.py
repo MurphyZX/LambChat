@@ -296,6 +296,82 @@ async def test_load_exchange_strips_injected_blocks_before_clip(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_load_exchange_strips_todo_and_goal_context_blocks(monkeypatch):
+    class _FakeTraceCol:
+        async def find_one(self, _query, *_a, **_k):
+            return {
+                "events": [
+                    {
+                        "event_type": "user:message",
+                        "data": {
+                            "content": (
+                                "真实诉求\n"
+                                "<active_goal_context>目标</active_goal_context>\n"
+                                "<session_todo_context>待办</session_todo_context>"
+                            )
+                        },
+                    }
+                ]
+            }
+
+    class _FakeDB:
+        def __getitem__(self, _name):
+            return _FakeTraceCol()
+
+    class _FakeClient:
+        def __getitem__(self, _db_name):
+            return _FakeDB()
+
+    monkeypatch.setattr("src.infra.storage.mongodb.get_mongo_client", lambda: _FakeClient())
+    import src.infra.memory.evolution.reflector as r
+
+    monkeypatch.setattr(r, "_load_exchange", _REAL_LOAD_EXCHANGE)
+    monkeypatch.setattr(r.settings, "MONGODB_TRACES_COLLECTION", "traces", raising=False)
+    user_msg, _assistant = await r._load_exchange("run-1", "", "u1")
+
+    assert user_msg == "真实诉求"
+
+
+@pytest.mark.asyncio
+async def test_load_exchange_strips_injected_blocks_from_assistant_output(monkeypatch):
+    class _FakeTraceCol:
+        async def find_one(self, _query, *_a, **_k):
+            return {
+                "events": [
+                    {
+                        "event_type": "user:message",
+                        "data": {"content": "真实诉求"},
+                    },
+                    {
+                        "event_type": "message:chunk",
+                        "data": {
+                            "text_id": "t1",
+                            "content": "有效回答\n<memory_index_context>不要保存</memory_index_context>",
+                        },
+                    },
+                ]
+            }
+
+    class _FakeDB:
+        def __getitem__(self, _name):
+            return _FakeTraceCol()
+
+    class _FakeClient:
+        def __getitem__(self, _db_name):
+            return _FakeDB()
+
+    monkeypatch.setattr("src.infra.storage.mongodb.get_mongo_client", lambda: _FakeClient())
+    import src.infra.memory.evolution.reflector as r
+
+    monkeypatch.setattr(r, "_load_exchange", _REAL_LOAD_EXCHANGE)
+    monkeypatch.setattr(r.settings, "MONGODB_TRACES_COLLECTION", "traces", raising=False)
+    user_msg, assistant_msg = await r._load_exchange("run-1", "", "u1")
+
+    assert user_msg == "真实诉求"
+    assert assistant_msg == "有效回答"
+
+
+@pytest.mark.asyncio
 async def test_reflect_quota_enforced(monkeypatch):
     monkeypatch.setattr(reflector, "reflect_on_run", None)  # 保护：误用会炸
     from src.infra.memory.evolution import reflector as r

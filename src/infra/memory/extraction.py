@@ -44,7 +44,9 @@ _SECRET_PATTERNS = (
 )
 # 转录里剔除的注入块前缀（与 reflector._strip_injected_blocks 同源但自包含）
 _INJECTED_BLOCK_RE = re.compile(
-    r"<(memory_index_context|turn_context|active_goal)>.{0,4000}?</\1>", re.DOTALL
+    r"<(memory_context|memory_index_context|turn_context|session_todo_context|"
+    r"active_goal_context|active_goal)(?:\s[^>]*)?>.*?</\1>",
+    re.DOTALL | re.IGNORECASE,
 )
 
 # 终态：不再重试；claimed 带租约；failed 带 next_retry_at 退避。
@@ -319,7 +321,9 @@ async def load_session_transcript(
     for doc in docs:
         search_data = doc.get("conversation_search") or {}
         user_text = _INJECTED_BLOCK_RE.sub("", str(search_data.get("user_text") or "")).strip()
-        assistant_text = str(search_data.get("assistant_final_text") or "").strip()
+        assistant_text = _INJECTED_BLOCK_RE.sub(
+            "", str(search_data.get("assistant_final_text") or "")
+        ).strip()
         if not user_text and not assistant_text:
             continue
         turns.append(

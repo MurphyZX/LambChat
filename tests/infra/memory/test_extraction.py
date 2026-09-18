@@ -771,6 +771,33 @@ async def test_load_session_transcript_uses_latest_window_in_chronological_order
     assert [t["run_id"] for t in turns] == ["r1", "r2", "r3"]
 
 
+@pytest.mark.asyncio
+async def test_load_session_transcript_strips_all_model_context_blocks():
+    injected = (
+        "用户真实问题\n"
+        "<memory_context role=system>记忆提示</memory_context>\n"
+        "<active_goal_context>当前目标</active_goal_context>\n"
+        "<session_todo_context>待办</session_todo_context>\n"
+        "<turn_context>轮次提示</turn_context>"
+    )
+    turns = await extraction.load_session_transcript(
+        _fake_db(
+            [
+                _trace_doc(
+                    "r1",
+                    injected,
+                    "回答\n<memory_context>不要保存</memory_context>",
+                )
+            ]
+        ),
+        "s1",
+        "u1",
+        max_chars=10_000,
+    )
+
+    assert turns == [{"run_id": "r1", "user": "用户真实问题", "assistant": "回答"}]
+
+
 def test_clip_transcript_truncates_oversized_newest_turn_instead_of_dropping():
     turns = [{"run_id": "r1", "user": "汇报正文" * 7000, "assistant": ""}]
     kept = _clip_transcript(turns, max_chars=24_000)
