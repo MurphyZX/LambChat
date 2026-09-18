@@ -29,3 +29,9 @@ def test_control_frame_regexes_strip_tags_and_nested_blocks() -> None:
 
     assert CONTROL_FRAME_TAG_RE.sub(" ", text).count("<") == 0
     assert CONTROL_FRAME_BLOCK_RE.sub("", text).strip() == "beforeafter"
+
+
+def test_control_frame_tag_regex_strips_self_closing_frames() -> None:
+    text = "before <memory_context/> middle <active_goal_context /> after"
+
+    assert CONTROL_FRAME_TAG_RE.sub(" ", text) == "before   middle   after"

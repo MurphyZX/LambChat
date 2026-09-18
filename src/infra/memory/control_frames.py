@@ -20,7 +20,7 @@ _FRAME_ALTERNATION = "|".join(re.escape(name) for name in CONTROL_FRAME_NAMES)
 
 # Tags are stripped from individual untrusted fields and queries.
 CONTROL_FRAME_TAG_RE = re.compile(
-    rf"</?(?:{_FRAME_ALTERNATION})(?:\s[^>]*)?>",
+    rf"</?(?:{_FRAME_ALTERNATION})(?:\s[^>]*)?\s*/?>",
     re.IGNORECASE,
 )
 
