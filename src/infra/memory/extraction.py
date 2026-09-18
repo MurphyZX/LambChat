@@ -45,7 +45,8 @@ _SECRET_PATTERNS = (
 # 转录里剔除的注入块前缀（与 reflector._strip_injected_blocks 同源但自包含）
 _INJECTED_BLOCK_RE = re.compile(
     r"<(memory_context|memory_index_context|turn_context|session_todo_context|"
-    r"active_goal_context|active_goal)(?:\s[^>]*)?>.*?</\1>",
+    r"active_goal_context|active_goal|env_var_keys_context|"
+    r"sandbox_workspace_context)(?:\s[^>]*)?>.*?</\1>",
     re.DOTALL | re.IGNORECASE,
 )
 

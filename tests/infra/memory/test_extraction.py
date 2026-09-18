@@ -778,6 +778,8 @@ async def test_load_session_transcript_strips_all_model_context_blocks():
         "<memory_context role=system>记忆提示</memory_context>\n"
         "<active_goal_context>当前目标</active_goal_context>\n"
         "<session_todo_context>待办</session_todo_context>\n"
+        "<env_var_keys_context>环境变量键名</env_var_keys_context>\n"
+        "<sandbox_workspace_context>工作区信息</sandbox_workspace_context>\n"
         "<turn_context>轮次提示</turn_context>"
     )
     turns = await extraction.load_session_transcript(

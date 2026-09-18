@@ -307,7 +307,9 @@ async def test_load_exchange_strips_todo_and_goal_context_blocks(monkeypatch):
                             "content": (
                                 "真实诉求\n"
                                 "<active_goal_context>目标</active_goal_context>\n"
-                                "<session_todo_context>待办</session_todo_context>"
+                                "<session_todo_context>待办</session_todo_context>\n"
+                                "<env_var_keys_context>环境变量键名</env_var_keys_context>\n"
+                                "<sandbox_workspace_context>工作区信息</sandbox_workspace_context>"
                             )
                         },
                     }

@@ -46,7 +46,8 @@ _SECRET_PATTERNS = [
 # 只留用户真实表达：既是降噪，也防教训提炼到注入块上。
 _INJECTED_BLOCK_RE = re.compile(
     r"\s*<(memory_context|memory_index_context|turn_context|"
-    r"session_todo_context|active_goal_context|active_goal)(?:\s[^>]*)?>"
+    r"session_todo_context|active_goal_context|active_goal|env_var_keys_context|"
+    r"sandbox_workspace_context)(?:\s[^>]*)?>"
     r".*?</\1>\s*",
     re.S | re.IGNORECASE,
 )
