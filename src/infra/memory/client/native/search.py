@@ -636,6 +636,12 @@ def _memory_score(memory: dict) -> float:
         return 0.0
 
 
+def _recall_score(memory: dict) -> float:
+    # Search backends may omit scores for an already-ranked text hit. Preserve
+    # the historical pass-through behavior while handling malformed values.
+    return 1.0 if "score" not in memory else _memory_score(memory)
+
+
 def rrf_merge(
     text_results: list[dict], vector_results: list[dict], max_results: int, k: int = 60
 ) -> list[dict]:
@@ -746,11 +752,17 @@ async def recall_memories(
         vector_results = []
 
     memories = rrf_merge(text_results, vector_results, max_results * 2)
+    min_score = getattr(settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
 
-    if not memories and is_context_overview_query(query):
+    overview_needs_fallback = is_context_overview_query(query) and (
+        not memories
+        or (min_score > 0 and not any(_recall_score(memory) >= min_score for memory in memories))
+    )
+    if overview_needs_fallback:
         # Overview fallback is ranked by scope/context after retrieval. Keep a
         # useful candidate pool even for max_results=1 so a recent generic
-        # memory cannot crowd out a more valuable feedback/project lesson.
+        # memory cannot crowd out a more valuable feedback/project lesson. It
+        # also replaces an all-weak search result that would be filtered below.
         overview_limit = max(max_results * 2, 10)
         memories = await recent_context_fallback(
             backend._collection, user_id, overview_limit, memory_types, context_filter, project_id
@@ -759,9 +771,8 @@ async def recall_memories(
     # rerank 全池排序（不提前截断），让 min_score 过滤后仍有足额候选回填 top-N
     if enable_rerank and memories and len(memories) > 1:
         memories = await rerank_candidates(query, memories, len(memories))
-    min_score = getattr(settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
     if min_score > 0:
-        memories = [m for m in memories if m.get("score", 1.0) >= min_score]
+        memories = [m for m in memories if _recall_score(m) >= min_score]
     memories = prioritize_sources(memories)
 
     if memories:

@@ -89,6 +89,40 @@ async def test_context_overview_fallback_survives_min_score(monkeypatch):
     assert [memory["memory_id"] for memory in result["memories"]] == ["overview-memory"]
 
 
+@pytest.mark.asyncio
+async def test_context_overview_fallback_replaces_only_weak_search_hits(monkeypatch):
+    from src.infra.memory.client.native import search as search_module
+
+    async def weak_text(*_args, **_kwargs):
+        return [{"memory_id": "weak", "summary": "noise", "text": "noise", "score": 0.1}]
+
+    async def overview_fallback(*_args, **_kwargs):
+        return [{"memory_id": "overview", "summary": "durable", "text": "durable", "score": 1.0}]
+
+    async def passthrough(_backend, memories):
+        return memories
+
+    async def validate_passthrough(_user_id, memories):
+        return memories
+
+    monkeypatch.setattr(search_module, "text_search", weak_text)
+    monkeypatch.setattr(search_module, "recent_context_fallback", overview_fallback)
+    monkeypatch.setattr(search_module, "_hydrate_memories_limited", passthrough)
+    monkeypatch.setattr(search_module, "validate_memory_source_refs", validate_passthrough)
+    monkeypatch.setattr(search_module.settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
+
+    class FakeBackend:
+        _collection = None
+        _logger = None
+        _embedding_fn = None
+
+    result = await search_module.recall_memories(
+        FakeBackend(), "u1", "memory overview", touch_access=False, enable_rerank=False
+    )
+
+    assert [memory["memory_id"] for memory in result["memories"]] == ["overview"]
+
+
 def test_local_rerank_prefers_stronger_term_overlap():
     from src.infra.memory.client.native.search import local_rerank
 
