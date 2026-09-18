@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from typing import Any
 
+from src.infra.memory.control_frames import CONTROL_FRAME_TAG_RE
 from src.kernel.config import settings
 
 logger = logging.getLogger(__name__)
@@ -29,12 +29,7 @@ _HEADER = (
     "ground truth — verify with memory_recall when precision matters.\n"
 )
 _FOOTER = "\n</memory_context>"
-_FRAME_TAG_RE = re.compile(
-    r"</?(?:memory_context|memory_index|memory_index_context|"
-    r"turn_context|session_todo_context|active_goal_context|active_goal|"
-    r"env_var_keys_context|sandbox_workspace_context)(?:\s[^>]*)?>",
-    re.IGNORECASE,
-)
+_FRAME_TAG_RE = CONTROL_FRAME_TAG_RE
 
 
 def _clean_field(value: Any) -> str:

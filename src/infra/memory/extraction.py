@@ -28,6 +28,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from src.infra.logging import get_logger
+from src.infra.memory.control_frames import CONTROL_FRAME_BLOCK_RE
 from src.infra.utils.datetime import utc_now
 from src.kernel.config import settings
 
@@ -43,12 +44,7 @@ _SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_-]?key|secret|password|token)\s*[:=]\s*\S+"),
 )
 # 转录里剔除的注入块前缀（与 reflector._strip_injected_blocks 同源但自包含）
-_INJECTED_BLOCK_RE = re.compile(
-    r"<(memory_context|memory_index_context|turn_context|session_todo_context|"
-    r"active_goal_context|active_goal|env_var_keys_context|"
-    r"sandbox_workspace_context)(?:\s[^>]*)?>.*?</\1>",
-    re.DOTALL | re.IGNORECASE,
-)
+_INJECTED_BLOCK_RE = CONTROL_FRAME_BLOCK_RE
 
 # 终态：不再重试；claimed 带租约；failed 带 next_retry_at 退避。
 # exhausted = attempts 耗尽；二者在会话出现新活动时可重开（见 _maybe_reopen_job）。

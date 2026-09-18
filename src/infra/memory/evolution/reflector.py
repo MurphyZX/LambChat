@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from src.infra.memory.control_frames import CONTROL_FRAME_BLOCK_RE
 from src.infra.utils.datetime import utc_now
 from src.kernel.config import settings
 
@@ -44,13 +45,7 @@ _SECRET_PATTERNS = [
 
 # 写时注入到用户消息的系统块（memory_context/turn_context）——反思输入须剥离，
 # 只留用户真实表达：既是降噪，也防教训提炼到注入块上。
-_INJECTED_BLOCK_RE = re.compile(
-    r"\s*<(memory_context|memory_index_context|turn_context|"
-    r"session_todo_context|active_goal_context|active_goal|env_var_keys_context|"
-    r"sandbox_workspace_context)(?:\s[^>]*)?>"
-    r".*?</\1>\s*",
-    re.S | re.IGNORECASE,
-)
+_INJECTED_BLOCK_RE = CONTROL_FRAME_BLOCK_RE
 
 
 @dataclass(frozen=True)

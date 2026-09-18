@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -21,6 +20,7 @@ from src.infra.agent.middleware._helpers import (
     _append_system_text_block,
     _normalize_prompt_text,
 )
+from src.infra.memory.control_frames import CONTROL_FRAME_BLOCK_RE, CONTROL_FRAME_TAG_RE
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +96,7 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
     """Attach the stable session memory index to the `memory_recall` tool only."""
 
     _FRAME_MARKER = "<memory_index_context>"
-    _CONTEXT_FRAME_RE = re.compile(
-        r"\n*<(memory_index_context|session_todo_context|active_goal_context)>"
-        r".*?</\1>",
-        re.DOTALL,
-    )
+    _CONTEXT_FRAME_RE = CONTROL_FRAME_BLOCK_RE
 
     def __init__(
         self,
@@ -170,13 +166,7 @@ class MemoryRecallIndexMiddleware(AgentMiddleware):
 _ACTIVE_GOAL_MAX_CHARS = 800
 _SESSION_TODO_MAX_CHARS = 3200
 _SESSION_TODO_MAX_ITEMS = 16
-_CONTEXT_FRAME_TAG_RE = re.compile(
-    r"</?(?:memory_context|memory_index|memory_index_context|turn_context|"
-    r"session_todo_context|active_goal_context|active_goal|env_var_keys_context|"
-    r"sandbox_workspace_context)"
-    r"(?:\s[^>]*)?>",
-    re.IGNORECASE,
-)
+_CONTEXT_FRAME_TAG_RE = CONTROL_FRAME_TAG_RE
 
 
 def build_active_goal_context(active_goal: Any) -> str:

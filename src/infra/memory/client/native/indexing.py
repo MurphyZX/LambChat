@@ -3,23 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-import re
 import time
 from datetime import datetime
 from typing import Any, Optional
 
 from src.infra.memory.client.native.search import build_scope_clause
 from src.infra.memory.client.types import MemoryType
+from src.infra.memory.control_frames import CONTROL_FRAME_TAG_RE
 from src.infra.utils.datetime import ensure_utc, utc_now
 from src.kernel.config import settings
 
-_INDEX_FRAME_TAG_RE = re.compile(
-    r"</?(?:memory_context|memory_index|memory_index_context|turn_context|"
-    r"session_todo_context|active_goal_context|active_goal|"
-    r"env_var_keys_context|sandbox_workspace_context)"
-    r"(?:\s[^>]*)?>",
-    re.IGNORECASE,
-)
+_INDEX_FRAME_TAG_RE = CONTROL_FRAME_TAG_RE
 
 
 def _sanitize_index_text(value: Any) -> str:
