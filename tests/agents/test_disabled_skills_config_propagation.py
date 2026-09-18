@@ -225,7 +225,10 @@ async def test_fast_agent_subagent_keeps_functional_middleware(
 
     assert fake_graph.captured_create_kwargs is not None
     subagent_middleware = fake_graph.captured_create_kwargs["subagents"][0]["middleware"]
-    assert subagent_middleware[:3] == [binary, artifact, activity]
+    assert binary in subagent_middleware
+    assert artifact in subagent_middleware
+    assert activity in subagent_middleware
+    assert any(type(item).__name__ == "TodoListMiddleware" for item in subagent_middleware)
 
 
 @pytest.mark.asyncio
@@ -546,7 +549,10 @@ async def test_search_agent_subagent_keeps_functional_middleware(
 
     assert fake_graph.captured_create_kwargs is not None
     subagent_middleware = fake_graph.captured_create_kwargs["subagents"][0]["middleware"]
-    assert subagent_middleware[:3] == [binary, artifact, activity]
+    assert binary in subagent_middleware
+    assert artifact in subagent_middleware
+    assert activity in subagent_middleware
+    assert any(type(item).__name__ == "TodoListMiddleware" for item in subagent_middleware)
 
 
 @pytest.mark.asyncio
