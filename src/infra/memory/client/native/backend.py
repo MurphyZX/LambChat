@@ -83,6 +83,18 @@ class NativeMemoryBackend(MemoryBackend):
         for key in [k for k in self._index_cache if k[0] == user_id]:
             self._index_cache.pop(key, None)
         try:
+            # The prompt middleware has a separate navigation-index snapshot
+            # cache. Keep it coherent for writes from tools, extraction,
+            # compaction, and self-evolution alike. This is best-effort so a
+            # cache notification can never fail a durable mutation.
+            from src.infra.agent.middleware.prompt_injection import (
+                invalidate_memory_index_snapshot,
+            )
+
+            invalidate_memory_index_snapshot(user_id)
+        except Exception:
+            pass
+        try:
             from src.infra.memory.distributed import publish_memory_invalidation
 
             await publish_memory_invalidation(user_id)

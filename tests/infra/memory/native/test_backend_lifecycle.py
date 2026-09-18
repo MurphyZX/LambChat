@@ -55,6 +55,36 @@ async def test_delete_removes_store_payload_for_long_memory():
 
 
 @pytest.mark.asyncio
+async def test_invalidate_cache_clears_prompt_recall_index(monkeypatch: pytest.MonkeyPatch) -> None:
+    invalidated: list[str] = []
+    published: list[str] = []
+    backend = NativeMemoryBackend()
+    backend._index_cache = {
+        ("u1", "project-1"): (0.0, "old"),
+        ("u2", "project-2"): (0.0, "keep"),
+    }
+
+    async def fake_publish(user_id: str) -> None:
+        published.append(user_id)
+
+    monkeypatch.setattr(
+        "src.infra.agent.middleware.prompt_injection.invalidate_memory_index_snapshot",
+        invalidated.append,
+    )
+    monkeypatch.setattr(
+        "src.infra.memory.distributed.publish_memory_invalidation",
+        fake_publish,
+    )
+
+    await backend._invalidate_cache("u1")
+
+    assert invalidated == ["u1"]
+    assert published == ["u1"]
+    assert ("u1", "project-1") not in backend._index_cache
+    assert ("u2", "project-2") in backend._index_cache
+
+
+@pytest.mark.asyncio
 async def test_maybe_embed_offloads_sync_embedding_function(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
