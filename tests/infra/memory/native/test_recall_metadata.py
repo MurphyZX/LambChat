@@ -139,10 +139,45 @@ async def test_local_mongo_keyword_fallback_matches_memory_tags(local_collection
     assert [doc["memory_id"] for doc in docs] == ["correction"]
 
 
-async def test_local_mongo_overview_recall_delivers_recent_context(local_collection, monkeypatch):
+@pytest.mark.parametrize(
+    ("remote_rerank", "has_search_hits"), [(False, False), (True, False), (True, True)]
+)
+async def test_local_mongo_overview_recall_delivers_recent_context(
+    local_collection, monkeypatch, remote_rerank, has_search_hits
+):
     from src.infra.memory.client.native.backend import NativeMemoryBackend
 
     monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RECALL_MIN_SCORE", 0.3)
+    if has_search_hits:
+        await local_collection.update_many({}, {"$set": {"tags": ["memory overview"]}})
+    if remote_rerank:
+        # Only the external HTTP boundary is simulated. Retrieval, fallback,
+        # rerank parsing, hydration and access stats use production code.
+        from functools import partial
+
+        import httpx
+
+        def low_relevance_response(request):
+            import json
+
+            documents = json.loads(request.content)["documents"]
+            return httpx.Response(
+                200,
+                json={
+                    "results": [
+                        {"index": i, "relevance_score": 0.01} for i in range(len(documents))
+                    ]
+                },
+            )
+
+        monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RERANK_MODEL", "test-reranker")
+        monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RERANK_API_BASE", "https://rerank.test")
+        monkeypatch.setattr(search.settings, "NATIVE_MEMORY_RERANK_API_KEY", "test-key")
+        monkeypatch.setattr(
+            search.httpx,
+            "AsyncClient",
+            partial(httpx.AsyncClient, transport=httpx.MockTransport(low_relevance_response)),
+        )
     backend = NativeMemoryBackend()
     backend._collection = local_collection
 
@@ -152,12 +187,15 @@ async def test_local_mongo_overview_recall_delivers_recent_context(local_collect
         "memory overview",
         max_results=1,
         project_id="billing",
-        enable_rerank=False,
+        enable_rerank=remote_rerank,
     )
 
     assert result["memories"]
     assert result["memories"][0]["memory_id"] == "correction"
     assert result["memories"][0]["score"] >= 0.3
+    saved = await local_collection.find_one({"memory_id": "correction"})
+    assert saved["access_count"] == 1
+    assert await local_collection.count_documents({"access_count": {"$gt": 0}}) == 1
 
 
 @pytest.mark.parametrize("enable_rerank", [False, True])
