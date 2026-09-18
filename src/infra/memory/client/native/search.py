@@ -432,8 +432,13 @@ async def vector_search(
         hydration_query.update(build_scope_clause(project_id))
         cursor = backend._collection.find(hydration_query, {"embedding": 0})
         docs = await cursor.to_list(length=limit)
-        docs.sort(key=lambda d: -order.get(d.get("memory_id"), 0.0))
-        return [format_memory(doc, order.get(doc.get("memory_id"), 1.0)) for doc in docs]
+        if docs:
+            docs.sort(key=lambda d: -order.get(d.get("memory_id"), 0.0))
+            return [format_memory(doc, order.get(doc.get("memory_id"), 1.0)) for doc in docs]
+        # Qdrant does not yet enforce the full scope clause (legacy points may
+        # lack scope payloads). If every ANN hit is rejected by authoritative
+        # Mongo hydration, continue through the Mongo vector/cosine fallback so
+        # visible memories are not hidden by another project's nearest vectors.
 
     base: dict[str, Any] = {
         "user_id": user_id,

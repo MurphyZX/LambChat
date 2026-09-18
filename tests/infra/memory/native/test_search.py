@@ -367,6 +367,49 @@ async def test_vector_search_qdrant_empty_is_authoritative(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_vector_search_qdrant_hidden_hits_fall_back_to_mongo(monkeypatch):
+    """Qdrant hits outside the visible scope must not hide visible Mongo vectors."""
+    from src.infra.memory.client.native import search, vector_store
+    from src.infra.memory.client.native.vector_store import VectorHit
+
+    async def fake_index_search(**kw):
+        return [VectorHit(memory_id="hidden" * 6 + "ab", score=0.99)]
+
+    monkeypatch.setattr(vector_store, "index_search", fake_index_search)
+
+    visible = _mem_doc("a" * 32, "visible", embedding=[1.0, 0.0])
+
+    class ScopeAwareCollection(_FakeCollection):
+        def __init__(self):
+            super().__init__([visible])
+            self.find_count = 0
+
+        def find(self, query, projection=None):
+            self.find_count += 1
+            self.find_queries.append(query)
+            # First call is Qdrant hydration: the hidden hit is filtered out by
+            # the authoritative Mongo scope query. Later calls are the normal
+            # Mongo vector fallback and can see the visible embedding.
+            return _FakeCursor([] if self.find_count == 1 else [visible])
+
+    col = ScopeAwareCollection()
+
+    async def embed(_q):
+        return [1.0, 0.0]
+
+    backend = SimpleNamespace(
+        _maybe_embed=embed,
+        _collection=col,
+        _logger=SimpleNamespace(debug=lambda *a, **k: None),
+    )
+
+    out = await search.vector_search(backend, "u1", "查询", 5, None, project_id="p1")
+
+    assert [d["memory_id"] for d in out] == ["a" * 32]
+    assert col.find_count >= 2
+
+
+@pytest.mark.asyncio
 async def test_vector_search_qdrant_none_falls_back_to_cosine(monkeypatch):
     from src.infra.memory.client.native import search, vector_store
 
