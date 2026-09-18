@@ -33,6 +33,7 @@ from src.api.routes.chat_stream_terminal import (
 )
 from src.api.routes.chat_validation import validate_team_agent_request
 from src.api.routes.session import verify_session_ownership
+from src.infra.chat.memory_context import append_memory_context
 from src.infra.chat.session_baseline import (
     _time_report_due,
     _turn_context_signature,
@@ -362,8 +363,8 @@ async def chat_stream(
     # submit / submit_arq / scheduler 均携带 agent_options）
     apply_response_language(request.agent_options, http_request.headers.get("accept-language"))
 
-    # 模型侧消息只包含本轮上下文，不注入记忆；记忆索引归属 memory_recall
-    # 工具描述，详细内容由模型按需调用工具获取。
+    # 模型侧消息包含本轮上下文；查询时记忆注入由独立开关控制，详细证据
+    # 仍由 memory_recall 工具按需获取。
     # - 报时漂移：首轮或超阈值才带时间戳
     # - goal/自动模式签名去重：目标未变不重复注入
     time_due = _time_report_due(existing_metadata)
@@ -378,6 +379,12 @@ async def chat_stream(
         user_id=user.sub,
         include_timestamp=time_due,
         last_tc_signature=(existing_metadata or {}).get("prompt_turn_context_signature"),
+    )
+    formatted_message = await append_memory_context(
+        formatted_message,
+        user.sub,
+        raw_query=request.message,
+        project_id=request.project_id,
     )
 
     # 本轮注入状态写回会话元数据（供后续轮次判定）

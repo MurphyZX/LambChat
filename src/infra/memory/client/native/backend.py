@@ -416,6 +416,9 @@ class NativeMemoryBackend(MemoryBackend):
         memory_types: Optional[list[str]] = None,
         context_filter: Optional[str] = None,
         project_id: Optional[str] = None,
+        *,
+        touch_access: bool = True,
+        enable_rerank: bool = True,
     ) -> dict[str, Any]:
         return await recall_memories(
             self,
@@ -423,6 +426,8 @@ class NativeMemoryBackend(MemoryBackend):
             query,
             max_results,
             memory_types,
+            touch_access=touch_access,
+            enable_rerank=enable_rerank,
             context_filter=context_filter,
             project_id=project_id,
         )

@@ -418,6 +418,12 @@ class Settings(BaseSettings):
     NATIVE_MEMORY_STALENESS_DAYS: int = 30
     NATIVE_MEMORY_INDEX_ENABLED: bool = True
     NATIVE_MEMORY_INDEX_CACHE_TTL: int = 300
+    # Optional write-time injection of top relevant memories into the model
+    # message. Disabled by default; the memory_recall tool remains the source
+    # of detailed evidence.
+    NATIVE_MEMORY_QUERY_CONTEXT_ENABLED: bool = False
+    NATIVE_MEMORY_QUERY_CONTEXT_TOP_K: int = 3
+    NATIVE_MEMORY_QUERY_CONTEXT_MAX_CHARS: int = 1200
     NATIVE_MEMORY_MODEL: str = ""
     NATIVE_MEMORY_COMPACTION_MODEL_ID: str = ""
     NATIVE_MEMORY_RERANK_MODEL: str = ""
