@@ -363,10 +363,7 @@ async def chat_stream(
     # submit / submit_arq / scheduler 均携带 agent_options）
     apply_response_language(request.agent_options, http_request.headers.get("accept-language"))
 
-    # 模型侧消息包含本轮上下文；查询时记忆注入由独立开关控制，详细证据
-    # 仍由 memory_recall 工具按需获取。
-    # - 报时漂移：首轮或超阈值才带时间戳
-    # - goal/自动模式签名去重：目标未变不重复注入
+    # Model-facing assembly includes turn context and optional bounded memory hints.
     time_due = _time_report_due(existing_metadata)
     tc_signature = _turn_context_signature(active_goal, request.auto_mode)
 
