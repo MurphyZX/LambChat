@@ -20,7 +20,11 @@ from src.infra.agent.middleware._helpers import (
     _append_system_text_block,
     _normalize_prompt_text,
 )
-from src.infra.memory.control_frames import CONTROL_FRAME_BLOCK_RE, CONTROL_FRAME_TAG_RE
+from src.infra.memory.control_frames import (
+    CONTROL_FRAME_BLOCK_RE,
+    CONTROL_FRAME_TAG_RE,
+    escape_control_frame_tags,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -386,6 +390,7 @@ class EnvVarPromptMiddleware(AgentMiddleware):
         prompt = await build_env_var_prompt(self._user_id)
         if not prompt:
             return await handler(request)
+        prompt = escape_control_frame_tags(prompt)
 
         framed = (
             f"{self._FRAME_MARKER}\n"

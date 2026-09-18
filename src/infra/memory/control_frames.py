@@ -13,6 +13,7 @@ CONTROL_FRAME_NAMES: tuple[str, ...] = (
     "active_goal_context",
     "active_goal",
     "required_skills",
+    "code_interpreter_routing",
     "env_var_keys_context",
     "sandbox_workspace_context",
 )

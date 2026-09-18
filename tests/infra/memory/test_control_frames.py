@@ -17,6 +17,7 @@ def test_control_frame_contract_covers_every_runtime_context() -> None:
         "active_goal_context",
         "active_goal",
         "required_skills",
+        "code_interpreter_routing",
         "env_var_keys_context",
         "sandbox_workspace_context",
     )
