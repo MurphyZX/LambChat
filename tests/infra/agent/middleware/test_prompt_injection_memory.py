@@ -294,3 +294,24 @@ async def test_middleware_resolves_project_once_per_session(monkeypatch):
                 await middleware.awrap_model_call(request, handler)
 
     assert resolve_calls == ["s1"]
+
+
+@pytest.mark.asyncio
+async def test_memory_index_cache_isolated_when_session_project_changes(monkeypatch):
+    calls: list[str | None] = []
+
+    async def fake_index(
+        user_id: str, *, session_id: str | None = None, project_id: str | None = None
+    ) -> str:
+        calls.append(project_id)
+        return f"<memory_index>{project_id}</memory_index>"
+
+    monkeypatch.setattr(pi, "_build_memory_index_full", fake_index)
+    pi._MEMORY_INDEX_SNAPSHOTS.clear()
+
+    first = await pi._build_memory_index_for_user("u1", session_id="s1", project_id="p1")
+    second = await pi._build_memory_index_for_user("u1", session_id="s1", project_id="p2")
+
+    assert "p1" in first
+    assert "p2" in second
+    assert calls == ["p1", "p2"]

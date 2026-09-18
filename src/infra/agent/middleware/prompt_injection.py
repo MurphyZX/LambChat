@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 # change the memory_recall tool description — and with it the entire tools
 # prefix — on almost every turn.
 #
-# Key = (user_id, session_id) — session-scoped, not user-scoped: consecutive
-# turns of one session on DIFFERENT replicas (k8s dual-Pod) get identical
-# bytes for the life of the session. Empty indexes are cached with a short
-# TTL so memoryless users don't hit Mongo on every model call.
-_MEMORY_INDEX_SNAPSHOTS: dict[tuple[str, str], tuple[float, str]] = {}
+# Key = (user_id, session_id, project_id) — session/project-scoped, not
+# user-scoped. If a session is reassigned to another project, its old index
+# can never be reused for the new project. Empty indexes are cached with a
+# short TTL so memoryless users don't hit Mongo on every model call.
+_MEMORY_INDEX_SNAPSHOTS: dict[tuple[str, str, str | None], tuple[float, str]] = {}
 _MEMORY_INDEX_SNAPSHOT_TTL_SECONDS = 30 * 60
 _MEMORY_INDEX_EMPTY_TTL_SECONDS = 60
 _MEMORY_INDEX_BUILD_TIMEOUT_SECONDS = 2.0
@@ -214,9 +214,9 @@ async def _build_memory_index_for_user(
     import time as _time
 
     now = _time.monotonic()
-    cache_key: tuple[str, str] | str
+    cache_key: tuple[str, str, str | None] | str
     if session_id:
-        cache_key = (user_id, session_id)
+        cache_key = (user_id, session_id, project_id)
         cached = _MEMORY_INDEX_SNAPSHOTS.get(cache_key)
         if cached is not None:
             ttl = (
