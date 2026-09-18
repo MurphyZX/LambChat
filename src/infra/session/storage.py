@@ -550,6 +550,18 @@ class SessionStorage(SessionAttachmentOperationsMixin):
             {"user_id": user_id, "metadata.project_id": project_id},
             {"$set": {"metadata.project_id": None, "updated_at": utc_now()}},
         )
+        if result.modified_count:
+            try:
+                from src.infra.memory.scope import invalidate_session_project_cache
+
+                invalidate_session_project_cache()
+                from src.infra.agent.middleware.prompt_injection import (
+                    invalidate_memory_index_snapshot,
+                )
+
+                invalidate_memory_index_snapshot(user_id)
+            except Exception:
+                pass
         return result.modified_count
 
     async def increment_unread_count(self, session_id: str) -> bool:
@@ -679,6 +691,17 @@ class SessionStorage(SessionAttachmentOperationsMixin):
         if not result:
             return None
 
+        try:
+            from src.infra.memory.scope import invalidate_session_project_cache
+
+            invalidate_session_project_cache(str(result.get("session_id") or session_id))
+            from src.infra.agent.middleware.prompt_injection import (
+                invalidate_memory_index_snapshot,
+            )
+
+            invalidate_memory_index_snapshot(user_id)
+        except Exception:
+            pass
         return self._build_session(result)
 
     async def append_user_message_search_content(self, session_id: str, content: str) -> bool:

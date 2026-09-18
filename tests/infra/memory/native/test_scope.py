@@ -680,3 +680,16 @@ async def test_resolve_session_project_id_none_for_empty_session():
 
     assert await scope_module.resolve_session_project_id(None) is None
     assert await scope_module.resolve_session_project_id("") is None
+
+
+def test_session_project_cache_can_be_invalidated_after_project_move():
+    from src.infra.memory import scope as scope_module
+
+    scope_module._SESSION_PROJECT_CACHE["session-1"] = (0.0, "old-project")
+    scope_module._SESSION_PROJECT_CACHE["session-2"] = (0.0, None)
+
+    scope_module.invalidate_session_project_cache("session-1")
+
+    assert "session-1" not in scope_module._SESSION_PROJECT_CACHE
+    assert "session-2" in scope_module._SESSION_PROJECT_CACHE
+    scope_module._SESSION_PROJECT_CACHE.clear()
