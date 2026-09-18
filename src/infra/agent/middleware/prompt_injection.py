@@ -40,8 +40,9 @@ _MEMORY_INDEX_EMPTY_TTL_SECONDS = 60
 _MEMORY_INDEX_BUILD_TIMEOUT_SECONDS = 2.0
 _MEMORY_INDEX_SNAPSHOT_MAX_SIZE = 2000
 
-# 用户级 fallback（无 session_id 的场景，如 sub-agent）；同样有上界防膨胀
-_MEMORY_INDEX_USER_SNAPSHOTS: dict[str, tuple[float, str]] = {}
+# 用户级 fallback（无 session_id 的场景，如 sub-agent）；同样有上界防膨胀。
+# project_id 必须进入 key，否则同一用户在不同项目的 sub-agent 会串用索引。
+_MEMORY_INDEX_USER_SNAPSHOTS: dict[tuple[str, str | None], tuple[float, str]] = {}
 _MEMORY_INDEX_USER_SNAPSHOT_MAX_SIZE = 2000
 
 
@@ -65,7 +66,8 @@ def invalidate_memory_index_snapshot(user_id: str) -> None:
     """Drop all cached indexes for a user (panel edit/delete → next call rebuilds)."""
     for key in [k for k in _MEMORY_INDEX_SNAPSHOTS if k[0] == user_id]:
         _MEMORY_INDEX_SNAPSHOTS.pop(key, None)
-    _MEMORY_INDEX_USER_SNAPSHOTS.pop(user_id, None)
+    for user_key in [k for k in _MEMORY_INDEX_USER_SNAPSHOTS if k[0] == user_id]:
+        _MEMORY_INDEX_USER_SNAPSHOTS.pop(user_key, None)
 
 
 class SectionPromptMiddleware(AgentMiddleware):
@@ -275,10 +277,9 @@ async def _build_memory_index_for_user(
     import time as _time
 
     now = _time.monotonic()
-    cache_key: tuple[str, str, str | None] | str
     if session_id:
-        cache_key = (user_id, session_id, project_id)
-        cached = _MEMORY_INDEX_SNAPSHOTS.get(cache_key)
+        session_cache_key = (user_id, session_id, project_id)
+        cached = _MEMORY_INDEX_SNAPSHOTS.get(session_cache_key)
         if cached is not None:
             ttl = (
                 _MEMORY_INDEX_SNAPSHOT_TTL_SECONDS if cached[1] else _MEMORY_INDEX_EMPTY_TTL_SECONDS
@@ -286,8 +287,8 @@ async def _build_memory_index_for_user(
             if (now - cached[0]) < ttl:
                 return cached[1]
     else:
-        cache_key = user_id
-        cached = _MEMORY_INDEX_USER_SNAPSHOTS.get(cache_key)
+        user_cache_key = (user_id, project_id)
+        cached = _MEMORY_INDEX_USER_SNAPSHOTS.get(user_cache_key)
         if cached is not None:
             ttl = (
                 _MEMORY_INDEX_SNAPSHOT_TTL_SECONDS if cached[1] else _MEMORY_INDEX_EMPTY_TTL_SECONDS
@@ -307,11 +308,11 @@ async def _build_memory_index_for_user(
 
     # 缓存（含空结果的短 TTL 缓存——防 memoryless 用户每轮打 Mongo）
     if session_id:
-        _MEMORY_INDEX_SNAPSHOTS[cache_key] = (now, index)  # type: ignore[index,assignment]
+        _MEMORY_INDEX_SNAPSHOTS[session_cache_key] = (now, index)
         if len(_MEMORY_INDEX_SNAPSHOTS) > _MEMORY_INDEX_SNAPSHOT_MAX_SIZE:
             _evict_oldest_snapshots()
     else:
-        _MEMORY_INDEX_USER_SNAPSHOTS[cache_key] = (now, index)  # type: ignore[index,assignment]
+        _MEMORY_INDEX_USER_SNAPSHOTS[user_cache_key] = (now, index)
         if len(_MEMORY_INDEX_USER_SNAPSHOTS) > _MEMORY_INDEX_USER_SNAPSHOT_MAX_SIZE:
             _evict_oldest_user_snapshots()
     return index

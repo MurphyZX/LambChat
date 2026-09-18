@@ -27,7 +27,7 @@ def test_user_snapshot_cache_bounded():
     cap = pi._MEMORY_INDEX_USER_SNAPSHOT_MAX_SIZE
     now = time.monotonic()
     for i in range(cap + 500):
-        pi._MEMORY_INDEX_USER_SNAPSHOTS[f"u{i}"] = (now - i, "idx")
+        pi._MEMORY_INDEX_USER_SNAPSHOTS[(f"u{i}", None)] = (now - i, "idx")
     pi._evict_oldest_user_snapshots()
     assert len(pi._MEMORY_INDEX_USER_SNAPSHOTS) <= cap
 
@@ -36,10 +36,10 @@ def test_user_snapshot_eviction_prefers_expired():
     cap = pi._MEMORY_INDEX_USER_SNAPSHOT_MAX_SIZE
     now = time.monotonic()
     for i in range(cap + 500):
-        pi._MEMORY_INDEX_USER_SNAPSHOTS[f"stale-{i}"] = (now - 3600, "idx")
-    pi._MEMORY_INDEX_USER_SNAPSHOTS["fresh"] = (now, "idx")
+        pi._MEMORY_INDEX_USER_SNAPSHOTS[(f"stale-{i}", None)] = (now - 3600, "idx")
+    pi._MEMORY_INDEX_USER_SNAPSHOTS[("fresh", None)] = (now, "idx")
     pi._evict_oldest_user_snapshots()
-    assert "fresh" in pi._MEMORY_INDEX_USER_SNAPSHOTS
+    assert ("fresh", None) in pi._MEMORY_INDEX_USER_SNAPSHOTS
 
 
 @pytest.mark.asyncio
@@ -311,6 +311,27 @@ async def test_memory_index_cache_isolated_when_session_project_changes(monkeypa
 
     first = await pi._build_memory_index_for_user("u1", session_id="s1", project_id="p1")
     second = await pi._build_memory_index_for_user("u1", session_id="s1", project_id="p2")
+
+    assert "p1" in first
+    assert "p2" in second
+    assert calls == ["p1", "p2"]
+
+
+@pytest.mark.asyncio
+async def test_user_snapshot_cache_isolated_by_project(monkeypatch):
+    calls: list[str | None] = []
+
+    async def fake_index(
+        user_id: str, *, session_id: str | None = None, project_id: str | None = None
+    ) -> str:
+        calls.append(project_id)
+        return f"<memory_index>{project_id}</memory_index>"
+
+    monkeypatch.setattr(pi, "_build_memory_index_full", fake_index)
+    pi._MEMORY_INDEX_USER_SNAPSHOTS.clear()
+
+    first = await pi._build_memory_index_for_user("u1", project_id="p1")
+    second = await pi._build_memory_index_for_user("u1", project_id="p2")
 
     assert "p1" in first
     assert "p2" in second
