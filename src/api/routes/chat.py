@@ -930,8 +930,7 @@ async def steer_running_agent(
         SteerItem(id=message_id, content=message, attachments=attachments),
     )
     return {
-        # Keep `status=queued` for existing clients; `outcome` is the
-        # unambiguous protocol field for newer clients.
+        # Keep status=queued for existing clients; outcome is newer protocol field.
         "status": "queued",
         "outcome": "accepted",
         "session_id": session_id,
