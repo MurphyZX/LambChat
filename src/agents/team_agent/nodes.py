@@ -506,6 +506,8 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
     # ── 子代理配置 ──
     subagent_base_url = configurable.get("base_url", "")
+    session_id = state.get("session_id")
+    active_goal = configurable.get("active_goal")
 
     def _build_subagent_middleware(
         subagent_type: str = "general-purpose",
@@ -532,6 +534,14 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                 from src.infra.agent.middleware import SandboxWorkspaceMiddleware
 
                 mw.append(SandboxWorkspaceMiddleware(policy_text=subagent_runtime_section))
+        if settings.ENABLE_MEMORY and context.user_id:
+            mw.append(
+                MemoryRecallIndexMiddleware(
+                    user_id=context.user_id,
+                    session_id=str(session_id or "") or None,
+                    active_goal=active_goal,
+                )
+            )
         if context.deferred_manager is not None:
             from src.infra.agent.middleware import ToolSearchMiddleware
 
@@ -761,7 +771,6 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     _image_mw = image_url_middleware_for_mode(image_url_mode)
     if _image_mw:
         user_middleware.append(_image_mw)
-    active_goal = configurable.get("active_goal")
     _prompt_sections = [
         s
         for s in (
@@ -962,7 +971,6 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
         schedule_memory_extraction(context.user_id)
 
-    session_id = state.get("session_id")
     if (
         context.deferred_manager is not None
         and session_id

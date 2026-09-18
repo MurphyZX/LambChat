@@ -231,6 +231,8 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     # 自定义子代理配置 - 强制将所有中间信息保存到文件
     search_base_url = configurable.get("base_url", "")
     subagent_prompt_sections = [s for s in (*persona_sections, memory_guide) if s]
+    session_id = state.get("session_id", "")
+    active_goal = configurable.get("active_goal")
     sandbox_runtime_policy = await _build_sandbox_runtime_policy(
         sandbox_backend, sandbox_work_dir, user_id=context.user_id or "default"
     )
@@ -254,6 +256,14 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
             from src.infra.agent.middleware import SandboxWorkspaceMiddleware
 
             mw.append(SandboxWorkspaceMiddleware(policy_text=sandbox_runtime_policy))
+        if settings.ENABLE_MEMORY and context.user_id:
+            mw.append(
+                MemoryRecallIndexMiddleware(
+                    user_id=context.user_id,
+                    session_id=str(session_id or "") or None,
+                    active_goal=active_goal,
+                )
+            )
         if context.deferred_manager is not None:
             from src.infra.agent.middleware import ToolSearchMiddleware
 
@@ -324,7 +334,6 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     _image_mw = image_url_middleware_for_mode(image_url_mode)
     if _image_mw:
         user_middleware.append(_image_mw)
-    active_goal = configurable.get("active_goal")
     # Prompt sections use one SectionPromptMiddleware instance.
     # Duplicate middleware classes are rejected by langchain's agent factory.
     _prompt_sections = [
@@ -563,7 +572,6 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
         schedule_memory_extraction(context.user_id)
 
     # 持久化已发现的延迟工具名（跨 turn 恢复，分布式安全）
-    session_id = state.get("session_id", "")
     if context.deferred_manager is not None and context.deferred_manager.discovered_count > 0:
         try:
             from src.infra.tool.deferred_manager import persist_discovered_tools
