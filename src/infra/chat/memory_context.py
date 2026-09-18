@@ -89,6 +89,7 @@ async def append_memory_context(
     raw_query: str | None = None,
     *,
     project_id: str | None = None,
+    session_id: str | None = None,
 ) -> str:
     """Best-effort recall that leaves the original message unchanged on failure."""
     if not settings.ENABLE_MEMORY or not getattr(
@@ -101,7 +102,12 @@ async def append_memory_context(
 
     try:
         block = await asyncio.wait_for(
-            _recall_and_render(user_id, query, project_id=project_id),
+            _recall_and_render(
+                user_id,
+                query,
+                project_id=project_id,
+                session_id=session_id,
+            ),
             timeout=MEMORY_CONTEXT_TIMEOUT_SECONDS,
         )
     except Exception:
@@ -110,12 +116,21 @@ async def append_memory_context(
     return f"{message}\n\n{block}" if block else message
 
 
-async def _recall_and_render(user_id: str, query: str, *, project_id: str | None) -> str:
+async def _recall_and_render(
+    user_id: str,
+    query: str,
+    *,
+    project_id: str | None,
+    session_id: str | None,
+) -> str:
+    from src.infra.memory.scope import resolve_session_project_id
     from src.infra.memory.tools import _get_backend
     from src.infra.memory.user_pref import user_memory_enabled
 
     if not await user_memory_enabled(user_id):
         return ""
+    if project_id is None:
+        project_id = await resolve_session_project_id(session_id)
     backend = await _get_backend()
     if backend is None:
         return ""

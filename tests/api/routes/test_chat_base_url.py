@@ -184,6 +184,7 @@ async def test_chat_stream_appends_memory_to_model_message_only(
     assert calls["user_id"] == "owner-1"
     assert calls["raw_query"] == "hello"
     assert calls["project_id"] is None
+    assert calls["session_id"]
 
 
 async def test_chat_stream_passes_base_url_to_local_submit(

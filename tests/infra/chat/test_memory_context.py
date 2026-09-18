@@ -160,3 +160,36 @@ async def test_append_is_deterministic_for_same_recall_result(
     first = await mc.append_memory_context("same question", "u1")
     second = await mc.append_memory_context("same question", "u1")
     assert first == second
+
+
+@pytest.mark.asyncio
+async def test_append_resolves_session_project_when_request_has_no_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mc.settings, "ENABLE_MEMORY", True)
+    monkeypatch.setattr(mc.settings, "NATIVE_MEMORY_QUERY_CONTEXT_ENABLED", True, raising=False)
+    captured: dict = {}
+
+    class Backend:
+        async def recall(self, **kwargs):
+            captured.update(kwargs)
+            return {"memories": [_memory("Project rule", "Use the staging database")]}
+
+    async def backend():
+        return Backend()
+
+    async def resolve(session_id: str | None):
+        assert session_id == "session-1"
+        return "project-1"
+
+    monkeypatch.setattr("src.infra.memory.tools._get_backend", backend)
+    monkeypatch.setattr("src.infra.memory.scope.resolve_session_project_id", resolve)
+
+    result = await mc.append_memory_context(
+        "continue the deployment",
+        "u1",
+        session_id="session-1",
+    )
+
+    assert "Project rule" in result
+    assert captured["project_id"] == "project-1"

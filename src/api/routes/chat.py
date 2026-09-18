@@ -382,6 +382,7 @@ async def chat_stream(
         user.sub,
         raw_query=request.message,
         project_id=request.project_id,
+        session_id=session_id,
     )
 
     # 本轮注入状态写回会话元数据（供后续轮次判定）
