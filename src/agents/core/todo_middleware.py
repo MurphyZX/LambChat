@@ -4,5 +4,5 @@ from langchain.agents.middleware import TodoListMiddleware
 
 
 def create_todo_middleware() -> TodoListMiddleware:
-    """Create the standard session-scoped Todo planner middleware."""
-    return TodoListMiddleware()
+    """Expose Todo state/tools without duplicating the shared progress policy."""
+    return TodoListMiddleware(system_prompt="")
