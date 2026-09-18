@@ -490,14 +490,26 @@ def _field_overlap_score(query_terms: set[str], text: str) -> float:
 def local_rerank(query: str, candidates: list[dict], max_results: int) -> list[dict]:
     query_terms = _query_terms(query)
 
-    def score(candidate: dict) -> tuple[float, float, float, float]:
+    def score(candidate: dict) -> tuple[float, float, float, float, float]:
         title_score = _field_overlap_score(query_terms, str(candidate.get("title", "")))
         summary_score = _field_overlap_score(query_terms, str(candidate.get("summary", "")))
         text_score = _field_overlap_score(query_terms, str(candidate.get("text", "")))
+        raw_tags = candidate.get("tags") or []
+        tags_text = (
+            " ".join(str(tag) for tag in raw_tags) if isinstance(raw_tags, list) else str(raw_tags)
+        )
+        tags_score = _field_overlap_score(query_terms, tags_text)
         base_score = float(candidate.get("score", 0.0) or 0.0)
-        blended = base_score + title_score * 0.8 + summary_score * 0.6 + text_score * 0.3
+        blended = (
+            base_score
+            + tags_score * 1.0
+            + title_score * 0.8
+            + summary_score * 0.6
+            + text_score * 0.3
+        )
         return (
             blended,
+            tags_score,
             title_score,
             summary_score,
             text_score,
@@ -520,6 +532,7 @@ async def rerank_candidates(query: str, candidates: list[dict], max_results: int
             part
             for part in (
                 str(candidate.get("title", "")).strip(),
+                "Tags: " + ", ".join(str(tag) for tag in (candidate.get("tags") or [])),
                 str(candidate.get("summary", "")).strip(),
                 str(candidate.get("text", "")).strip(),
             )

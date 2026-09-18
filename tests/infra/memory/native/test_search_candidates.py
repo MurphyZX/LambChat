@@ -72,6 +72,33 @@ def test_local_rerank_prefers_stronger_term_overlap():
     assert [item["memory_id"] for item in ranked] == ["m1", "m2"]
 
 
+def test_local_rerank_uses_memory_tags_when_body_does_not_match():
+    from src.infra.memory.client.native.search import local_rerank
+
+    candidates = [
+        {
+            "memory_id": "body-only",
+            "title": "Deployment note",
+            "summary": "Cluster rollout details.",
+            "text": "Cluster rollout details.",
+            "tags": ["deployment"],
+            "score": 0.2,
+        },
+        {
+            "memory_id": "tag-only",
+            "title": "Operations note",
+            "summary": "Cluster rollout details.",
+            "text": "Cluster rollout details.",
+            "tags": ["kubernetes"],
+            "score": 0.2,
+        },
+    ]
+
+    ranked = local_rerank("kubernetes", candidates, max_results=2)
+
+    assert [item["memory_id"] for item in ranked] == ["tag-only", "body-only"]
+
+
 @pytest.mark.asyncio
 async def test_recall_memories_uses_rerank_model_when_enabled(monkeypatch):
     from src.infra.memory.client.native import search as search_module
