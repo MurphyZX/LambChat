@@ -14,7 +14,8 @@ from src.infra.utils.datetime import ensure_utc, utc_now
 from src.kernel.config import settings
 
 _INDEX_FRAME_TAG_RE = re.compile(
-    r"</?(?:memory_index|memory_index_context|session_todo_context|active_goal_context)"
+    r"</?(?:memory_context|memory_index|memory_index_context|turn_context|"
+    r"session_todo_context|active_goal_context|active_goal)"
     r"(?:\s[^>]*)?>",
     re.IGNORECASE,
 )
