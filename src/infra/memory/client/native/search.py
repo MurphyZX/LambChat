@@ -420,15 +420,17 @@ async def vector_search(
         if not qdrant_hits:
             return []
         order = {h.memory_id: h.score for h in qdrant_hits}
-        cursor = backend._collection.find(
-            {
-                "user_id": user_id,
-                "memory_id": {"$in": list(order)},
-                "source": {"$ne": "session_summary"},
-                **build_scope_clause(project_id),
-            },
-            {"embedding": 0},
-        )
+        hydration_query: dict[str, Any] = {
+            "user_id": user_id,
+            "memory_id": {"$in": list(order)},
+            "source": {"$ne": "session_summary"},
+        }
+        if memory_types:
+            hydration_query["memory_type"] = {"$in": memory_types}
+        if context_filter:
+            hydration_query["context"] = build_context_clause(context_filter)
+        hydration_query.update(build_scope_clause(project_id))
+        cursor = backend._collection.find(hydration_query, {"embedding": 0})
         docs = await cursor.to_list(length=limit)
         docs.sort(key=lambda d: -order.get(d.get("memory_id"), 0.0))
         return [format_memory(doc, order.get(doc.get("memory_id"), 1.0)) for doc in docs]

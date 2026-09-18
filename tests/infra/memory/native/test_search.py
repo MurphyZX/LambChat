@@ -480,6 +480,7 @@ async def test_vector_search_resolves_context_family_for_qdrant(monkeypatch):
         "project_status",
     ]
     assert col.distinct_queries[0][1]["user_id"] == "u1"
+    assert col.find_queries[0]["context"] == search.build_context_clause("project")
 
 
 @pytest.mark.asyncio
