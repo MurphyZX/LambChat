@@ -10,7 +10,7 @@ from typing import Any, Optional
 import httpx
 
 from src.infra.logging import get_logger
-from src.infra.memory.client.native.content import hydrate_formatted_memory
+from src.infra.memory.client.native.content import hydrate_formatted_memory, sanitize_memory_text
 from src.infra.memory.client.native.models import (
     STOPWORDS,
     char_ngrams,
@@ -132,11 +132,11 @@ def format_memory(doc: dict, score: float, now: datetime | None = None) -> dict:
     result: dict[str, Any] = {
         "memory_id": doc["memory_id"],
         "user_id": doc.get("user_id"),
-        "text": doc["content"],
-        "preview": doc.get("content", ""),
-        "summary": doc["summary"],
-        "title": doc.get("title", ""),
-        "tags": doc.get("tags") or [],
+        "text": sanitize_memory_text(doc["content"]),
+        "preview": sanitize_memory_text(doc.get("content", "")),
+        "summary": sanitize_memory_text(doc["summary"]),
+        "title": sanitize_memory_text(doc.get("title", "")),
+        "tags": [sanitize_memory_text(tag) for tag in (doc.get("tags") or [])],
         "type": doc["memory_type"],
         "scope": doc.get("scope") or "user",
         "project_id": doc.get("project_id"),
