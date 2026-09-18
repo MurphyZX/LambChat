@@ -19,7 +19,7 @@ from src.infra.memory.client.native.content import (
 )
 from src.infra.memory.client.native.indexing import build_memory_index
 from src.infra.memory.client.native.models import COLLECTION_NAME
-from src.infra.memory.client.native.search import recall_memories
+from src.infra.memory.client.native.search import build_scope_clause, recall_memories
 from src.infra.memory.client.native.summaries import (
     build_index_label,
     llm_enrich_memory,
@@ -191,6 +191,7 @@ class NativeMemoryBackend(MemoryBackend):
 
         from src.infra.memory.scope import ScopeResolutionError, resolve_retain_scope
 
+        requested_scope = scope
         try:
             scope, project_id = resolve_retain_scope(scope=scope, project_id=project_id)
         except ScopeResolutionError as exc:
@@ -253,6 +254,8 @@ class NativeMemoryBackend(MemoryBackend):
             "memory_id": 1,
             "memory_type": 1,
             "summary": 1,
+            "scope": 1,
+            "project_id": 1,
             "updated_at": 1,
             "content_storage_mode": 1,
             "content_store_key": 1,
@@ -260,11 +263,24 @@ class NativeMemoryBackend(MemoryBackend):
         }
         if existing_memory_id:
             forced_match = await self._collection.find_one(
-                {"user_id": user_id, "memory_id": existing_memory_id},
+                {
+                    "user_id": user_id,
+                    "memory_id": existing_memory_id,
+                    **build_scope_clause(project_id),
+                },
                 _match_projection,
             )
             if forced_match:
                 existing_match = forced_match
+                # A project session can still update a visible user/reference
+                # memory by ID. Preserve its existing ownership unless the
+                # caller explicitly selected a new scope.
+                if requested_scope is None:
+                    existing_scope = existing_match.get("scope") or "user"
+                    scope = existing_scope
+                    project_id = (
+                        existing_match.get("project_id") if existing_scope == "project" else None
+                    )
         if existing_match is None:
             existing_match = await find_existing_memory_match(
                 fetch_recent=fetch_recent_memories,

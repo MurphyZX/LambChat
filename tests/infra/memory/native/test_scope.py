@@ -142,6 +142,38 @@ def _backend_with(collection) -> NativeMemoryBackend:
     return backend
 
 
+class _ExplicitMemoryCollection(_ScopeFakeCollection):
+    def __init__(self, existing):
+        super().__init__([], [])
+        self._existing = existing
+
+    async def find_one(self, query, _projection=None):
+        if query.get("memory_id") != self._existing.get("memory_id"):
+            return {"content_storage_mode": "inline", "content_store_key": None, "source_refs": []}
+
+        visible = query.get("$or")
+        if isinstance(visible, list):
+            if any(
+                (
+                    isinstance(condition.get("scope"), dict)
+                    and self._existing.get("scope") in condition["scope"].get("$in", [])
+                )
+                or (
+                    condition.get("scope") == self._existing.get("scope") == "project"
+                    and condition.get("project_id") == self._existing.get("project_id")
+                )
+                for condition in visible
+            ):
+                return dict(self._existing)
+        else:
+            scope_clause = query.get("scope")
+            if not isinstance(scope_clause, dict):
+                return None
+            if self._existing.get("scope") in scope_clause["$in"]:
+                return dict(self._existing)
+        return None
+
+
 @pytest.mark.asyncio
 async def test_retain_rejects_project_scope_without_project_id():
     backend = _backend_with(_ScopeFakeCollection([], []))
@@ -292,6 +324,73 @@ async def test_retain_update_sets_scope_fields_on_existing_memory():
     _query, payload = collection.updated[0]
     assert payload["$set"]["scope"] == "project"
     assert payload["$set"]["project_id"] == "proj-1"
+
+
+@pytest.mark.asyncio
+async def test_retain_existing_user_memory_keeps_user_scope_in_project_session():
+    existing = {
+        "memory_id": "m-user",
+        "memory_type": "user",
+        "summary": "User prefers uv.",
+        "updated_at": datetime.now(timezone.utc),
+        "scope": "user",
+        "project_id": None,
+        "content_storage_mode": "inline",
+        "content_store_key": None,
+        "source_refs": [],
+    }
+    collection = _ExplicitMemoryCollection(existing)
+    backend = _backend_with(collection)
+
+    result = await backend.retain(
+        "u1",
+        "The user still prefers uv for Python dependency management.",
+        context="user_identity",
+        existing_memory_id="m-user",
+        project_id="proj-1",
+        title="uv preference",
+        summary="User prefers uv for Python dependencies.",
+        tags=["uv"],
+    )
+
+    assert result["success"] is True
+    assert result["updated_existing"] is True
+    _query, payload = collection.updated[0]
+    assert payload["$set"]["scope"] == "user"
+    assert payload["$set"]["project_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_retain_existing_memory_from_other_project_is_not_updated():
+    existing = {
+        "memory_id": "m-other",
+        "memory_type": "project",
+        "summary": "Other project constraint.",
+        "updated_at": datetime.now(timezone.utc),
+        "scope": "project",
+        "project_id": "proj-2",
+        "content_storage_mode": "inline",
+        "content_store_key": None,
+        "source_refs": [],
+    }
+    collection = _ExplicitMemoryCollection(existing)
+    backend = _backend_with(collection)
+
+    result = await backend.retain(
+        "u1",
+        "A new constraint for this project should be stored separately.",
+        context="project_constraint",
+        existing_memory_id="m-other",
+        project_id="proj-1",
+        title="new constraint",
+        summary="Constraint for the current project.",
+        tags=["project"],
+    )
+
+    assert result["success"] is True
+    assert result.get("updated_existing") is not True
+    assert collection.inserted
+    assert not collection.updated
 
 
 # ---------------------------------------------------------------------------
