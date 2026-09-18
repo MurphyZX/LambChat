@@ -31,3 +31,16 @@ CONTROL_FRAME_BLOCK_RE = re.compile(
     rf"\s*<({_FRAME_ALTERNATION})(?:\s[^>]*)?>.*?</\1>\s*",
     re.DOTALL | re.IGNORECASE,
 )
+
+
+def escape_control_frame_tags(value: object) -> str:
+    """Escape user-authored control-frame tags without altering other text.
+
+    Model-facing user content can contain literal markup that happens to use
+    an internal frame name. Escaping only those tags keeps the visible text
+    recognizable while preventing it from being mistaken for trusted runtime
+    context or stripped by durable-memory extraction.
+    """
+
+    text = str(value or "")
+    return CONTROL_FRAME_TAG_RE.sub(lambda match: f"&lt;{match.group(0)[1:-1]}&gt;", text)
