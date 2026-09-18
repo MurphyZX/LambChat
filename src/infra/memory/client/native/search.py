@@ -206,6 +206,25 @@ def is_context_overview_query(query: str) -> bool:
         "what should i know",
         "memory overview",
         "relevant memories",
+        # Keep overview fallback usable for the locales supported by the UI.
+        "记忆概览",
+        "记忆总览",
+        "用户偏好",
+        "项目上下文",
+        "相关记忆",
+        "我需要知道什么",
+        "メモリ概要",
+        "ユーザー設定",
+        "プロジェクトのコンテキスト",
+        "関連する記憶",
+        "메모리 개요",
+        "사용자 선호",
+        "프로젝트 컨텍스트",
+        "관련 기억",
+        "обзор памяти",
+        "предпочтения пользователя",
+        "контекст проекта",
+        "релевантные воспоминания",
     )
     return any(marker in lowered for marker in overview_markers)
 

@@ -142,8 +142,9 @@ async def test_local_mongo_keyword_fallback_matches_memory_tags(local_collection
 @pytest.mark.parametrize(
     ("remote_rerank", "has_search_hits"), [(False, False), (True, False), (True, True)]
 )
+@pytest.mark.parametrize("query", ["memory overview", "记忆概览"])
 async def test_local_mongo_overview_recall_delivers_recent_context(
-    local_collection, monkeypatch, remote_rerank, has_search_hits
+    local_collection, monkeypatch, remote_rerank, has_search_hits, query
 ):
     from src.infra.memory.client.native.backend import NativeMemoryBackend
 
@@ -184,7 +185,7 @@ async def test_local_mongo_overview_recall_delivers_recent_context(
     result = await search.recall_memories(
         backend,
         "local-case-user",
-        "memory overview",
+        query,
         max_results=1,
         project_id="billing",
         enable_rerank=remote_rerank,

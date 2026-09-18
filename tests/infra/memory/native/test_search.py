@@ -5,8 +5,14 @@ import pytest
 from src.infra.memory.client.native.search import (
     build_keyword_clauses,
     format_memory,
+    is_context_overview_query,
     prioritize_sources,
 )
+
+
+@pytest.mark.parametrize("query", ["记忆概览", "用户偏好", "项目上下文", "相关记忆"])
+def test_context_overview_query_supports_chinese_markers(query):
+    assert is_context_overview_query(query) is True
 
 
 def test_build_keyword_clauses_supports_cjk_queries_without_spaces():
