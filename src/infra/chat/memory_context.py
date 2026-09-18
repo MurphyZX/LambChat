@@ -61,12 +61,12 @@ def build_memory_query(
     their own.  The active goal supplies that missing signal while remaining a
     search hint only; it is never written back to the user message here.
     """
-    query = " ".join(str(raw_query or "").split())
+    query = " ".join(_FRAME_TAG_RE.sub(" ", str(raw_query or "")).split())
     if isinstance(active_goal, dict):
         objective = active_goal.get("objective")
     else:
         objective = getattr(active_goal, "objective", None)
-    objective = " ".join(str(objective or "").split())
+    objective = " ".join(_FRAME_TAG_RE.sub(" ", str(objective or "")).split())
     if objective and objective not in query:
         query = f"{query}\nGoal: {objective}" if query else f"Goal: {objective}"
     return query[: max(0, int(max_chars))].rstrip()
