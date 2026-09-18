@@ -15,7 +15,8 @@ from src.kernel.config import settings
 
 _INDEX_FRAME_TAG_RE = re.compile(
     r"</?(?:memory_context|memory_index|memory_index_context|turn_context|"
-    r"session_todo_context|active_goal_context|active_goal)"
+    r"session_todo_context|active_goal_context|active_goal|"
+    r"env_var_keys_context|sandbox_workspace_context)"
     r"(?:\s[^>]*)?>",
     re.IGNORECASE,
 )
