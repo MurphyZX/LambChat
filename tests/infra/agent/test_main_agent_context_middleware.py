@@ -208,6 +208,50 @@ async def test_main_agent_context_cache_rebuilds_when_todos_change() -> None:
 
 
 @pytest.mark.asyncio
+async def test_main_agent_context_does_not_fall_back_to_stale_runtime_todos() -> None:
+    writes: list[tuple[str, str]] = []
+
+    class _Backend:
+        async def awrite(self, path: str, content: str):
+            writes.append((path, content))
+            return SimpleNamespace(error=None, path=path)
+
+    class _Request(SimpleNamespace):
+        def override(self, **overrides: Any):
+            values = dict(self.__dict__)
+            values.update(overrides)
+            return _Request(**values)
+
+    middleware = MainAgentContextMiddleware(
+        backend=_Backend(),
+        run_id_factory=lambda: "cleared-todos",
+    )
+    request = _Request(
+        runtime=SimpleNamespace(
+            state={
+                "messages": [HumanMessage(content="Continue")],
+                "todos": [{"content": "Stale runtime plan", "status": "in_progress"}],
+            }
+        ),
+        state={"todos": []},
+        tool_call={
+            "id": "call-cleared-todos",
+            "name": "task",
+            "args": {"subagent_type": "general-purpose", "description": "Continue."},
+        },
+    )
+
+    async def _handler(_request: Any) -> str:
+        return "ok"
+
+    await middleware.awrap_tool_call(request, _handler)
+
+    assert len(writes) == 1
+    assert "Stale runtime plan" not in writes[0][1]
+    assert "session_todo_context" not in writes[0][1]
+
+
+@pytest.mark.asyncio
 async def test_main_agent_context_middleware_writes_context_under_backend_workspace() -> None:
     writes: list[tuple[str, str]] = []
 
@@ -376,6 +420,54 @@ async def test_main_agent_context_middleware_reuses_snapshot_for_same_message_st
     assert len(writes) == 1
     assert "main_agent_messages_first.md" in first
     assert "main_agent_messages_first.md" in second
+
+
+@pytest.mark.asyncio
+async def test_main_agent_context_cache_rebuilds_when_content_changes_with_same_message_id() -> (
+    None
+):
+    writes: list[tuple[str, str]] = []
+
+    class _Backend:
+        async def awrite(self, path: str, content: str):
+            writes.append((path, content))
+            return SimpleNamespace(error=None, path=path)
+
+    class _Request(SimpleNamespace):
+        def override(self, **overrides: Any):
+            values = dict(self.__dict__)
+            values.update(overrides)
+            return _Request(**values)
+
+    runtime = SimpleNamespace(
+        state={"messages": [HumanMessage(content="First content", id="reused-message-id")]}
+    )
+    middleware = MainAgentContextMiddleware(
+        backend=_Backend(),
+        run_id_factory=iter(["first-content", "second-content"]).__next__,
+    )
+
+    async def _handler(_request: Any) -> str:
+        return "ok"
+
+    def _request() -> _Request:
+        return _Request(
+            runtime=runtime,
+            state={},
+            tool_call={
+                "id": "call-content-cache",
+                "name": "task",
+                "args": {"subagent_type": "general-purpose", "description": "Work."},
+            },
+        )
+
+    await middleware.awrap_tool_call(_request(), _handler)
+    runtime.state["messages"] = [HumanMessage(content="Updated content", id="reused-message-id")]
+    await middleware.awrap_tool_call(_request(), _handler)
+
+    assert len(writes) == 2
+    assert "First content" in writes[0][1]
+    assert "Updated content" in writes[1][1]
 
 
 @pytest.mark.asyncio

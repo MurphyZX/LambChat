@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import time
@@ -266,9 +267,21 @@ class MainAgentContextMiddleware(AgentMiddleware):
     @staticmethod
     def _cache_key(request: Any, messages: list[Any]) -> tuple[Any, ...]:
         message_ids = tuple(getattr(message, "id", None) for message in messages)
+        message_signature = tuple(
+            (
+                type(message).__name__,
+                getattr(message, "id", None),
+                hashlib.sha256(
+                    repr(
+                        (getattr(message, "content", ""), getattr(message, "tool_calls", None))
+                    ).encode("utf-8", errors="replace")
+                ).hexdigest()[:16],
+            )
+            for message in messages
+        )
         todo_signature = MainAgentContextMiddleware._todo_signature(request)
         if all(message_ids):
-            return ("message_ids", message_ids, todo_signature)
+            return ("message_signature", message_signature, todo_signature)
         runtime = getattr(request, "runtime", None)
         return (
             "fallback",
@@ -276,6 +289,7 @@ class MainAgentContextMiddleware(AgentMiddleware):
             id(messages),
             len(messages),
             tuple(id(message) for message in messages),
+            message_signature,
             todo_signature,
         )
 
