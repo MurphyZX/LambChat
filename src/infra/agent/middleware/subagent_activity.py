@@ -85,7 +85,7 @@ class SubagentActivityMiddleware(AgentMiddleware):
     @staticmethod
     def _sanitize_text(text: str) -> str:
         """Keep activity evidence inert when it is read back into a prompt."""
-        return redact_sensitive_text(escape_control_frame_tags(text))
+        return redact_sensitive_text(escape_control_frame_tags(text).replace("```", "'''"))
 
     @staticmethod
     async def _json_dumps(value: Any, *, indent: int | None = None) -> str:
@@ -115,10 +115,10 @@ class SubagentActivityMiddleware(AgentMiddleware):
         if isinstance(result, ToolMessage):
             return await self._content_to_text(result.content)
         if isinstance(result, (dict, list, tuple)):
-            return await self._json_dumps(result, indent=2)
+            return self._sanitize_text(await self._json_dumps(result, indent=2))
         if result is None:
             return ""
-        return str(result)
+        return self._sanitize_text(str(result))
 
     def _format_args(self, args: dict[str, Any]) -> str:
         if not args:
