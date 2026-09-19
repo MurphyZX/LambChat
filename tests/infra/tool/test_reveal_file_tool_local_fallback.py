@@ -413,7 +413,8 @@ async def test_reveal_file_uploads_backend_content_as_file(
         "content_type": "application/pdf",
         "skip_size_limit": True,
     }
-    assert blocking_calls == ["write", "seek", "dumps"]
+    # 内容哈希复用先于 spool（同内容跳过重传的判据），再走写盘上传
+    assert blocking_calls == ["_sha256_hex", "write", "seek", "dumps"]
 
 
 @pytest.mark.asyncio
@@ -653,6 +654,7 @@ async def test_reveal_file_indexes_upload_when_runtime_has_user_without_trace_co
                 "project_id": None,
                 "description": "monthly report",
                 "original_path": "/workspace/report.pdf",
+                "content_hash": "29d1283686193dc1461a7deac4f53d9bc5402a28b95d854f69e94986756fd0a9",
             },
         }
     ]

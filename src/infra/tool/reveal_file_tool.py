@@ -24,6 +24,7 @@ Reveal File 工具
 """
 
 import asyncio
+import hashlib
 import inspect
 import json
 import mimetypes
@@ -192,6 +193,7 @@ async def _index_revealed_file(
     file_key: str,
     description: str,
     original_path: str,
+    content_hash: str | None = None,
 ) -> None:
     try:
         req_ctx = TraceContext.get_request_context()
@@ -219,6 +221,8 @@ async def _index_revealed_file(
             "description": description,
             "original_path": original_path,
         }
+        if content_hash:
+            data["content_hash"] = content_hash
         if delivery_source:
             data["delivery_source"] = delivery_source
 
@@ -233,6 +237,98 @@ async def _index_revealed_file(
         )
     except Exception as idx_err:
         logger.warning(f"[reveal_file] Failed to index revealed file: {idx_err}")
+
+
+def _reveal_user_id(runtime: ToolRuntime | None) -> str | None:
+    """索引/复用共用的 user_id 提取（请求上下文优先，回退 runtime）。"""
+    try:
+        req_ctx = TraceContext.get_request_context()
+    except Exception:
+        req_ctx = None
+    user_id = getattr(req_ctx, "user_id", None) or get_user_id_from_runtime(runtime)
+    return user_id if isinstance(user_id, str) and user_id else None
+
+
+def _sha256_hex(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def _hash_local_file(file_path: str) -> str | None:
+    """流式哈希本地文件（不整读进内存）；失败返回 None（放弃复用直传）。"""
+    try:
+        digest = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except Exception as e:
+        logger.debug(f"[reveal_file] Failed to hash local file {file_path}: {e}")
+        return None
+
+
+async def _try_reuse_upload(
+    user_id: str | None,
+    original_path: str,
+    content_hash: str | None,
+    mime_type: str,
+) -> Any | None:
+    """同路径同内容 → 复用既有存储对象，跳过重传（防存储孤儿累积）。
+
+    依赖文件库行的 content_hash（本特性起写入）；旧行无该字段即不命中，
+    安全回退为正常上传。命中要求行 file_key 是真实 storage key（非 URL）。
+    """
+    if not user_id or not content_hash:
+        return None
+    try:
+        row = await get_revealed_file_storage().find_by_original(
+            user_id, original_path, "reveal_file"
+        )
+    except Exception as e:
+        logger.debug(f"[reveal_file] Reuse lookup failed for {original_path}: {e}")
+        return None
+    if not isinstance(row, dict) or row.get("content_hash") != content_hash:
+        return None
+    file_key = row.get("file_key")
+    if not isinstance(file_key, str) or not file_key or _is_remote_url(file_key):
+        return None
+    raw_size = row.get("file_size")
+    raw_mime = row.get("mime_type")
+    raw_url = row.get("url")
+    file_size = raw_size if isinstance(raw_size, int) else 0
+    row_mime = raw_mime if isinstance(raw_mime, str) else None
+    row_url = raw_url if isinstance(raw_url, str) else ""
+    logger.info(f"[reveal_file] Reusing existing object for {original_path}: {file_key}")
+    return _ReusableUploadResult(
+        key=file_key, url=row_url, size=file_size, content_type=row_mime or mime_type
+    )
+
+
+class _ReusableUploadResult:
+    """duck-typed UploadResult：reveal 主流程只消费 key/url/size/content_type。"""
+
+    def __init__(self, *, key: str, url: str, size: int, content_type: str) -> None:
+        self.key = key
+        self.url = url
+        self.size = size
+        self.content_type = content_type
+
+
+async def _reverse_map_self_upload_row(
+    user_id: str | None, file_path: str
+) -> dict[str, Any] | None:
+    """本站代理 URL → 反查文件库原始行（file_name/original_path/file_key）。
+
+    模型按 ARTIFACT_POLICY 复述 reveal 返回的 URL 时，该 URL 再进
+    reveal_file 按原始行归一索引，避免同一文件裂成 path:/url: 两行。
+    """
+    proxy_key = _extract_self_upload_key(file_path)
+    if not proxy_key or not user_id:
+        return None
+    try:
+        return await get_revealed_file_storage().find_by_file_key(user_id, proxy_key)
+    except Exception as e:
+        logger.debug(f"[reveal_file] Reverse map lookup failed for {file_path}: {e}")
+        return None
 
 
 async def _get_backend_file_size(backend: Any, file_path: str) -> int | None:
@@ -763,16 +859,36 @@ async def reveal_file(
                 "source": "remote_url",
             },
         }
+        # URL echo 归一：本站代理 URL 反查原始行，索引并入原行（不裂第二行）
+        index_file_name = filename
+        index_file_key: str = file_path
+        index_original_path = file_path
+        origin_row = await _reverse_map_self_upload_row(_reveal_user_id(runtime), file_path)
+        if isinstance(origin_row, dict):
+            row_name = origin_row.get("file_name")
+            if isinstance(row_name, str) and row_name:
+                index_file_name = row_name
+            row_key = origin_row.get("file_key")
+            if isinstance(row_key, str) and row_key and not _is_remote_url(row_key):
+                index_file_key = row_key
+            row_path = origin_row.get("original_path")
+            if (
+                isinstance(row_path, str)
+                and row_path
+                and not _is_remote_url(row_path)
+                and not _extract_self_upload_key(row_path)
+            ):
+                index_original_path = row_path
         await _index_revealed_file(
             runtime=runtime,
-            file_name=filename,
+            file_name=index_file_name,
             file_category=file_category,
             mime_type=mime_type,
             file_size=0,
             url=file_path,
-            file_key=file_path,
+            file_key=index_file_key,
             description=description or "",
-            original_path=file_path,
+            original_path=index_original_path,
         )
         return await _json_dumps_result(remote_result)
 
@@ -903,23 +1019,39 @@ async def reveal_file(
             )
             use_filesystem_stream = False
 
+        # 同路径同内容 → 复用既有对象（内容哈希，防重复上传孤儿）
+        reuse_user_id = _reveal_user_id(runtime)
+        content_hash: str | None = None
+        upload_result = None
         if use_filesystem_stream:
-            upload_result = await _upload_filesystem_file(file_path, storage, filename, mime_type)
-        else:
-            with SpooledTemporaryFile(
-                max_size=_UPLOAD_SPOOL_MEMORY_LIMIT,
-                mode="w+b",
-            ) as spooled:
-                await run_blocking_io(spooled.write, file_content)
-                del file_content
-                await run_blocking_io(spooled.seek, 0)
-                upload_result = await storage.upload_file(
-                    file=spooled,
-                    folder="revealed_files",
-                    filename=filename,
-                    content_type=mime_type,
-                    skip_size_limit=True,
+            content_hash = await run_blocking_io(_hash_local_file, file_path)
+            upload_result = await _try_reuse_upload(
+                reuse_user_id, file_path, content_hash, mime_type
+            )
+            if upload_result is None:
+                upload_result = await _upload_filesystem_file(
+                    file_path, storage, filename, mime_type
                 )
+        else:
+            content_hash = await run_blocking_io(_sha256_hex, file_content)
+            upload_result = await _try_reuse_upload(
+                reuse_user_id, file_path, content_hash, mime_type
+            )
+            if upload_result is None:
+                with SpooledTemporaryFile(
+                    max_size=_UPLOAD_SPOOL_MEMORY_LIMIT,
+                    mode="w+b",
+                ) as spooled:
+                    await run_blocking_io(spooled.write, file_content)
+                    del file_content
+                    await run_blocking_io(spooled.seek, 0)
+                    upload_result = await storage.upload_file(
+                        file=spooled,
+                        folder="revealed_files",
+                        filename=filename,
+                        content_type=mime_type,
+                        skip_size_limit=True,
+                    )
 
         file_category = get_file_category(upload_result.content_type or mime_type)
 
@@ -949,6 +1081,7 @@ async def reveal_file(
             file_key=upload_result.key,
             description=description or "",
             original_path=file_path,
+            content_hash=content_hash,
         )
 
         return await _json_dumps_result(reveal_result)
