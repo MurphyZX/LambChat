@@ -20,3 +20,15 @@ def test_progress_policy_requires_explicit_request_compliance() -> None:
 def test_todo_tool_description_pins_actionable_threshold() -> None:
     assert "two or more tool calls" in TODO_TOOL_DESCRIPTION
     assert "always call it" in TODO_TOOL_DESCRIPTION
+
+
+def test_todo_middleware_injects_system_level_planning_guidance() -> None:
+    """主 agent 的 system prompt 不含 WORKFLOW/PROGRESS 政策（fast 仅存储政策），
+    Todo 触发指引必须随中间件的 system_prompt 注入，否则主 agent 零指引。"""
+    from src.agents.core.todo_middleware import create_todo_middleware
+
+    system_prompt = create_todo_middleware().system_prompt
+    assert system_prompt.strip()
+    assert "3+ steps" in system_prompt
+    assert "always call first" in system_prompt
+    assert "write_todos" in system_prompt
