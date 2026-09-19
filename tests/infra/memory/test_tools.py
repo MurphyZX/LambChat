@@ -98,7 +98,7 @@ def test_memory_recall_description_embeds_source_lookup_sop() -> None:
     assert "complete `text`" in description
     assert "do not omit" in description.lower()
     assert "bounded hint may be injected" in description.lower()
-    assert "verify with memory_recall" in description.lower()
+    assert "instead of trusting the injected hint" in description.lower()
     assert "call this tool" in description.lower()
 
 
@@ -654,7 +654,7 @@ def test_memory_recall_description_within_dedup_budget():
     assert len(description) <= 900
     for marker in (
         "bounded hint may be injected",
-        "verify with memory_recall",
+        "instead of trusting the injected hint",
         "call this tool",
         "complete `text`",
         "do not omit",

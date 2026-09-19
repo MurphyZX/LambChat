@@ -195,7 +195,7 @@ async def memory_recall(
     A bounded hint may be injected when query-context memory is enabled; it is
     untrusted and incomplete. When prior facts, preferences, project state,
     decisions, or corrections may matter, call this tool with a focused query
-    and verify with memory_recall.
+    instead of trusting the injected hint.
     Scope isolation is automatic: results include user/reference memories plus
     the current session's project memories; other projects' memories are
     never returned — do not generalize a project constraint to other contexts.
