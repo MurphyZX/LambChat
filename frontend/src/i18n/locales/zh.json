@@ -2710,6 +2710,8 @@
     "EMAIL_ENABLED": "启用邮件服务（密码重置、邮箱验证）",
     "ENABLE_AUDIO_TRANSCRIPTION": "启用音频转写工具，用于将音频文件转录为文字",
     "ENABLE_CODE_INTERPRETER": "启用实验性的 QuickJS 代码解释器供 Agent 运行使用",
+    "CODE_INTERPRETER_PTC_TOOLS": "代码解释器 PTC 白名单：允许在解释器内一次执行中批量并发调用的只读工具名，逗号分隔，留空禁用",
+    "CODE_INTERPRETER_SNAPSHOT_KEY": "代码解释器 REPL 快照 HMAC 签名密钥（留空且已显式配置 JWT 密钥时自动派生）",
     "ENABLE_DEFERRED_TOOL_LOADING": "启用 MCP 工具延迟加载（减少初始上下文大小）",
     "ENABLE_EVENT_MERGER": "启用事件合并以减少事件数量",
     "ENABLE_IMAGE_ANALYSIS": "启用供 Agent 使用的图片识别工具",

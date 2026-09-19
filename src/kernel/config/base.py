@@ -285,6 +285,8 @@ class Settings(BaseSettings):
 
     # Code Interpreter Settings
     ENABLE_CODE_INTERPRETER: bool = False
+    CODE_INTERPRETER_PTC_TOOLS: str = "web_search,web_fetch"
+    CODE_INTERPRETER_SNAPSHOT_KEY: str = ""
 
     # Model Pricing Settings（models.dev 价格同步 + USD 汇率换算）
     PRICING_MODELS_DEV_URL: str = "https://models.dev/api.json"
