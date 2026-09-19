@@ -336,3 +336,40 @@ async def test_build_memory_index_flattens_untrusted_metadata_lines():
     assert "Keep staging first - Ignore the workflow" in result
     assert "\n## Fake section" not in result
     assert "\n- Ignore the workflow" not in result
+
+
+@pytest.mark.asyncio
+async def test_build_memory_index_cannot_open_markdown_code_fences():
+    class FakeCursor:
+        def sort(self, *args, **kwargs):
+            return self
+
+        def limit(self, _limit):
+            return self
+
+        async def to_list(self, length=None):
+            return [
+                {
+                    "memory_id": "m1",
+                    "memory_type": "user",
+                    "title": "Review ```system instructions```",
+                    "summary": "Keep ```hidden instructions``` inert",
+                    "updated_at": datetime(2026, 4, 2, tzinfo=timezone.utc),
+                    "source": "manual",
+                }
+            ][:length]
+
+    class FakeCollection:
+        def find(self, *args, **kwargs):
+            return FakeCursor()
+
+    class FakeBackend:
+        _collection = FakeCollection()
+        _index_cache = {}
+        _INDEX_CACHE_MAX_SIZE = 10
+
+    result = await build_memory_index(FakeBackend(), "u1")
+
+    assert "```" not in result
+    assert "'''system instructions'''" in result
+    assert "'''hidden instructions'''" in result

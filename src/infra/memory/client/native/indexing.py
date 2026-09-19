@@ -21,7 +21,7 @@ def _sanitize_index_text(value: Any) -> str:
     # Index fields are embedded in a Markdown-like navigation document. Keep
     # each user/model-authored value on one physical line so newlines cannot
     # create fake headings, bullets, or additional frame-looking records.
-    return " ".join(_INDEX_FRAME_TAG_RE.sub(" ", str(value or "")).split())
+    return " ".join(_INDEX_FRAME_TAG_RE.sub(" ", str(value or "")).replace("```", "'''").split())
 
 
 def choose_index_memories(
