@@ -186,8 +186,8 @@ def build_active_goal_context(active_goal: Any) -> str:
         return ""
     # The wrapper is our control boundary; remove copies of its tags from
     # user-controlled goal text before clipping and inserting it.
-    objective = _CONTEXT_FRAME_TAG_RE.sub(" ", objective)
-    objective = _normalize_prompt_text(objective)[:_ACTIVE_GOAL_MAX_CHARS].rstrip()
+    objective = " ".join(_CONTEXT_FRAME_TAG_RE.sub(" ", objective).split())
+    objective = objective[:_ACTIVE_GOAL_MAX_CHARS].rstrip()
     if not objective:
         return ""
     return (
@@ -209,7 +209,7 @@ def build_session_todo_context(state: Any) -> str:
     for item in todos:
         if not isinstance(item, dict):
             continue
-        content = _CONTEXT_FRAME_TAG_RE.sub(" ", str(item.get("content") or "")).strip()
+        content = " ".join(_CONTEXT_FRAME_TAG_RE.sub(" ", str(item.get("content") or "")).split())
         status = str(item.get("status") or "pending").strip()
         if content and status in {"pending", "in_progress", "completed"}:
             priority = {"in_progress": 0, "pending": 1, "completed": 2}[status]
