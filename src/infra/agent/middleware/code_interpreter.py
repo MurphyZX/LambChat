@@ -122,7 +122,19 @@ class CodeInterpreterRoutingMiddleware(AgentMiddleware):
             "</code_interpreter_routing>"
         )
         self.ptc_tools: list[str] = list(ptc_tools)
-        self._ptc_framed = _build_ptc_frame(self.ptc_tools) if self.ptc_tools else ""
+        # 上游 filter_tools_for_ptc 会静默丢弃不在请求工具集里的白名单名；
+        # 指引帧按当次实际可桥接的工具生成并缓存，避免宣称不存在的桥。
+        self._ptc_frame_cache: dict[frozenset[str], str] = {}
+
+    def _ptc_frame_for(self, tool_names: frozenset[str]) -> str:
+        effective = frozenset(name for name in self.ptc_tools if name in tool_names)
+        if not effective:
+            return ""
+        frame = self._ptc_frame_cache.get(effective)
+        if frame is None:
+            frame = _build_ptc_frame([name for name in self.ptc_tools if name in effective])
+            self._ptc_frame_cache[effective] = frame
+        return frame
 
     async def awrap_model_call(
         self,
@@ -146,8 +158,13 @@ class CodeInterpreterRoutingMiddleware(AgentMiddleware):
             description = base_description
             if self._FRAME_MARKER not in description:
                 description = f"{description}\n\n{self._framed}"
-            if self._ptc_framed and _PTC_FRAME_MARKER not in description:
-                description = f"{description}\n\n{self._ptc_framed}"
+            ptc_framed = (
+                self._ptc_frame_for(frozenset(getattr(tool, "name", "") for tool in tools))
+                if self.ptc_tools
+                else ""
+            )
+            if ptc_framed and _PTC_FRAME_MARKER not in description:
+                description = f"{description}\n\n{ptc_framed}"
             if description != base_description:
                 tools[eval_index] = target.model_copy(update={"description": description})
                 request = request.override(tools=tools)

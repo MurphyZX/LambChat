@@ -120,6 +120,14 @@ class _OtherTool(BaseTool):
         return "ok"
 
 
+class _WebFetchTool(BaseTool):
+    name: str = "web_fetch"
+    description: str = "Fetch a web page."
+
+    def _run(self, *args, **kwargs):  # pragma: no cover - test stub
+        return "ok"
+
+
 class _Request:
     def __init__(self, tools=None, system_message=None) -> None:
         self.messages = []
@@ -342,7 +350,9 @@ async def test_routing_appends_ptc_bridge_guidance_when_enabled() -> None:
     middleware = CodeInterpreterRoutingMiddleware(
         sandbox_active=True, ptc_tools=["web_search", "web_fetch"]
     )
-    result = await middleware.awrap_model_call(_Request(), _handler)
+    result = await middleware.awrap_model_call(
+        _Request(tools=[_EvalTool(), _OtherTool(), _WebFetchTool()]), _handler
+    )
 
     eval_tool = next(t for t in result.tools if t.name == "eval")
     assert "<code_interpreter_ptc>" in eval_tool.description
@@ -371,6 +381,61 @@ async def test_routing_ptc_guidance_is_idempotent() -> None:
     second = await middleware.awrap_model_call(first, _handler)
     eval_tool = next(t for t in second.tools if t.name == "eval")
     assert eval_tool.description.count("<code_interpreter_ptc>") == 1
+
+
+class _UnrelatedTool(BaseTool):
+    name: str = "image_analyze"
+    description: str = "Analyze an image."
+
+    def _run(self, *args, **kwargs):  # pragma: no cover - test stub
+        return "ok"
+
+
+async def test_routing_omits_ptc_guidance_when_bridged_tools_absent() -> None:
+    """白名单工具不在当前请求工具集时不宣告 PTC 桥（上游会静默丢弃缺失工具）。"""
+    from src.infra.agent.middleware.code_interpreter import CodeInterpreterRoutingMiddleware
+
+    middleware = CodeInterpreterRoutingMiddleware(
+        sandbox_active=True, ptc_tools=["web_search", "web_fetch"]
+    )
+    request = _Request(tools=[_EvalTool(), _UnrelatedTool()])
+    result = await middleware.awrap_model_call(request, _handler)
+
+    eval_tool = next(t for t in result.tools if t.name == "eval")
+    assert "<code_interpreter_ptc>" not in eval_tool.description
+    assert "tools.webSearch" not in eval_tool.description
+
+
+async def test_routing_filters_ptc_guidance_to_present_tools() -> None:
+    """只宣告当前工具集里实际存在的桥，未加载的工具不得出现在指引里。"""
+    from src.infra.agent.middleware.code_interpreter import CodeInterpreterRoutingMiddleware
+
+    middleware = CodeInterpreterRoutingMiddleware(
+        sandbox_active=True, ptc_tools=["web_search", "web_fetch"]
+    )
+    result = await middleware.awrap_model_call(_Request(), _handler)
+
+    eval_tool = next(t for t in result.tools if t.name == "eval")
+    assert "<code_interpreter_ptc>" in eval_tool.description
+    assert "tools.webSearch" in eval_tool.description
+    assert "tools.webFetch" not in eval_tool.description
+
+
+async def test_routing_ptc_guidance_appears_once_tools_become_available() -> None:
+    """延迟加载等场景下工具集中途出现：指引帧随之出现，而非构造期定死。"""
+    from src.infra.agent.middleware.code_interpreter import CodeInterpreterRoutingMiddleware
+
+    middleware = CodeInterpreterRoutingMiddleware(sandbox_active=True, ptc_tools=["web_search"])
+    before = await middleware.awrap_model_call(
+        _Request(tools=[_EvalTool(), _UnrelatedTool()]), _handler
+    )
+    assert (
+        "<code_interpreter_ptc>"
+        not in next(t for t in before.tools if t.name == "eval").description
+    )
+
+    after = await middleware.awrap_model_call(_Request(), _handler)
+    assert "tools.webSearch" in next(t for t in after.tools if t.name == "eval").description
 
 
 async def test_real_ptc_enablement_injects_bridged_tool_reference() -> None:
