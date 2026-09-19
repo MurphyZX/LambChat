@@ -9,8 +9,19 @@ from typing import Any, Optional
 
 from src.infra.memory.client.native.search import build_scope_clause
 from src.infra.memory.client.types import MemoryType
+from src.infra.memory.control_frames import CONTROL_FRAME_TAG_RE
 from src.infra.utils.datetime import ensure_utc, utc_now
 from src.kernel.config import settings
+
+_INDEX_FRAME_TAG_RE = CONTROL_FRAME_TAG_RE
+
+
+def _sanitize_index_text(value: Any) -> str:
+    """Keep untrusted memory labels from forging the index context frames."""
+    # Index fields are embedded in a Markdown-like navigation document. Keep
+    # each user/model-authored value on one physical line so newlines cannot
+    # create fake headings, bullets, or additional frame-looking records.
+    return " ".join(_INDEX_FRAME_TAG_RE.sub(" ", str(value or "")).replace("```", "'''").split())
 
 
 def choose_index_memories(
@@ -137,7 +148,7 @@ async def build_memory_index(backend, user_id: str, project_id: Optional[str] = 
     if lesson_docs:
         lesson_lines: list[str] = ["\n## Lessons"]
         for d in lesson_docs:
-            rule = str(d.get("title") or d.get("summary") or "").strip()
+            rule = _sanitize_index_text(d.get("title") or d.get("summary") or "")
             lesson_lines.append(f"- {rule}")
         block = "\n".join(lesson_lines)
         while len(block) > lessons_max_chars and len(lesson_lines) > 2:
@@ -153,11 +164,11 @@ async def build_memory_index(backend, user_id: str, project_id: Optional[str] = 
             continue
         lines.append(f"\n## {type_labels.get(mtype, mtype.title())}")
         for item in chosen:
-            display_title = item.get("index_label") or item.get("title") or ""
+            display_title = _sanitize_index_text(item.get("index_label") or item.get("title") or "")
             if not display_title:
-                display_title = (item.get("summary") or "")[:30]
+                display_title = _sanitize_index_text(item.get("summary") or "")[:30]
             updated_at = ensure_utc(item.get("updated_at", now)).date().isoformat()
-            summary = str(item.get("summary") or display_title).strip()
+            summary = _sanitize_index_text(item.get("summary") or display_title)
             lines.extend(
                 (
                     f"\n- **{display_title}**",

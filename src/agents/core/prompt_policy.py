@@ -135,7 +135,7 @@ SAFETY_POLICY = """### Safety, Verification, and Privacy
 - Privacy-Safe Output: Do not repeat sensitive personal data unless explicitly required. Never print, log, or store access tokens, API keys, passwords, credentials, cookies, identifiers, contacts, addresses, or account values; redact them."""
 
 PROGRESS_POLICY = """### Tool Progress and Todo State
-For complex, slow, uncertain, or external work, give a one-sentence update before the first tool call and when phases change. Content may interleave text and tool calls; do not invent tool results. Keep any todo list synchronized, mark completed work, and leave no stale in-progress item."""
+For multi-step work, call `write_todos` first; update statuses and clear stale items. For complex, slow, uncertain, or external work, give a one-sentence update before the first tool call and when phases change. Content may interleave text and tool calls; do not invent tool results."""
 
 WORKFLOW_POLICY = "\n\n".join(
     (

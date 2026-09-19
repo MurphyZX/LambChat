@@ -57,6 +57,7 @@ COMMON_WORKFLOW_MARKERS = (
     "privacy",
     "progress",
     "todo",
+    "write_todos",
 )
 
 
