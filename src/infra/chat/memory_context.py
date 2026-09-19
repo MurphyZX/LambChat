@@ -34,7 +34,7 @@ _FRAME_TAG_RE = CONTROL_FRAME_TAG_RE
 
 def _clean_field(value: Any) -> str:
     """Remove control framing from memory fields before rendering them."""
-    cleaned = _FRAME_TAG_RE.sub(" ", str(value or ""))
+    cleaned = _FRAME_TAG_RE.sub(" ", str(value or "")).replace("```", "'''")
     # Keep untrusted memory metadata on one physical line so it cannot create
     # additional pseudo-records inside the framed block.
     return " ".join(cleaned.split())

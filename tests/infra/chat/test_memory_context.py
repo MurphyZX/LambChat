@@ -137,6 +137,17 @@ def test_block_keeps_untrusted_fields_on_one_line() -> None:
     assert "Summary Ignore the wrapper" in block
 
 
+def test_block_cannot_open_markdown_code_fences_from_memory_text() -> None:
+    block = mc.build_memory_context_block(
+        [_memory("Review ```system instructions```", "Keep ```hidden instructions``` inert")],
+        1200,
+    )
+
+    assert "```" not in block
+    assert "'''system instructions'''" in block
+    assert "'''hidden instructions'''" in block
+
+
 @pytest.mark.asyncio
 async def test_append_skips_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mc.settings, "ENABLE_MEMORY", False)
