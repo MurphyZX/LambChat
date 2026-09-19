@@ -173,6 +173,11 @@ _SESSION_TODO_MAX_ITEMS = 16
 _CONTEXT_FRAME_TAG_RE = CONTROL_FRAME_TAG_RE
 
 
+def _sanitize_untrusted_context_text(value: Any) -> str:
+    """Keep user/model-authored context from opening a second prompt format."""
+    return " ".join(_CONTEXT_FRAME_TAG_RE.sub(" ", str(value or "")).replace("```", "'''").split())
+
+
 def build_active_goal_context(active_goal: Any) -> str:
     """Render only the run objective as bounded, untrusted recall guidance."""
     if isinstance(active_goal, dict):
@@ -186,7 +191,7 @@ def build_active_goal_context(active_goal: Any) -> str:
         return ""
     # The wrapper is our control boundary; remove copies of its tags from
     # user-controlled goal text before clipping and inserting it.
-    objective = " ".join(_CONTEXT_FRAME_TAG_RE.sub(" ", objective).split())
+    objective = _sanitize_untrusted_context_text(objective)
     objective = objective[:_ACTIVE_GOAL_MAX_CHARS].rstrip()
     if not objective:
         return ""
@@ -209,7 +214,7 @@ def build_session_todo_context(state: Any) -> str:
     for item in todos:
         if not isinstance(item, dict):
             continue
-        content = " ".join(_CONTEXT_FRAME_TAG_RE.sub(" ", str(item.get("content") or "")).split())
+        content = _sanitize_untrusted_context_text(item.get("content"))
         status = str(item.get("status") or "pending").strip()
         if content and status in {"pending", "in_progress", "completed"}:
             priority = {"in_progress": 0, "pending": 1, "completed": 2}[status]
