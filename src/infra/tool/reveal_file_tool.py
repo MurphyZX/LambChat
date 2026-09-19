@@ -271,11 +271,15 @@ async def _try_reuse_upload(
     original_path: str,
     content_hash: str | None,
     mime_type: str,
+    storage: Any | None = None,
 ) -> Any | None:
     """同路径同内容 → 复用既有存储对象，跳过重传（防存储孤儿累积）。
 
     依赖文件库行的 content_hash（本特性起写入）；旧行无该字段即不命中，
-    安全回退为正常上传。命中要求行 file_key 是真实 storage key（非 URL）。
+    安全回退为正常上传。命中要求行 file_key 是真实 storage key（非 URL），
+    且对象在存储中仍存在——行命中但对象已被删时放弃复用重传，upsert
+    顺带修复行（否则哈希永远命中死 key，产物永久 404）。存储不可用时
+    保持复用（与代理 URL 透传校验同策略：可用性故障不该拖死交付）。
     """
     if not user_id or not content_hash:
         return None
@@ -291,6 +295,13 @@ async def _try_reuse_upload(
     file_key = row.get("file_key")
     if not isinstance(file_key, str) or not file_key or _is_remote_url(file_key):
         return None
+    if storage is not None:
+        try:
+            if not await storage.file_exists(file_key):
+                logger.info(f"[reveal_file] Reuse hit but object missing, re-uploading: {file_key}")
+                return None
+        except Exception as e:
+            logger.debug(f"[reveal_file] Reuse existence check failed for {file_key}: {e}")
     raw_size = row.get("file_size")
     raw_mime = row.get("mime_type")
     raw_url = row.get("url")
@@ -859,10 +870,14 @@ async def reveal_file(
                 "source": "remote_url",
             },
         }
-        # URL echo 归一：本站代理 URL 反查原始行，索引并入原行（不裂第二行）
+        # URL echo 归一：本站代理 URL 反查原始行，索引并入原行（不裂第二行）；
+        # 并入时保留原行的真实元数据（尺寸/URL/mime），不得用 echo 的零值覆盖
         index_file_name = filename
         index_file_key: str = file_path
         index_original_path = file_path
+        index_file_size = 0
+        index_url = file_path
+        index_mime_type = mime_type
         origin_row = await _reverse_map_self_upload_row(_reveal_user_id(runtime), file_path)
         if isinstance(origin_row, dict):
             row_name = origin_row.get("file_name")
@@ -879,13 +894,22 @@ async def reveal_file(
                 and not _extract_self_upload_key(row_path)
             ):
                 index_original_path = row_path
+            row_size = origin_row.get("file_size")
+            if isinstance(row_size, int) and row_size > 0:
+                index_file_size = row_size
+            row_url = origin_row.get("url")
+            if isinstance(row_url, str) and row_url:
+                index_url = row_url
+            row_mime = origin_row.get("mime_type")
+            if isinstance(row_mime, str) and row_mime:
+                index_mime_type = row_mime
         await _index_revealed_file(
             runtime=runtime,
             file_name=index_file_name,
             file_category=file_category,
-            mime_type=mime_type,
-            file_size=0,
-            url=file_path,
+            mime_type=index_mime_type,
+            file_size=index_file_size,
+            url=index_url,
             file_key=index_file_key,
             description=description or "",
             original_path=index_original_path,
@@ -1026,7 +1050,7 @@ async def reveal_file(
         if use_filesystem_stream:
             content_hash = await run_blocking_io(_hash_local_file, file_path)
             upload_result = await _try_reuse_upload(
-                reuse_user_id, file_path, content_hash, mime_type
+                reuse_user_id, file_path, content_hash, mime_type, storage
             )
             if upload_result is None:
                 upload_result = await _upload_filesystem_file(
@@ -1035,7 +1059,7 @@ async def reveal_file(
         else:
             content_hash = await run_blocking_io(_sha256_hex, file_content)
             upload_result = await _try_reuse_upload(
-                reuse_user_id, file_path, content_hash, mime_type
+                reuse_user_id, file_path, content_hash, mime_type, storage
             )
             if upload_result is None:
                 with SpooledTemporaryFile(

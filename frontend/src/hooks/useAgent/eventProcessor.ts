@@ -761,7 +761,8 @@ function upsertArtifactPart(parts: MessagePart[], artifactPart: MessagePart): Me
 }
 
 /** Replace existing memory-status part or append if none exists. */
-function upsertMemoryStatusPart(  parts: MessagePart[],
+function upsertMemoryStatusPart(
+  parts: MessagePart[],
   memoryPart: MemoryStatusPart,
 ): MessagePart[] {
   return parts.some((p) => p.type === "memoryStatus")

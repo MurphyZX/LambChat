@@ -42,12 +42,15 @@ class _Runtime:
 
 
 class _FakeUploadStorage:
-    def __init__(self) -> None:
+    def __init__(self, exists: bool = True) -> None:
         self.uploads: list[str] = []
+        self.exists = exists
+        self.existence_checks: list[str] = []
         self._counter = 0
 
     async def file_exists(self, key: str) -> bool:
-        return True
+        self.existence_checks.append(key)
+        return self.exists
 
     async def upload_file(self, *, file, folder, filename, content_type=None, **kwargs):
         self._counter += 1
@@ -119,6 +122,8 @@ async def test_reveal_file_reverse_maps_self_upload_url_to_original_row(
             "content_hash": None,
             "original_path": "/workspace/report.png",
             "file_size": 2048,
+            "mime_type": "image/png",
+            "url": "https://app.example.com/api/upload/file/revealed_files/20260920_ab12cd34_report.png",
         }
     ]
     echo_url = "https://app.example.com/api/upload/file/revealed_files/20260920_ab12cd34_report.png"
@@ -139,6 +144,13 @@ async def test_reveal_file_reverse_maps_self_upload_url_to_original_row(
     assert upsert["file_name"] == "report.png"
     assert upsert["file_key"] == "revealed_files/20260920_ab12cd34_report.png"
     assert upsert["data"]["original_path"] == "/workspace/report.png"
+    # 并入原行时保留原行的真实元数据：不得用 echo 的 0 尺寸/URL 覆盖
+    assert upsert["data"]["file_size"] == 2048
+    assert (
+        upsert["data"]["url"]
+        == "https://app.example.com/api/upload/file/revealed_files/20260920_ab12cd34_report.png"
+    )
+    assert upsert["data"]["mime_type"] == "image/png"
 
 
 @pytest.mark.asyncio
@@ -223,3 +235,84 @@ async def test_reveal_file_reuploads_when_content_changed(
 
     assert len(storage.uploads) == 2
     assert second["key"] != first["key"]
+
+
+@pytest.mark.asyncio
+async def test_reveal_file_reuploads_when_reused_object_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """复用自愈：文件库行命中但存储对象已被删除 → 必须重传新对象并让
+    upsert 修复行；否则哈希永远命中死 key，产物永久 404。"""
+    storage = _FakeUploadStorage(exists=False)
+    index = _FakeIndex()
+
+    async def _get_storage():
+        return storage
+
+    backend = _FakeBackend(b"stable-bytes")
+
+    monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
+    monkeypatch.setattr(reveal_file_tool, "get_backend_from_runtime", lambda runtime: backend)
+    monkeypatch.setattr(reveal_file_tool, "_is_sandbox_backend", lambda backend: False)
+    monkeypatch.setattr(
+        reveal_file_tool, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
+    )
+
+    first = json.loads(
+        await reveal_file_tool.reveal_file.coroutine(
+            "/workspace/report.png", runtime=_Runtime(backend=backend)
+        )
+    )
+    # 第一次上传后，存储侧对象被清（file_exists=False）但库行仍在
+    second = json.loads(
+        await reveal_file_tool.reveal_file.coroutine(
+            "/workspace/report.png", runtime=_Runtime(backend=backend)
+        )
+    )
+
+    assert len(storage.uploads) == 2, "stale row must not pin a dead object"
+    assert second["key"] != first["key"]
+    assert len(index.upserts) == 2
+
+
+@pytest.mark.asyncio
+async def test_reveal_file_legacy_row_without_hash_falls_back_to_upload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """旧数据兼容：本特性之前的库行没有 content_hash → 不命中复用、正常
+    上传，且 upsert 补写哈希（后续 reveal 开始享受复用）。"""
+    storage = _FakeUploadStorage()
+    index = _FakeIndex()
+    index.rows = [
+        {
+            "file_name": "report.png",
+            "file_key": "revealed_files/20260101_deadbeef_report.png",
+            "dedupe_key": "path:/workspace/report.png",
+            "content_hash": None,
+            "original_path": "/workspace/report.png",
+            "file_size": 2048,
+        }
+    ]
+    backend = _FakeBackend(b"fresh-bytes")
+
+    async def _get_storage():
+        return storage
+
+    monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
+    monkeypatch.setattr(reveal_file_tool, "get_backend_from_runtime", lambda runtime: backend)
+    monkeypatch.setattr(reveal_file_tool, "_is_sandbox_backend", lambda backend: False)
+    monkeypatch.setattr(
+        reveal_file_tool, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
+    )
+
+    first = json.loads(
+        await reveal_file_tool.reveal_file.coroutine(
+            "/workspace/report.png", runtime=_Runtime(backend=backend)
+        )
+    )
+
+    assert len(storage.uploads) == 1, "legacy row without hash must not be reused"
+    assert first["key"] != "revealed_files/20260101_deadbeef_report.png"
+    assert index.upserts[-1]["data"]["content_hash"]  # 补写哈希，后续可复用
