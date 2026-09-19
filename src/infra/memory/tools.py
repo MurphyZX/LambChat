@@ -107,11 +107,13 @@ async def memory_retain(
     ] = None,
     scope: Annotated[
         Optional[str],
-        "Ownership scope: 'user' (cross-project personal preference, default), "
+        "Ownership scope: 'user' (cross-project personal preference), "
         "'project' (bound to the current session's project), or 'reference' "
-        "(external docs/links). Project ownership is inherited from the current "
-        "session; when the session has no project, project-scoped content is "
-        "automatically stored as 'user' scope (see result note).",
+        "(external docs/links). Default: project-bound when the context label "
+        "is project-* and the session has a project, otherwise 'user'. "
+        "Project ownership is inherited from the current session; when the "
+        "session has no project, project-scoped content is automatically "
+        "stored as 'user' scope (see result note).",
     ] = None,
     source_refs: Annotated[
         Optional[list[ConversationSourceRef]],
@@ -146,6 +148,11 @@ async def memory_retain(
         from src.infra.memory.scope import resolve_session_project_id
 
         project_id = await resolve_session_project_id(get_session_id_from_runtime(runtime))
+        # agent 常省略 scope（生产实测 329/330 条 project 类内容落进 user
+        # 作用域，跨话题互相污染召回）。context 表明是项目内容且会话有归属
+        # 时，默认绑定项目；显式传了 scope 则完全尊重。
+        if scope is None and project_id and context and str(context).startswith("project"):
+            scope = "project"
         # 无项目会话里 LLM 显式要 scope='project'：backend 会硬拒绝（生产上
         # 表现为前端红色报错 + agent 重试一轮）。工具层先降级为自动推导
         # （无归属 → user），不丢数据；结果里带 note 告知实际归属。
