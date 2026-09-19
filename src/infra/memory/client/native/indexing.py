@@ -41,6 +41,11 @@ def choose_index_memories(
             if source == "consolidated"
             else 0.5
         )
+        # working-state 快照（"X设计中"类一次性状态）靠新鲜度反而压过持久
+        # 条目挤占索引（生产实测 2026-09-19：top 用户 63 条中 29 条）；降权
+        # 让索引选「持久价值」而非「最近发生」。
+        if str(doc.get("context") or "") == "project_status":
+            source_score *= 0.5
         age_days = (now - ensure_utc(doc.get("updated_at", now))).days
         freshness_score = max(0.0, 2.0 - (age_days / max(staleness_days, 1)))
         # Access statistics are mutable on every recall and must not affect the

@@ -373,3 +373,34 @@ async def test_build_memory_index_cannot_open_markdown_code_fences():
     assert "```" not in result
     assert "'''system instructions'''" in result
     assert "'''hidden instructions'''" in result
+
+
+def test_choose_index_memories_demotes_project_status_snapshots():
+    """生产实测（2026-09-19）：510 条记忆 332 条零访问，project_status 一次性
+    工作快照靠新鲜度挤占紧凑索引（top 用户 63 条中 29 条）。索引应以
+    「持久价值」选条目：同等条件下 working-state 快照让位于持久条目。"""
+    docs = [
+        {
+            "memory_id": "status-fresh",
+            "source": "auto_retained",
+            "context": "project_status",
+            "updated_at": datetime(2026, 4, 2, tzinfo=timezone.utc),
+            "summary": "图标设计中",
+        },
+        {
+            "memory_id": "durable-same-age",
+            "source": "auto_retained",
+            "context": "project",
+            "updated_at": datetime(2026, 4, 2, tzinfo=timezone.utc),
+            "summary": "部署约束：必须用 pnpm",
+        },
+    ]
+
+    chosen = choose_index_memories(
+        docs,
+        per_type_limit=1,
+        now=datetime(2026, 4, 2, tzinfo=timezone.utc),
+        staleness_days=30,
+    )
+
+    assert [doc["memory_id"] for doc in chosen] == ["durable-same-age"]

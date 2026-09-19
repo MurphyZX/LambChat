@@ -672,3 +672,48 @@ def test_memory_recall_description_documents_scope_isolation():
     description = memory_recall.description
     assert "Scope isolation" in description
     assert "never returned" in description
+
+
+@pytest.mark.asyncio
+async def test_memory_retain_project_context_defaults_to_project_scope(monkeypatch):
+    """生产实测（2026-09-19）：329/330 条 project 类内容全落 user 作用域（agent
+    不传 scope），跨话题互相污染召回。context 为 project* 且会话有项目时，
+    未显式指定 scope 的 retain 自动绑定项目归属。"""
+    from src.infra.memory import scope as scope_module
+    from src.infra.memory import tools as memory_tools
+
+    seen = {}
+
+    class FakeBackend:
+        async def retain(self, *args, **kwargs):
+            seen["kwargs"] = kwargs
+            return {"success": True}
+
+    async def fake_get_backend():
+        return FakeBackend()
+
+    async def fake_resolve(session_id):
+        return "proj-1"
+
+    monkeypatch.setattr(memory_tools, "_get_backend", fake_get_backend)
+    monkeypatch.setattr(scope_module, "resolve_session_project_id", fake_resolve)
+
+    json.loads(
+        await memory_tools.memory_retain.coroutine(
+            "本项目所有依赖安装必须用 pnpm。",
+            context="project_status",
+            runtime=_Runtime("u1", session_id="sess-1"),
+        )
+    )
+    assert seen["kwargs"]["scope"] == "project"
+    assert seen["kwargs"]["project_id"] == "proj-1"
+
+    # 对照：非 project 类内容不自动升级（保持 agent 显式语义）
+    json.loads(
+        await memory_tools.memory_retain.coroutine(
+            "用户偏好简洁中文回复。",
+            context="user_preference",
+            runtime=_Runtime("u1", session_id="sess-1"),
+        )
+    )
+    assert seen["kwargs"]["scope"] is None
