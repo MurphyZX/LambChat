@@ -38,6 +38,8 @@ wheels/
 .env
 .env.local
 .env.*.tmp
+.env.*
+!.env.example
 
 # Logs
 *.log
