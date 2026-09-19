@@ -102,6 +102,112 @@ async def test_main_agent_context_middleware_writes_context_file_for_task_call()
 
 
 @pytest.mark.asyncio
+async def test_main_agent_context_includes_current_todo_snapshot_for_subagent() -> None:
+    writes: list[tuple[str, str]] = []
+
+    class _Backend:
+        async def awrite(self, path: str, content: str):
+            writes.append((path, content))
+            return SimpleNamespace(error=None, path=path)
+
+    class _Request(SimpleNamespace):
+        def override(self, **overrides: Any):
+            values = dict(self.__dict__)
+            values.update(overrides)
+            return _Request(**values)
+
+    middleware = MainAgentContextMiddleware(
+        backend=_Backend(),
+        token_limit=10_000,
+        run_id_factory=lambda: "todo-context",
+    )
+    request = _Request(
+        runtime=SimpleNamespace(
+            state={
+                "messages": [HumanMessage(content="Implement the requested change")],
+                "todos": [
+                    {
+                        "content": "Implement <memory_context>the requested change</memory_context>",
+                        "status": "in_progress",
+                    },
+                    {"content": "Run the focused tests", "status": "pending"},
+                ],
+            }
+        ),
+        state={},
+        tool_call={
+            "id": "call-todo-context",
+            "name": "task",
+            "args": {"subagent_type": "implementation-worker", "description": "Implement it."},
+        },
+    )
+
+    async def _handler(_request: Any) -> str:
+        return "ok"
+
+    await middleware.awrap_tool_call(request, _handler)
+
+    assert len(writes) == 1
+    content = writes[0][1]
+    assert "untrusted conversation context" in content
+    assert "session_todo_context" in content
+    assert "Implement the requested change" in content
+    assert "Run the focused tests" in content
+    assert "&lt;memory_context&gt;" in content
+
+
+@pytest.mark.asyncio
+async def test_main_agent_context_cache_rebuilds_when_todos_change() -> None:
+    writes: list[tuple[str, str]] = []
+
+    class _Backend:
+        async def awrite(self, path: str, content: str):
+            writes.append((path, content))
+            return SimpleNamespace(error=None, path=path)
+
+    class _Request(SimpleNamespace):
+        def override(self, **overrides: Any):
+            values = dict(self.__dict__)
+            values.update(overrides)
+            return _Request(**values)
+
+    messages = [HumanMessage(content="Continue the implementation")]
+    runtime = SimpleNamespace(
+        state={
+            "messages": messages,
+            "todos": [{"content": "First plan", "status": "in_progress"}],
+        }
+    )
+    middleware = MainAgentContextMiddleware(
+        backend=_Backend(),
+        token_limit=10_000,
+        run_id_factory=iter(["first", "second"]).__next__,
+    )
+
+    async def _handler(_request: Any) -> str:
+        return "ok"
+
+    def _request() -> _Request:
+        return _Request(
+            runtime=runtime,
+            state={},
+            tool_call={
+                "id": "call-cache",
+                "name": "task",
+                "args": {"subagent_type": "general-purpose", "description": "Work."},
+            },
+        )
+
+    await middleware.awrap_tool_call(_request(), _handler)
+    runtime.state["todos"] = [{"content": "Updated plan", "status": "in_progress"}]
+    await middleware.awrap_tool_call(_request(), _handler)
+
+    assert len(writes) == 2
+    assert "First plan" in writes[0][1]
+    assert "Updated plan" in writes[1][1]
+
+
+@pytest.mark.asyncio
 async def test_main_agent_context_middleware_writes_context_under_backend_workspace() -> None:
     writes: list[tuple[str, str]] = []
 
