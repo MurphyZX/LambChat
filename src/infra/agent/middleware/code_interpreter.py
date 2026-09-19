@@ -92,10 +92,12 @@ def _build_ptc_frame(ptc_tools: Sequence[str]) -> str:
         "Bridged read-only tools inside this REPL.\n"
         f"{signatures} are exposed as async host functions here. Batch lookups "
         "in one eval — Promise.all over query lists, loops with filtering and "
-        "aggregation — instead of one tool call per round-trip. Only the "
-        "bridged tools are callable; the REPL itself still has no direct "
-        "filesystem or network access, and everything else goes through "
-        "normal tools.\n"
+        "aggregation — instead of one tool call per round-trip. Each bridge "
+        "resolves to the tool's usual JSON **string** — JSON.parse it before "
+        "field access; truncated fetch payloads are not valid whole JSON, "
+        "extract fields with regex instead. Only the bridged tools are "
+        "callable; the REPL itself still has no direct filesystem or network "
+        "access, and everything else goes through normal tools.\n"
         "</code_interpreter_ptc>"
     )
 

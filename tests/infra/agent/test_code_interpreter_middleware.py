@@ -358,6 +358,10 @@ async def test_routing_appends_ptc_bridge_guidance_when_enabled() -> None:
     assert "<code_interpreter_ptc>" in eval_tool.description
     assert "tools.webSearch" in eval_tool.description
     assert "tools.webFetch" in eval_tool.description
+    # staging 实测（2026-09-19）：模型不知道桥接工具返回 JSON 字符串，
+    # 按对象取值失败后花 ~4 分钟/7 次 eval 试错。返回格式提示必须随帧给出。
+    assert "JSON.parse" in eval_tool.description
+    assert "truncated" in eval_tool.description
     other = next(t for t in result.tools if t.name == "web_search")
     assert "<code_interpreter_ptc>" not in other.description
 
