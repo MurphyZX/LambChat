@@ -97,6 +97,26 @@ async def test_stored_recall_escapes_hydrated_memory_content():
     assert complete is True
 
 
+async def test_stored_recall_falls_back_to_preview_when_store_errors():
+    class FailingStore:
+        async def aget(self, namespace, key):
+            raise RuntimeError("temporary store outage")
+
+    backend = SimpleNamespace(_store=FailingStore())
+    text, complete = await hydrate_memory_text_status(
+        backend,
+        {
+            "user_id": "local-case-user",
+            "content": "preview after store failure",
+            "content_storage_mode": "store",
+            "content_store_key": "memory:long",
+        },
+    )
+
+    assert text == "preview after store failure"
+    assert complete is False
+
+
 @pytest.fixture
 async def local_collection():
     """Opt-in real Mongo case; creates and drops only a unique test collection."""

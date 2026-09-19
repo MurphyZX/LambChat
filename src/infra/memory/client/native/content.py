@@ -130,11 +130,16 @@ async def hydrate_memory_text_status(backend, doc: dict[str, Any]) -> tuple[str,
     if doc.get("content_storage_mode") != "store" or not doc.get("content_store_key"):
         return preview, True
 
-    item = await store_get(
-        backend,
-        memory_store_namespace(doc["user_id"]),
-        doc["content_store_key"],
-    )
+    try:
+        item = await store_get(
+            backend,
+            memory_store_namespace(doc["user_id"]),
+            doc["content_store_key"],
+        )
+    except Exception:
+        # The inline preview remains useful when the optional content store is
+        # temporarily unavailable; callers can retry hydration later.
+        return preview, False
     if item is None:
         return preview, False
     value = getattr(item, "value", item)
