@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.infra.storage.s3.types import UploadResult
-from src.infra.tool import reveal_file_tool
+from src.infra.tool import _reveal_file_support, reveal_file_tool
 
 
 class _Runtime:
@@ -132,6 +132,7 @@ async def test_reveal_file_reverse_maps_self_upload_url_to_original_row(
         return storage
 
     monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(_reveal_file_support, "_get_storage", _get_storage)
     monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
     monkeypatch.setattr(
         reveal_file_tool, "get_backend_from_runtime", lambda runtime: _FakeBackend(b"x")
@@ -167,11 +168,16 @@ async def test_reveal_file_reuses_upload_for_unchanged_content(
         return storage
 
     monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(_reveal_file_support, "_get_storage", _get_storage)
     monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
     monkeypatch.setattr(reveal_file_tool, "get_backend_from_runtime", lambda runtime: backend)
     monkeypatch.setattr(reveal_file_tool, "_is_sandbox_backend", lambda backend: False)
+    monkeypatch.setattr(_reveal_file_support, "_is_sandbox_backend", lambda backend: False)
     monkeypatch.setattr(
         reveal_file_tool, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
+    )
+    monkeypatch.setattr(
+        _reveal_file_support, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
     )
 
     first = json.loads(
@@ -208,6 +214,7 @@ async def test_reveal_file_reuploads_when_content_changed(
     backend_holder = {"backend": _FakeBackend(b"v1-bytes")}
 
     monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(_reveal_file_support, "_get_storage", _get_storage)
     monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
     monkeypatch.setattr(
         reveal_file_tool,
@@ -215,8 +222,12 @@ async def test_reveal_file_reuploads_when_content_changed(
         lambda runtime: backend_holder["backend"],
     )
     monkeypatch.setattr(reveal_file_tool, "_is_sandbox_backend", lambda backend: False)
+    monkeypatch.setattr(_reveal_file_support, "_is_sandbox_backend", lambda backend: False)
     monkeypatch.setattr(
         reveal_file_tool, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
+    )
+    monkeypatch.setattr(
+        _reveal_file_support, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
     )
 
     first = json.loads(
@@ -252,11 +263,16 @@ async def test_reveal_file_reuploads_when_reused_object_is_missing(
     backend = _FakeBackend(b"stable-bytes")
 
     monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(_reveal_file_support, "_get_storage", _get_storage)
     monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
     monkeypatch.setattr(reveal_file_tool, "get_backend_from_runtime", lambda runtime: backend)
     monkeypatch.setattr(reveal_file_tool, "_is_sandbox_backend", lambda backend: False)
+    monkeypatch.setattr(_reveal_file_support, "_is_sandbox_backend", lambda backend: False)
     monkeypatch.setattr(
         reveal_file_tool, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
+    )
+    monkeypatch.setattr(
+        _reveal_file_support, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
     )
 
     first = json.loads(
@@ -300,11 +316,16 @@ async def test_reveal_file_legacy_row_without_hash_falls_back_to_upload(
         return storage
 
     monkeypatch.setattr(reveal_file_tool, "_get_storage", _get_storage)
+    monkeypatch.setattr(_reveal_file_support, "_get_storage", _get_storage)
     monkeypatch.setattr(reveal_file_tool, "get_revealed_file_storage", lambda: index)
     monkeypatch.setattr(reveal_file_tool, "get_backend_from_runtime", lambda runtime: backend)
     monkeypatch.setattr(reveal_file_tool, "_is_sandbox_backend", lambda backend: False)
+    monkeypatch.setattr(_reveal_file_support, "_is_sandbox_backend", lambda backend: False)
     monkeypatch.setattr(
         reveal_file_tool, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
+    )
+    monkeypatch.setattr(
+        _reveal_file_support, "_get_reveal_file_upload_max_bytes", lambda: 10 * 1024 * 1024
     )
 
     first = json.loads(
