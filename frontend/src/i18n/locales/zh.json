@@ -956,6 +956,7 @@
       "toolHistoryUser": "用户",
       "toolImageAnalyze": "图片分析",
       "toolImageAnalyzeCount": "{{count}} 张图片",
+      "toolImageAnalyzeAlt": "图片 {{index}}",
       "toolVideoAnalyze": "视频分析",
       "toolVideoAnalyzeCount": "{{count}} 段视频",
       "toolImageCount": "{{count}} 张图片",

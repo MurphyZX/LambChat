@@ -956,6 +956,7 @@
       "toolHistoryUser": "User",
       "toolImageAnalyze": "Image Analyze",
       "toolImageAnalyzeCount": "{{count}} images",
+      "toolImageAnalyzeAlt": "Image {{index}}",
       "toolVideoAnalyze": "Video Analysis",
       "toolVideoAnalyzeCount": "{{count}} videos",
       "toolImageCount": "{{count}} images",

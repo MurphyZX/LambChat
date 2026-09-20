@@ -956,6 +956,7 @@
       "toolHistoryUser": "ユーザー",
       "toolImageAnalyze": "画像分析",
       "toolImageAnalyzeCount": "{{count}} 枚の画像",
+      "toolImageAnalyzeAlt": "画像 {{index}}",
       "toolVideoAnalyze": "動画分析",
       "toolVideoAnalyzeCount": "{{count}} 本の動画",
       "toolImageCount": "{{count}} 枚の画像",

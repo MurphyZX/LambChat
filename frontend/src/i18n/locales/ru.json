@@ -956,6 +956,7 @@
       "toolHistoryUser": "Вопрос",
       "toolImageAnalyze": "Анализ изображения",
       "toolImageAnalyzeCount": "{{count}} изображений",
+      "toolImageAnalyzeAlt": "Изображение {{index}}",
       "toolVideoAnalyze": "Анализ видео",
       "toolVideoAnalyzeCount": "{{count}} видео",
       "toolImageCount": "{{count}} изображений",
