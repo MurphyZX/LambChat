@@ -10,7 +10,10 @@ TODO_SYSTEM_PROMPT = (
     "For multi-step work (3+ steps or multiple tool calls), call `write_todos` "
     "with the plan before any tool call and keep statuses current. Explicit "
     "plan/checklist/`write_todos` requests: always call first. Skip trivial "
-    "one-step requests."
+    "one-step requests.\n"
+    "Act over endless reasoning: prefer a tool call or exact computation over "
+    "long mental reasoning; if you have reasoned at length without acting, "
+    "call a tool now."
 )
 
 TODO_TOOL_DESCRIPTION = (

@@ -66,3 +66,13 @@ def test_flat_write_todos_updates_state_like_upstream() -> None:
     )
     assert result.update["todos"] == [{"content": "step", "status": "in_progress"}]
     assert result.update["messages"][0].tool_call_id == "t1"
+
+
+def test_todo_system_prompt_breaks_overthinking_loops() -> None:
+    """GAIA 失败归因（2026-09-20）：3/7 失败是模型纯思考 420-660s 不调任何
+    工具直到超时（flash 与 glm-5.3 都会）。随中间件注入的指引必须含
+    「想太久就立刻行动」的明确指令。"""
+    from src.agents.core.todo_middleware import TODO_SYSTEM_PROMPT
+
+    assert "Act over endless reasoning" in TODO_SYSTEM_PROMPT
+    assert "call a tool now" in TODO_SYSTEM_PROMPT
