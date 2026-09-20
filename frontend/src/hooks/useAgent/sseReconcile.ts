@@ -19,14 +19,15 @@ import {
   type SSEConnectionContext,
 } from "./sseConnection";
 
-/** 服务端心跳间隔 15s（dual_writer `_SSE_HEARTBEAT_INTERVAL_SECONDS`）；
- * 两个周期 + 缓冲仍无任何事件视为流静默（半开死连接）。 */
-export const STREAM_STALE_THRESHOLD_MS = 45_000;
+/** 服务端心跳间隔 5s（dual_writer `_SSE_HEARTBEAT_INTERVAL_SECONDS`，
+ * 与 xread block 同频）；3 个周期无任何事件视为流静默（半开死连接），
+ * 看门狗 5s 一跳 → 最坏 ~20s 自愈。 */
+export const STREAM_STALE_THRESHOLD_MS = 15_000;
 
 /** 前台对账最小间隔：visibilitychange/focus/online 常连发，避免抖动 */
 export const RECONCILE_MIN_INTERVAL_MS = 3_000;
 
-const WATCHDOG_INTERVAL_MS = 15_000;
+const WATCHDOG_INTERVAL_MS = 5_000;
 
 export function isStreamActivityStale(
   lastActivityAt: number | null,
