@@ -37,24 +37,35 @@ DEVICES = {
     "mobile": (390, 844),
 }
 PUBLIC_FULL_PAGE = {
-    "/", "/interface", "/features", "/architecture", "/dashboard",
-    "/responsive", "/github", "/download",
-    "/auth/login", "/auth/register", "/auth/reset-request",
-    "/auth/reset-password", "/auth/verify-email", "/auth/pending",
+    "/",
+    "/interface",
+    "/features",
+    "/architecture",
+    "/dashboard",
+    "/responsive",
+    "/github",
+    "/download",
+    "/auth/login",
+    "/auth/register",
+    "/auth/reset-request",
+    "/auth/reset-password",
+    "/auth/verify-email",
+    "/auth/pending",
 }
 EXCLUDED = ("/auth/callback", "/dev/")
 THEME_KEY = "lambchat-theme"
 
 # 页面级等待参数(毫秒)
-NETWORK_IDLE_TIMEOUT = 8000   # networkidle 最多等这么久(SSE/长连接页封顶后继续)
-DOM_STABLE_MS = 900           # DOM 尺寸连续稳定时长,达到即认为渲染完
-DOM_STABLE_CAP = 10000        # 稳定等待封顶
+NETWORK_IDLE_TIMEOUT = 8000  # networkidle 最多等这么久(SSE/长连接页封顶后继续)
+DOM_STABLE_MS = 900  # DOM 尺寸连续稳定时长,达到即认为渲染完
+DOM_STABLE_CAP = 10000  # 稳定等待封顶
 
 
 def ensure_playwright():
     """当前解释器没有 playwright 时,复用 shot-scraper 工具环境。"""
     try:
         import playwright.sync_api  # noqa: F401
+
         return
     except ImportError:
         pass
@@ -138,8 +149,10 @@ def write_auth(path: Path, base: str, tokens: dict | None, theme: str):
     entries = [
         {"name": THEME_KEY, "value": theme},
         # 中和"按时段自动切主题":显式禁用,防止账号配置把注入主题翻掉
-        {"name": "lambchat-theme-schedule",
-         "value": '{"enabled":false,"start":"00:00","end":"00:00","nightTheme":"dark"}'},
+        {
+            "name": "lambchat-theme-schedule",
+            "value": '{"enabled":false,"start":"00:00","end":"00:00","nightTheme":"dark"}',
+        },
     ]
     if tokens:
         entries = [
@@ -167,11 +180,14 @@ class Shot:
     public: bool  # 公开页用匿名上下文截,否则登录态会被重定向到 /chat
 
 
-SETTLE_JS = """
+SETTLE_JS = (
+    """
 async () => {
   try { await document.fonts.ready; } catch (e) {}
   await new Promise(resolve => {
-    const deadline = Date.now() + """ + str(DOM_STABLE_CAP) + """;
+    const deadline = Date.now() + """
+    + str(DOM_STABLE_CAP)
+    + """;
     // 签名包含 <html> 的 class:主题翻转(dark↔light 类名等长)不会改变 outerHTML 长度
     const sig = () => document.documentElement.outerHTML.length + '|' + document.documentElement.className;
     let last = sig(), stable = 0;
@@ -179,7 +195,9 @@ async () => {
       const cur = sig();
       if (cur === last) stable += 200;
       else { stable = 0; last = cur; }
-      if (stable >= """ + str(DOM_STABLE_MS) + """ || Date.now() > deadline) {
+      if (stable >= """
+    + str(DOM_STABLE_MS)
+    + """ || Date.now() > deadline) {
         clearInterval(iv); resolve(true);
       }
     }, 200);
@@ -187,6 +205,7 @@ async () => {
   return true;
 }
 """
+)
 
 # 复刻 frontend/src/utils/themeDom.ts 的 applyThemeToDocument:
 # 启动后账号资料/定时主题的异步翻转可能盖掉注入的 localStorage,快门前强制归位
@@ -238,8 +257,15 @@ async () => {
 """
 
 
-def worker(name: str, shots: list[Shot], auths: dict[tuple[str, bool], Path],
-           counter: dict, lock: threading.Lock, total: int, failures: list[str]):
+def worker(
+    name: str,
+    shots: list[Shot],
+    auths: dict[tuple[str, bool], Path],
+    counter: dict,
+    lock: threading.Lock,
+    total: int,
+    failures: list[str],
+):
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
@@ -281,7 +307,9 @@ def worker(name: str, shots: list[Shot], auths: dict[tuple[str, bool], Path],
                     if s.full_page:
                         content_h = page.evaluate(TALL_PROBE_JS)
                         if content_h > s.height + 100:
-                            page.set_viewport_size({"width": s.width, "height": min(content_h, 12000)})
+                            page.set_viewport_size(
+                                {"width": s.width, "height": min(content_h, 12000)}
+                            )
                             page.wait_for_timeout(500)
                             page.evaluate(SCROLL_PASS_JS)
                     s.out.parent.mkdir(parents=True, exist_ok=True)
@@ -329,13 +357,17 @@ def make_gallery(out_dir: Path, themes: list[str], devices: list[str]):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--base", required=True, help="站点根地址,如 https://test.lambchat.com")
     ap.add_argument("--username", required=True)
     ap.add_argument("--password", required=True)
     ap.add_argument("--themes", default="light,dark", help="逗号分隔,可选 light,dark,sepia")
     ap.add_argument("--devices", default="desktop,tablet,mobile", help="逗号分隔")
-    ap.add_argument("--jobs", type=int, default=16, help="并行浏览器数(默认 16,每路约占 300-400MB 内存)")
+    ap.add_argument(
+        "--jobs", type=int, default=16, help="并行浏览器数(默认 16,每路约占 300-400MB 内存)"
+    )
     ap.add_argument("--app-tsx", default=str(REPO_ROOT / "frontend/src/App.tsx"), help="路由表文件")
     ap.add_argument("--no-seed", action="store_true", help="不抓真实会话,跳过 /chat/<id>")
     args = ap.parse_args()
@@ -343,7 +375,9 @@ def main():
     base = args.base.rstrip("/")
     themes = [t.strip() for t in args.themes.split(",") if t.strip()]
     devices = [d.strip() for d in args.devices.split(",") if d.strip()]
-    bad = [d for d in devices if d not in DEVICES] + [t for t in themes if t not in ("light", "dark", "sepia")]
+    bad = [d for d in devices if d not in DEVICES] + [
+        t for t in themes if t not in ("light", "dark", "sepia")
+    ]
     if bad:
         sys.exit(f"不认识的 themes/devices 值: {bad}")
     if args.jobs < 1:
@@ -374,17 +408,33 @@ def main():
             w, h = DEVICES[dev]
             for route, full in urls:
                 public = route in PUBLIC_FULL_PAGE
-                shots.append(Shot(theme, dev, route, base + route,
-                                  out_dir / theme / dev / f"{slug(route)}.png", w, h, full, public))
+                shots.append(
+                    Shot(
+                        theme,
+                        dev,
+                        route,
+                        base + route,
+                        out_dir / theme / dev / f"{slug(route)}.png",
+                        w,
+                        h,
+                        full,
+                        public,
+                    )
+                )
     total = len(shots)
-    print(f"[3/4] 截图:{len(urls)} 页 × {len(devices)} 端 × {len(themes)} 主题 = {total} 张,{args.jobs} 路并行 …")
+    print(
+        f"[3/4] 截图:{len(urls)} 页 × {len(devices)} 端 × {len(themes)} 主题 = {total} 张,{args.jobs} 路并行 …"
+    )
 
     started = time.time()
     counter, lock, failures = {"done": 0}, threading.Lock(), []
-    shards = [shots[i::args.jobs] for i in range(args.jobs)]
+    shards = [shots[i :: args.jobs] for i in range(args.jobs)]
     threads = [
-        threading.Thread(target=worker, args=(f"w{i}", shard, auths, counter, lock, total, failures), daemon=True)
-        for i, shard in enumerate(shards) if shard
+        threading.Thread(
+            target=worker, args=(f"w{i}", shard, auths, counter, lock, total, failures), daemon=True
+        )
+        for i, shard in enumerate(shards)
+        if shard
     ]
     for t in threads:
         t.start()
