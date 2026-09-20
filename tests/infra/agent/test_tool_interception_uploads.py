@@ -538,7 +538,9 @@ async def test_read_file_binary_interception_emits_tool_lifecycle_events(
     emitted: list[dict[str, Any]] = []
 
     class _FakePresenter:
-        def present_tool_start(self, tool_name, tool_input, tool_call_id=None, depth=0, agent_id=None):
+        def present_tool_start(
+            self, tool_name, tool_input, tool_call_id=None, depth=0, agent_id=None
+        ):
             return {
                 "event": "tool:start",
                 "data": {
@@ -550,7 +552,14 @@ async def test_read_file_binary_interception_emits_tool_lifecycle_events(
             }
 
         def present_tool_result(
-            self, tool_name, result, tool_call_id=None, success=True, error=None, depth=0, agent_id=None
+            self,
+            tool_name,
+            result,
+            tool_call_id=None,
+            success=True,
+            error=None,
+            depth=0,
+            agent_id=None,
         ):
             return {
                 "event": "tool:result",
@@ -653,7 +662,9 @@ async def test_read_file_binary_interception_survives_presenter_emit_failure(
             return [SimpleNamespace(content=b"png-data")]
 
     class _FakeStorage:
-        async def upload_file(self, file, folder, filename, content_type=None, *, skip_size_limit=False):
+        async def upload_file(
+            self, file, folder, filename, content_type=None, *, skip_size_limit=False
+        ):
             del file, skip_size_limit
             return SimpleNamespace(key=f"{folder}/{filename}", content_type=content_type)
 
@@ -708,7 +719,9 @@ async def test_read_file_binary_interception_without_presenter_returns_message(
             return [SimpleNamespace(content=b"png-data")]
 
     class _FakeStorage:
-        async def upload_file(self, file, folder, filename, content_type=None, *, skip_size_limit=False):
+        async def upload_file(
+            self, file, folder, filename, content_type=None, *, skip_size_limit=False
+        ):
             del file, skip_size_limit
             return SimpleNamespace(key=f"{folder}/{filename}", content_type=content_type)
 

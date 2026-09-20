@@ -467,18 +467,15 @@ class ToolResultBinaryMiddleware(AgentMiddleware):
         """
         from src.infra.agent.events.tool_events import stable_tool_call_key
 
-        presenter, depth, ns = _resolve_tool_event_context(
-            getattr(request, "runtime", None)
-        )
+        presenter, depth, ns = _resolve_tool_event_context(getattr(request, "runtime", None))
         if presenter is None:
             return
 
         tool_args = request.tool_call.get("args")
         if not isinstance(tool_args, dict):
             tool_args = {}
-        tool_call_id = (
-            stable_tool_call_key(ns, "read_file", tool_args)
-            or request.tool_call.get("id")
+        tool_call_id = stable_tool_call_key(ns, "read_file", tool_args) or request.tool_call.get(
+            "id"
         )
         try:
             payload = (
