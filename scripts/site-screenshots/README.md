@@ -15,8 +15,9 @@ shot-scraper install           # 下载 headless Chromium(~115MB)
 
 ```bash
 cd scripts/site-screenshots
+export STG_PASSWORD='…'  # staging 测试账号密码只放本地环境，禁止写进仓库
 python3 capture_all.py --base https://test.lambchat.com \
-    --username stg_verify_0828 --password 'StgVerify#2026'
+    --username stg_verify_0828 --password "$STG_PASSWORD"
 ```
 
 默认 **34 个页面 × 3 端(desktop 1440 / tablet 834 / mobile 390)× 2 主题(light+dark)= 204 张**,
