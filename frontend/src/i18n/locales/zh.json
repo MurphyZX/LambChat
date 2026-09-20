@@ -2995,6 +2995,7 @@
     "loading": "加载设置中...",
     "modelConfigDescription": "管理应用设置",
     "noFallbackModel": "无兜底模型",
+    "fallbackToImageAnalysisModel": "回落图片分析模型",
     "noMatch": "没有匹配的设置项",
     "noSettings": "此分类没有设置项",
     "parseFailed": "解析JSON文件失败",

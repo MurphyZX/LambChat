@@ -2995,6 +2995,7 @@
     "loading": "設定を読み込み中...",
     "modelConfigDescription": "アプリケーション設定を管理",
     "noFallbackModel": "フォールバックなし",
+    "fallbackToImageAnalysisModel": "画像分析モデルにフォールバック",
     "noMatch": "検索条件に一致する設定がありません",
     "noSettings": "このカテゴリに設定はありません",
     "parseFailed": "JSONファイルの解析に失敗しました",
