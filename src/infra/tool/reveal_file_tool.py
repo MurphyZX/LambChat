@@ -716,12 +716,14 @@ async def _resolve_local_references(
 
 @tool
 async def reveal_file(
-    file_path: Annotated[str, "单个文件路径或 http(s) URL；目录用 reveal_project"],
-    description: Annotated[Optional[str], "可选的文件说明"] = None,
+    file_path: Annotated[
+        str, "Single file path or http(s) URL; use reveal_project for directories"
+    ],
+    description: Annotated[Optional[str], "Optional file caption"] = None,
     runtime: ToolRuntime = None,  # type: ignore[assignment]
 ) -> str:
-    """向用户实际展示一个可点击的单个文件或 URL；仅回复路径不够。
-    目录或多文件项目必须使用 reveal_project。"""
+    """Show the user one clickable file or URL; replying with a bare path is not
+    enough. Directories and multi-file projects must use reveal_project."""
     if _is_remote_url(file_path):
         self_upload_key = _extract_self_upload_key(file_path)
         if self_upload_key is not None:
