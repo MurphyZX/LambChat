@@ -10,7 +10,7 @@
 
 - openai 协议：未配置 = 不发送（None 透传，客户端字段为 None 时不进 payload），
   由 provider 默认值接管——与 temperature 未配置不发送（PR #250）同一契约；
-- anthropic 协议：未配置 = 注入显式默认 ``_ANTHROPIC_DEFAULT_MAX_TOKENS``，
+- anthropic 协议：未配置 = 注入显式默认 ``ANTHROPIC_DEFAULT_MAX_TOKENS``，
   绝不让 langchain 的 4096 静默兜底生效；
 - anthropic 协议同时校验 deepagents 输入预算
   （``int(max_input_tokens*0.95) - max_tokens``），预算过小时告警，
@@ -23,10 +23,8 @@ import logging
 import pytest
 from langchain_core.messages import HumanMessage
 
-from src.infra.llm.client import (
-    _ANTHROPIC_DEFAULT_MAX_TOKENS,
-    LLMClient,
-)
+from src.infra.llm.budget import ANTHROPIC_DEFAULT_MAX_TOKENS
+from src.infra.llm.client import LLMClient
 from src.kernel.schemas.model import ModelConfig, ModelProfile
 
 
@@ -53,7 +51,7 @@ async def test_get_model_anthropic_max_tokens_none_gets_explicit_default() -> No
             api_key="sk-test",
         )
     )
-    assert model.max_tokens == _ANTHROPIC_DEFAULT_MAX_TOKENS
+    assert model.max_tokens == ANTHROPIC_DEFAULT_MAX_TOKENS
     # 具体锚定：绝不能是 langchain 的静默兜底值
     assert model.max_tokens != 4096
 
@@ -68,7 +66,7 @@ async def test_get_model_anthropic_payload_carries_explicit_default() -> None:
         )
     )
     payload = model._get_request_payload([HumanMessage(content="hi")], stop=None)
-    assert payload["max_tokens"] == _ANTHROPIC_DEFAULT_MAX_TOKENS
+    assert payload["max_tokens"] == ANTHROPIC_DEFAULT_MAX_TOKENS
 
 
 @pytest.mark.asyncio
