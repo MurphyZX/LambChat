@@ -15,6 +15,7 @@ import asyncio
 import base64
 import os
 import shlex
+import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
@@ -55,6 +56,10 @@ _T = TypeVar("_T")
 
 # 默认超时 30 分钟（秒）
 _DEFAULT_TIMEOUT = 30 * 60
+# 单条命令的默认超时下限：沙箱 timeout（空闲回收节奏）调小不应钳住命令时长
+_DEFAULT_COMMAND_TIMEOUT = 15 * 60
+# 长命令期间后台续期线程的最小间隔（秒）；测试会改小
+_KEEPALIVE_MIN_INTERVAL = 30.0
 SANDBOX_READ_MAX_BYTES = 2 * 1024 * 1024
 SANDBOX_DOWNLOAD_MAX_BYTES = 50 * 1024 * 1024
 SANDBOX_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
@@ -151,6 +156,43 @@ class E2BBackend(BaseSandbox):
         self.sandbox_startup_notice = None
         return notice
 
+    def _command_timeout(self, timeout: int | None) -> int:
+        """单条命令超时：显式值原样透传，默认保持 15 分钟下限。
+
+        沙箱 timeout 只是空闲回收节奏（keepalive 会持续续期），不应钳住
+        命令时长——此前 min(命令超时, 沙箱超时) 会把长命令一起杀掉。
+        """
+        if timeout is not None and timeout > 0:
+            return timeout
+        return max(self._timeout, _DEFAULT_COMMAND_TIMEOUT)
+
+    def _run_command_with_keepalive(self, fn: Callable[[], _T], effective_timeout: int) -> _T:
+        """长命令期间后台线程持续续期沙箱 timeout。
+
+        命令开始前 _maybe_extend_timeout 已把死限重置为整个沙箱 timeout，
+        因此短于沙箱 timeout 的命令不可能越限、无需续期线程；接近或超过
+        沙箱 timeout 的命令由 keeper 周期 set_timeout，跑多久都不暂停。
+        """
+        if effective_timeout < self._timeout:
+            return fn()
+        interval = max(_KEEPALIVE_MIN_INTERVAL, self._timeout / 4)
+        stop = threading.Event()
+
+        def _keeper() -> None:
+            while not stop.wait(interval):
+                try:
+                    self._sandbox.set_timeout(self._timeout)
+                except Exception as e:  # noqa: BLE001
+                    logger.debug("midflight keepalive set_timeout failed: %s", e)
+
+        thread = threading.Thread(target=_keeper, name="sandbox-cmd-keepalive", daemon=True)
+        thread.start()
+        try:
+            return fn()
+        finally:
+            stop.set()
+            thread.join(timeout=_KEEPALIVE_MIN_INTERVAL)
+
     def _with_work_dir(self, command: str) -> str:
         if command.lstrip().startswith("cd "):
             return command
@@ -183,14 +225,19 @@ class E2BBackend(BaseSandbox):
     # =========================================================================
 
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
-        effective_timeout = min(timeout or self._timeout, self._timeout)
+        effective_timeout = self._command_timeout(timeout)
         self._maybe_extend_timeout()
 
         try:
             kwargs: dict = {"cmd": self._with_work_dir(command), "timeout": effective_timeout}
             if self.env_vars:
                 kwargs["envs"] = self.env_vars
-            result = self._sdk("commands.run", lambda: self._sandbox.commands.run(**kwargs))
+            result = self._sdk(
+                "commands.run",
+                lambda: self._run_command_with_keepalive(
+                    lambda: self._sandbox.commands.run(**kwargs), effective_timeout
+                ),
+            )
             output = result.stdout or ""
             if result.stderr:
                 output = f"{output}\n{result.stderr}" if output else result.stderr
@@ -228,11 +275,13 @@ class E2BBackend(BaseSandbox):
             )
 
     async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
-        effective_timeout = min(timeout or self._timeout, self._timeout)
+        effective_timeout = self._command_timeout(timeout)
         try:
             result = await run_blocking_io(
                 lambda: self.execute(command, timeout=timeout),
-                timeout=effective_timeout,
+                # 客户端等待比命令超时略宽：续期线程保证沙箱不死，
+                # 不因边缘竞态让结果被本地超时抢跑
+                timeout=effective_timeout + 15,
             )
         except asyncio.TimeoutError:
             logger.warning(f"Client-side timeout after {effective_timeout}s: {command[:100]}...")
@@ -296,7 +345,7 @@ class E2BBackend(BaseSandbox):
         Returns:
             ExecuteResponse（包含完整输出）
         """
-        effective_timeout = min(timeout or self._timeout, self._timeout)
+        effective_timeout = self._command_timeout(timeout)
         self._maybe_extend_timeout()
         stdout_parts: list[str] = []
         stderr_parts: list[str] = []
@@ -320,7 +369,12 @@ class E2BBackend(BaseSandbox):
             }
             if self.env_vars:
                 kwargs["envs"] = self.env_vars
-            result = self._sdk("commands.run", lambda: self._sandbox.commands.run(**kwargs))
+            result = self._sdk(
+                "commands.run",
+                lambda: self._run_command_with_keepalive(
+                    lambda: self._sandbox.commands.run(**kwargs), effective_timeout
+                ),
+            )
             output = "\n".join(stdout_parts)
             if stderr_parts:
                 output = (
