@@ -153,3 +153,58 @@ def test_read_wakes_and_retries_on_connection_error() -> None:
     assert result.file_data is not None
     assert sandbox.files.read_calls == 2
     assert sandbox.connect_calls
+
+
+def test_per_command_timeout_is_not_capped_by_sandbox_timeout() -> None:
+    """单条命令超时与沙箱 timeout 解耦：显式给长超时按原样透传。"""
+    sandbox = _FakeE2BSandbox([_ok()])
+    backend = E2BBackend(sandbox=sandbox, timeout=300)
+
+    backend.execute("long-build", timeout=1200)
+
+    assert sandbox.commands.calls[0]["timeout"] == 1200
+
+
+def test_default_command_timeout_keeps_15min_floor() -> None:
+    """沙箱 timeout 调小后，单条命令默认上限保持 15 分钟（生产历史行为）。"""
+    sandbox = _FakeE2BSandbox([_ok()])
+    backend = E2BBackend(sandbox=sandbox, timeout=300)
+
+    backend.execute("pip install")
+
+    assert sandbox.commands.calls[0]["timeout"] == 900
+
+
+def test_long_command_runs_midflight_keepalive(monkeypatch: Any) -> None:
+    """超过沙箱 timeout 的命令执行期间，后台线程持续续期沙箱。"""
+    import time as time_mod
+
+    monkeypatch.setattr("src.infra.backend.e2b._KEEPALIVE_MIN_INTERVAL", 0.02)
+    sandbox = _FakeE2BSandbox()
+
+    def slow_run(**kwargs: Any):
+        sandbox.commands.calls.append(kwargs)
+        time_mod.sleep(0.12)  # 跨多个续期间隔
+        return _ok("done\n")
+
+    sandbox.commands.run = slow_run  # type: ignore[method-assign]
+    # timeout=0.08 → 续期间隔 max(0.02, 0.08/4)=0.02，0.12s 命令内应续期多次
+    backend = E2BBackend(sandbox=sandbox, timeout=0.08)
+
+    before = len(sandbox.set_timeout_calls)
+    result = backend.execute("long-task", timeout=900)
+    during = len(sandbox.set_timeout_calls) - before
+
+    assert result.exit_code == 0
+    assert during >= 2  # 命令期间后台续期了多次
+
+
+def test_short_command_skips_midflight_keepalive() -> None:
+    """命令必在沙箱死限内结束时不额外起续期线程。"""
+    sandbox = _FakeE2BSandbox([_ok()])
+    backend = E2BBackend(sandbox=sandbox, timeout=300)
+
+    backend.execute("echo hi", timeout=60)
+
+    # 只有命令前的常规 keepalive 一次，命令期间没有额外续期
+    assert sandbox.set_timeout_calls == [300]
