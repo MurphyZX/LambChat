@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 from deepagents.backends.sandbox import BaseSandbox
 from deepagents.backends.utils import create_file_data, slice_read_response
 
-from src.infra.async_utils import run_blocking_io
+from src.infra.async_utils import run_blocking_io, run_long_blocking_io
 from src.infra.backend.protocol_compat import (
     ExecuteResponse,
     FileDownloadResponse,
@@ -277,7 +277,9 @@ class E2BBackend(BaseSandbox):
     async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
         effective_timeout = self._command_timeout(timeout)
         try:
-            result = await run_blocking_io(
+            # 命令执行走慢道（独立线程池）：长命令独占整段时长也不占快道，
+            # 不拖累其他沙箱的续期/生命周期调用
+            result = await run_long_blocking_io(
                 lambda: self.execute(command, timeout=timeout),
                 # 客户端等待比命令超时略宽：续期线程保证沙箱不死，
                 # 不因边缘竞态让结果被本地超时抢跑
@@ -686,7 +688,7 @@ class E2BBackend(BaseSandbox):
         return responses
 
     async def aupload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
-        return await run_blocking_io(self.upload_files, files)
+        return await run_long_blocking_io(self.upload_files, files)
 
     def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
         if len(paths) > SANDBOX_BATCH_FILES_LIMIT:
@@ -743,7 +745,7 @@ class E2BBackend(BaseSandbox):
         return None
 
     async def adownload_files(self, paths: list[str]) -> list[FileDownloadResponse]:
-        return await run_blocking_io(self.download_files, paths)
+        return await run_long_blocking_io(self.download_files, paths)
 
     # =========================================================================
     # Sandbox lifecycle helpers
