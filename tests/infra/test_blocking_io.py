@@ -258,6 +258,7 @@ async def test_e2b_aexecute_routes_to_long_lane(monkeypatch) -> None:
     )
     sandbox.set_timeout = lambda t: None  # type: ignore[method-assign]
     backend = E2BBackend(sandbox=sandbox, timeout=300)
+    backend.supports_async_sdk = False  # 线程路径（Cube 同款）验证慢道路由
 
     result = await backend.aexecute("echo hi")
 

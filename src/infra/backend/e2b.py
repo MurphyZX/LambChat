@@ -54,6 +54,11 @@ logger = get_logger(__name__)
 
 _T = TypeVar("_T")
 
+
+class _AsyncClientInitError(RuntimeError):
+    """e2b async 客户端无法建立（平台不兼容/不可达），调用方回落线程路径。"""
+
+
 # 默认超时 30 分钟（秒）
 _DEFAULT_TIMEOUT = 30 * 60
 # 单条命令的默认超时下限：沙箱 timeout（空闲回收节奏）调小不应钳住命令时长
@@ -86,6 +91,10 @@ class E2BBackend(BaseSandbox):
     绕过 shell 命令，性能更好且更安全。
     """
 
+    # e2b 有官方 async SDK：异步命令走原生协程（零线程占用）。
+    # 子类若无 async SDK（如 CubeSandboxBackend）置 False，回落线程慢道。
+    supports_async_sdk = True
+
     def __init__(
         self,
         sandbox: "E2BSandbox",
@@ -104,6 +113,12 @@ class E2BBackend(BaseSandbox):
         # 沙箱被平台回收后 manager 重建新沙箱时挂载的一次性提示，
         # 由 aexecute 消费并前缀到首个命令输出，让模型知道旧文件已丢失。
         self.sandbox_startup_notice: str | None = None
+        # e2b 官方 async 客户端（懒连接）：异步路径零线程占用。
+        # Cube 等 e2b 兼容平台共用；不兼容时 aexecute 自动回落线程慢道。
+        self._async_client: Any = None
+        self._async_init_lock = asyncio.Lock()
+        self._async_init_failures = 0
+        self._async_disabled = False
 
     @property
     def id(self) -> str:
@@ -155,6 +170,89 @@ class E2BBackend(BaseSandbox):
         notice = self.sandbox_startup_notice
         self.sandbox_startup_notice = None
         return notice
+
+    # =========================================================================
+    # e2b async 原生路径（零线程占用）
+    # =========================================================================
+
+    async def _async_sandbox(self) -> Any:
+        """懒连接 e2b 官方 async 客户端；connect 会自动恢复 paused 沙箱。"""
+        if self._async_client is None:
+            async with self._async_init_lock:
+                if self._async_client is None:
+                    from e2b import AsyncSandbox as AsyncE2BSandbox
+
+                    self._async_client = await AsyncE2BSandbox.connect(
+                        self.id, **self._async_connect_opts()
+                    )
+        return self._async_client
+
+    def _async_connect_opts(self) -> dict:
+        """e2b async 客户端连接参数；子类可覆写指向 e2b 兼容平台（如 Cube）。"""
+        opts: dict = {
+            "timeout": self._timeout,
+            "api_key": settings.E2B_API_KEY or None,
+            "domain": os.environ.get("E2B_DOMAIN") or "e2b.app",
+            "request_timeout": float(os.environ.get("E2B_REQUEST_TIMEOUT", "120")),
+        }
+        api_url = os.environ.get("E2B_API_URL")
+        if api_url:
+            opts["api_url"] = api_url
+        return opts
+
+    async def _awake_sandbox_async(self) -> None:
+        """async 唤醒：重连 async 客户端（connect 自动恢复 paused 并刷新 timeout）。"""
+        self._async_client = None
+        await self._async_sandbox()
+
+    async def _amaybe_extend_timeout(self) -> None:
+        """async 版周期续期；时间戳与同步路径共享同一个沙箱死限。"""
+        interval = max(60.0, self._timeout / 3)
+        now = time.monotonic()
+        if now - self._last_timeout_extend < interval:
+            return
+        try:
+            sbx = await self._async_sandbox()
+            await sbx.set_timeout(self._timeout)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("async keepalive set_timeout failed for %s: %s", self.id, e)
+            return
+        self._last_timeout_extend = now
+
+    async def _asdk(self, op: str, fn: Callable[[], Any]) -> Any:
+        """async SDK 调用：暂停/断连错误唤醒后单次重试。"""
+        return await self._heal.arun(op, fn, self._awake_sandbox_async)
+
+    async def _arun_command_with_keepalive(
+        self, fn: Callable[[], Any], effective_timeout: int
+    ) -> Any:
+        """长命令期间用 asyncio task 周期续期，命令时长不受沙箱超时约束。"""
+        if effective_timeout < self._timeout:
+            return await fn()
+        interval = max(_KEEPALIVE_MIN_INTERVAL, self._timeout / 4)
+        stop = asyncio.Event()
+
+        async def _keeper() -> None:
+            while not stop.is_set():
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=interval)
+                except asyncio.TimeoutError:
+                    try:
+                        sbx = await self._async_sandbox()
+                        await sbx.set_timeout(self._timeout)
+                    except Exception as e:  # noqa: BLE001
+                        logger.debug("async midflight keepalive failed: %s", e)
+
+        task = asyncio.create_task(_keeper())
+        try:
+            return await fn()
+        finally:
+            stop.set()
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
 
     def _command_timeout(self, timeout: int | None) -> int:
         """单条命令超时：显式值原样透传，默认保持 15 分钟下限。
@@ -247,42 +345,111 @@ class E2BBackend(BaseSandbox):
                 truncated=False,
             )
         except Exception as e:
-            error_msg = str(e)
-            if "timeout" in error_msg.lower():
-                logger.warning(f"Command timed out after {effective_timeout}s: {command[:100]}...")
-                return ExecuteResponse(
-                    output=f"Command timed out after {effective_timeout} seconds",
-                    exit_code=-1,
-                    truncated=False,
-                )
-            # Surface the full captured output from SDK command exceptions so
-            # failures stay diagnosable. Previously only str(e) was used, which
-            # for preflight failures produced an empty "error: " in the logs
-            # (issue #195 diagnostics).
-            detail = error_msg
-            for attr in ("stderr", "stdout"):
-                val = getattr(e, attr, None)
-                if val:
-                    detail = f"{detail} | {attr}: {val}" if detail else val
-            logger.error(f"Command failed: {detail}")
-            output = f"Command failed: {detail}"
-            if self._heal.exhausted:
-                output = f"{output}\n{UNAVAILABLE_GUIDANCE}"
+            return self._command_error_response(e, effective_timeout, command)
+
+    def _command_error_response(
+        self,
+        e: Exception,
+        effective_timeout: int,
+        command: str,
+    ) -> ExecuteResponse:
+        error_msg = str(e)
+        if "timeout" in error_msg.lower():
+            logger.warning(f"Command timed out after {effective_timeout}s: {command[:100]}...")
             return ExecuteResponse(
-                output=output,
+                output=f"Command timed out after {effective_timeout} seconds",
                 exit_code=-1,
                 truncated=False,
             )
+        # Surface the full captured output from SDK command exceptions so
+        # failures stay diagnosable. Previously only str(e) was used, which
+        # for preflight failures produced an empty "error: " in the logs
+        # (issue #195 diagnostics).
+        detail = error_msg
+        for attr in ("stderr", "stdout"):
+            val = getattr(e, attr, None)
+            if val:
+                detail = f"{detail} | {attr}: {val}" if detail else val
+        logger.error(f"Command failed: {detail}")
+        output = f"Command failed: {detail}"
+        if self._heal.exhausted:
+            output = f"{output}\n{UNAVAILABLE_GUIDANCE}"
+        return ExecuteResponse(
+            output=output,
+            exit_code=-1,
+            truncated=False,
+        )
 
     async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+        if self.supports_async_sdk and not self._async_disabled:
+            try:
+                return await self._aexecute_native(command, timeout=timeout)
+            except _AsyncClientInitError as e:
+                # async 客户端建不起来（平台不完全兼容/网络不可达）：
+                # 回落线程慢道；连续失败后本实例禁用 async 路径。
+                self._async_init_failures += 1
+                if self._async_init_failures >= 2:
+                    self._async_disabled = True
+                logger.warning(
+                    "async sandbox client unavailable for %s (%s); "
+                    "falling back to thread lane (failures=%d)",
+                    self.id,
+                    e,
+                    self._async_init_failures,
+                )
+                return await self._aexecute_via_thread(command, timeout=timeout)
+        return await self._aexecute_via_thread(command, timeout=timeout)
+
+    async def _aexecute_native(
+        self, command: str, *, timeout: int | None = None
+    ) -> ExecuteResponse:
+        """e2b 官方 async SDK 路径：纯 await，零线程占用。
+
+        命令本质是 HTTP/WS 调用，同步 SDK 时代只能拿线程扛整段命令时长；
+        async 客户端后长命令不再占任何阻塞 IO 线程池，续期 keeper 也从
+        专线线程退化为普通 asyncio task。Cube 等 e2b 兼容平台共用此路径，
+        不兼容时由 aexecute 自动回落线程慢道。
+        """
         effective_timeout = self._command_timeout(timeout)
         try:
-            # 命令执行走慢道（独立线程池）：长命令独占整段时长也不占快道，
-            # 不拖累其他沙箱的续期/生命周期调用
+            sbx = await self._async_sandbox()
+        except Exception as e:
+            raise _AsyncClientInitError(str(e)) from e
+        await self._amaybe_extend_timeout()
+        kwargs: dict = {"cmd": self._with_work_dir(command), "timeout": effective_timeout}
+        if self.env_vars:
+            kwargs["envs"] = self.env_vars
+        try:
+            result = await self._asdk(
+                "commands.run",
+                lambda: self._arun_command_with_keepalive(
+                    lambda: sbx.commands.run(**kwargs), effective_timeout
+                ),
+            )
+            output = result.stdout or ""
+            if result.stderr:
+                output = f"{output}\n{result.stderr}" if output else result.stderr
+            result = ExecuteResponse(output=output, exit_code=result.exit_code, truncated=False)
+        except Exception as e:
+            result = self._command_error_response(e, effective_timeout, command)
+        notice = self._consume_startup_notice()
+        if notice:
+            output = result.output or ""
+            result = ExecuteResponse(
+                output=f"{notice}\n{output}" if output else notice,
+                exit_code=result.exit_code,
+                truncated=result.truncated,
+            )
+        return result
+
+    async def _aexecute_via_thread(
+        self, command: str, *, timeout: int | None = None
+    ) -> ExecuteResponse:
+        """线程路径（Cube 等无 async SDK 的平台）：走慢道独立线程池。"""
+        effective_timeout = self._command_timeout(timeout)
+        try:
             result = await run_long_blocking_io(
                 lambda: self.execute(command, timeout=timeout),
-                # 客户端等待比命令超时略宽：续期线程保证沙箱不死，
-                # 不因边缘竞态让结果被本地超时抢跑
                 timeout=effective_timeout + 15,
             )
         except asyncio.TimeoutError:
