@@ -42,6 +42,17 @@ from src.kernel.schemas.model import ModelConfig
 
 logger = get_logger(__name__)
 
+# Anthropic Messages API 强制要求 max_tokens 字段，无法做到「未配置就不发送」；
+# langchain-anthropic 对 None 会经 set_default_max_tokens 校验器静默填
+# _FALLBACK_MAX_OUTPUT_TOKENS=4096（模型不在其内置 _MODEL_PROFILES 注册表时必
+# 命中），4096 会截断 agent 长输出。未配置时注入该显式默认保持行为可预期。
+_ANTHROPIC_DEFAULT_MAX_TOKENS = 32_768
+
+# deepagents SummarizationMiddleware 的输入预算 = int(max_input_tokens*0.95) -
+# max_tokens；低于该下限时长会话压缩后仍可能超预算（终态 ContextOverflowError，
+# 2026-09-21 生产事故），构建模型时告警留下诊断线索。
+_INPUT_BUDGET_WARN_FLOOR = 20_000
+
 # ── Provider 注册表 ──
 # 每个条目: provider_slug → (协议类型, 模型名前缀列表)
 # 协议类型: "anthropic" | "google" | "openai"
@@ -482,6 +493,30 @@ def _has_env_provider_auth(protocol: str) -> bool:
     return False
 
 
+def _warn_if_input_budget_strangled(
+    profile: Optional[dict],
+    max_tokens: Optional[int],
+    model_name: str,
+) -> None:
+    """预算过小时告警（deepagents 同款公式：int(limit*0.95) - max_tokens）。"""
+    if not isinstance(profile, dict) or max_tokens is None:
+        return
+    limit = profile.get("max_input_tokens")
+    if not isinstance(limit, int) or isinstance(limit, bool):
+        return
+    budget = int(limit * 0.95) - max_tokens
+    if budget < _INPUT_BUDGET_WARN_FLOOR:
+        logger.warning(
+            "[LLMClient] Tiny input budget for %s: int(%s*0.95) - %s = %s tokens; "
+            "long sessions may hit terminal ContextOverflowError after compaction — "
+            "raise profile.max_input_tokens or lower max_tokens",
+            model_name,
+            limit,
+            max_tokens,
+            budget,
+        )
+
+
 class LLMClient:
     """LLM 客户端工厂，支持 LRU 实例缓存和 fallback。"""
 
@@ -532,12 +567,18 @@ class LLMClient:
             anthropic_thinking, effort, temperature_override = _resolve_anthropic_thinking(
                 model_name, thinking
             )
+            # 未配置 max_tokens 时注入显式默认：langchain-anthropic 会把 None
+            # 静默换成 4096（见 _ANTHROPIC_DEFAULT_MAX_TOKENS 注释）。
+            effective_max_tokens = (
+                max_tokens if max_tokens is not None else _ANTHROPIC_DEFAULT_MAX_TOKENS
+            )
+            _warn_if_input_budget_strangled(profile, effective_max_tokens, model_name)
             anthropic_kwargs: dict[str, Any] = {
                 "model_name": model_name,
                 "temperature": (
                     temperature_override if temperature_override is not None else temperature
                 ),
-                "max_tokens": max_tokens,  # type: ignore[arg-type]
+                "max_tokens": effective_max_tokens,
                 "thinking": anthropic_thinking,
                 "effort": effort,
                 "base_url": api_base or None,
@@ -579,6 +620,11 @@ class LLMClient:
         openai_kwargs: dict[str, Any] = {
             "model": model_name,
             "temperature": temperature,
+            # 配置了才发送：None 不进 payload（provider 默认接管）。历史上该
+            # 分支漏传 max_tokens，配置值被静默丢弃（"死配置"），现对齐
+            # 「配了就传、不配不传」语义；生产 openai 协议模型当前均为 null，
+            # 此修复不改变现有请求。
+            "max_tokens": max_tokens,
             "streaming": True,
             "api_key": api_key or "sk-placeholder",
             "base_url": api_base or None,
