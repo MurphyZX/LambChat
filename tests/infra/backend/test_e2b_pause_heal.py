@@ -129,9 +129,10 @@ def test_execute_appends_unavailable_guidance_after_repeated_failures() -> None:
     assert "unavailable" in outputs[-1].lower()
 
 
-async def test_aexecute_prefixes_startup_notice_once() -> None:
-    sandbox = _FakeE2BSandbox([_ok("first\n"), _ok("second\n")])
-    backend = E2BBackend(sandbox=sandbox, timeout=600)
+async def test_aexecute_prefixes_startup_notice_once(monkeypatch: Any) -> None:
+    fake = _FakeAsyncSandbox([_ok("first\n"), _ok("second\n")])
+    _patch_async_client(monkeypatch, fake)
+    backend = E2BBackend(sandbox=_FakeE2BSandbox(), timeout=600)
     backend.sandbox_startup_notice = "[sandbox] rebuilt"
 
     first = await backend.aexecute("echo hi")
@@ -208,3 +209,146 @@ def test_short_command_skips_midflight_keepalive() -> None:
 
     # 只有命令前的常规 keepalive 一次，命令期间没有额外续期
     assert sandbox.set_timeout_calls == [300]
+
+
+class _FakeAsyncCommands:
+    def __init__(self, outcomes: list[Any] | None = None) -> None:
+        self.outcomes = list(outcomes or [])
+        self.calls: list[dict] = []
+
+    async def run(self, **kwargs: Any) -> Any:
+        self.calls.append(kwargs)
+        if not self.outcomes:
+            return _ok()
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+
+class _FakeAsyncSandbox:
+    def __init__(self, outcomes: list[Any] | None = None) -> None:
+        self.sandbox_id = "e2b-async"
+        self.commands = _FakeAsyncCommands(outcomes)
+        self.set_timeout_calls: list[int] = []
+        self.connect_calls: list[int | None] = []
+
+    async def connect(self, timeout: int | None = None) -> None:
+        self.connect_calls.append(timeout)
+
+    async def set_timeout(self, timeout: int) -> None:
+        self.set_timeout_calls.append(timeout)
+
+
+def _patch_async_client(monkeypatch: Any, fake: _FakeAsyncSandbox) -> None:
+    from src.infra.backend import e2b as e2b_mod
+
+    async def fake_client(self):
+        return fake
+
+    monkeypatch.setattr(e2b_mod.E2BBackend, "_async_sandbox", fake_client)
+
+
+async def test_aexecute_runs_native_async_without_thread_pool(monkeypatch: Any) -> None:
+    """e2b 命令走原生 async 客户端，不再占用阻塞 IO 线程池。"""
+    import asyncio
+
+    from src.infra.backend import e2b as e2b_mod
+
+    async def _pool_must_not_be_used(*_args, **_kwargs):
+        raise AssertionError("thread pool used for e2b async command")
+
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _pool_must_not_be_used)
+    monkeypatch.setattr(e2b_mod, "run_blocking_io", _pool_must_not_be_used)
+
+    fake = _FakeAsyncSandbox([_ok("native-async\n")])
+    _patch_async_client(monkeypatch, fake)
+    backend = e2b_mod.E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
+
+    result = await asyncio.wait_for(backend.aexecute("echo hi"), timeout=5)
+
+    assert result.exit_code == 0
+    assert "native-async" in (result.output or "")
+
+
+async def test_aexecute_async_wakes_and_retries_on_paused(monkeypatch: Any) -> None:
+    import asyncio
+
+    from src.infra.backend import e2b as e2b_mod
+
+    fake = _FakeAsyncSandbox([RuntimeError("Sandbox is paused"), _ok("awake-ok\n")])
+    client_fetches = {"n": 0}
+
+    async def counting_client(self):
+        client_fetches["n"] += 1
+        return fake
+
+    monkeypatch.setattr(e2b_mod.E2BBackend, "_async_sandbox", counting_client)
+    backend = e2b_mod.E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
+
+    result = await asyncio.wait_for(backend.aexecute("task"), timeout=5)
+
+    assert result.exit_code == 0
+    assert len(fake.commands.calls) == 2
+    assert client_fetches["n"] >= 2  # wake 重连了 async 客户端
+
+
+async def test_aexecute_async_midflight_keepalive_task(monkeypatch: Any) -> None:
+    import asyncio
+
+    from src.infra.backend import e2b as e2b_mod
+
+    monkeypatch.setattr(e2b_mod, "_KEEPALIVE_MIN_INTERVAL", 0.02)
+    fake = _FakeAsyncSandbox()
+
+    async def slow_run(**kwargs: Any) -> Any:
+        fake.commands.calls.append(kwargs)
+        await asyncio.sleep(0.12)
+        return _ok("kept-alive\n")
+
+    fake.commands.run = slow_run  # type: ignore[method-assign]
+    _patch_async_client(monkeypatch, fake)
+    backend = e2b_mod.E2BBackend(sandbox=_FakeE2BSandbox(), timeout=0.08)
+
+    before = len(fake.set_timeout_calls)
+    result = await asyncio.wait_for(backend.aexecute("long", timeout=900), timeout=10)
+    during = len(fake.set_timeout_calls) - before
+
+    assert result.exit_code == 0
+    assert during >= 2  # asyncio keeper 周期续期
+
+
+async def test_cube_falls_back_to_thread_lane_when_e2b_client_unavailable(
+    monkeypatch: Any,
+) -> None:
+    """Cube 名下 e2b 兼容客户端建不起来（如本测试的本地假地址）：
+    aexecute 自动回落线程慢道，行为不倒退。"""
+    import asyncio
+
+    from src.infra.backend import e2b as e2b_mod
+    from src.infra.backend.cubesandbox import CubeSandboxBackend
+
+    routed: list[str] = []
+
+    async def fake_long_run(func, *args, timeout=None, **kwargs):
+        routed.append("long")
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", fake_long_run)
+
+    from types import SimpleNamespace
+
+    sandbox = SimpleNamespace(
+        sandbox_id="cube-lane",
+        commands=SimpleNamespace(
+            run=lambda **kw: SimpleNamespace(stdout="ok\n", stderr="", exit_code=0)
+        ),
+        files=SimpleNamespace(),
+    )
+    sandbox.set_timeout = lambda t: None  # type: ignore[method-assign]
+    backend = CubeSandboxBackend(sandbox=sandbox, timeout=300)
+
+    result = await asyncio.wait_for(backend.aexecute("echo hi"), timeout=5)
+
+    assert routed == ["long"]
+    assert result.exit_code == 0
