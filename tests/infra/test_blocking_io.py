@@ -52,7 +52,11 @@ async def test_run_blocking_io_keeps_slot_until_timed_out_call_finishes(
             self.submitted_names: list[str] = []
 
         def submit(self, fn, /, *args, **kwargs):
-            self.submitted_names.append(getattr(getattr(fn, "func", fn), "__name__", "unknown"))
+            # contextvars 包装后 fn 是 ctx.run，真实目标在 args[0]
+            target = args[0] if (args and getattr(fn, "__name__", "") == "run") else fn
+            self.submitted_names.append(
+                getattr(getattr(target, "func", target), "__name__", "unknown")
+            )
             return super().submit(fn, *args, **kwargs)
 
     executor = _RecordingExecutor()
@@ -89,7 +93,11 @@ async def test_run_blocking_io_applies_pending_submission_backpressure(
             self.submitted_names: list[str] = []
 
         def submit(self, fn, /, *args, **kwargs):
-            self.submitted_names.append(getattr(getattr(fn, "func", fn), "__name__", "unknown"))
+            # contextvars 包装后 fn 是 ctx.run，真实目标在 args[0]
+            target = args[0] if (args and getattr(fn, "__name__", "") == "run") else fn
+            self.submitted_names.append(
+                getattr(getattr(target, "func", target), "__name__", "unknown")
+            )
             return super().submit(fn, *args, **kwargs)
 
     executor = _RecordingExecutor()
@@ -339,3 +347,28 @@ async def test_lane_stats_counters_update() -> None:
     assert after["slow"]["completed"] >= before["slow"]["completed"] + 1
     assert after["fast"]["in_flight"] == 0
     assert after["slow"]["in_flight"] == 0
+
+
+async def test_all_lanes_propagate_contextvars() -> None:
+    """contextvars 必须传播进卸载线程（anyio to_thread 同款行为）。
+
+    被卸载函数读 TraceContext/请求上下文时不能静默拿到空值。
+    """
+    import contextvars
+
+    from src.infra.async_utils import blocking as blocking_mod
+    from src.infra.async_utils.blocking import run_long_blocking_io
+
+    var = contextvars.ContextVar("lane_probe")
+
+    def _read() -> str:
+        return var.get("MISSING")
+
+    var.set("from-loop")
+    fast_result = await blocking_mod.run_blocking_io(_read)
+    slow_result = await run_long_blocking_io(_read)
+    shape_result = await run_long_blocking_io(_read, urgent=True)
+
+    assert fast_result == "from-loop"
+    assert slow_result == "from-loop"
+    assert shape_result == "from-loop"

@@ -16,11 +16,22 @@ unbounded growth of the default executor.
 
 所有车道共享饱和可观测性：等待超阈值告警（含车道名与排队深度），
 ``blocking_io_stats()`` 暴露 in_flight/pending/completed 供监控消费。
+
+设计参照（开源标杆对标）：
+- contextvars 传播：与 ``anyio.to_thread.run_sync`` / ``asyncio.to_thread``
+  一致——被卸载代码可读取调用方的请求上下文（TraceContext 等）。
+- 取消语义：调用方超时即放弃等待，车道槽位在线程完成后释放——等价于
+  anyio ``abandon_on_cancel=True`` + CapacityLimiter 的租约语义。
+- 按资源类分道：trio/anyio 推荐每个受限资源独占 CapacityLimiter；
+  本模块更严格——三类车道各自独立线程池（线程级隔离 + 命名线程可
+  调试），而非仅限流器分离。
+- 饱和统计：对标 trio ``CapacityLimiter.statistics()``。
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import functools
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -190,9 +201,12 @@ async def _run_on_executor(
         )
     stats.in_flight += 1
 
+    # contextvars 传播进线程（anyio to_thread / asyncio.to_thread 同款）：
+    # 被卸载函数读 TraceContext/请求上下文不会静默拿到空值
     call = functools.partial(func, *args, **kwargs)
+    ctx = contextvars.copy_context()
     try:
-        future = executor.submit(call)
+        future = executor.submit(ctx.run, call)
     except Exception:
         stats.in_flight -= 1
         limiter.release()
