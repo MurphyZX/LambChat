@@ -155,7 +155,7 @@ class _AsyncCursor:
         return doc
 
     def sort(self, key, direction=None):
-        # Mirror motor's sort: stable multi-key ordering, ascending by default.
+        # Mirror MongoDB sort: stable multi-key ordering, ascending by default.
         if isinstance(key, list):
             for field, sort_direction in reversed(key):
                 self._docs.sort(key=lambda doc: doc.get(field), reverse=sort_direction < 0)
