@@ -259,7 +259,9 @@ async def test_aexecute_runs_native_async_without_thread_pool(monkeypatch: Any) 
         raise AssertionError("thread pool used for e2b async command")
 
     monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _pool_must_not_be_used)
-    monkeypatch.setattr(e2b_mod, "run_blocking_io", _pool_must_not_be_used)
+    monkeypatch.setattr(
+        e2b_mod, "run_blocking_io", _pool_must_not_be_used, raising=False
+    )
 
     fake = _FakeAsyncSandbox([_ok("native-async\n")])
     _patch_async_client(monkeypatch, fake)
@@ -352,3 +354,120 @@ async def test_cube_falls_back_to_thread_lane_when_e2b_client_unavailable(
 
     assert routed == ["long"]
     assert result.exit_code == 0
+
+
+class _FakeAsyncFiles:
+    def __init__(self) -> None:
+        self.contents: dict[str, str | bytes] = {}
+        self.list_entries: list[Any] = []
+
+    async def read(self, path: str, format: str = "text") -> Any:
+        data = self.contents[path]
+        if format == "bytes":
+            return data.encode() if isinstance(data, str) else data
+        return data.decode() if isinstance(data, bytes) else data
+
+    async def write(self, path: str, data: Any) -> None:
+        self.contents[path] = data
+
+    async def list(self, path: str) -> list[Any]:
+        return self.list_entries
+
+
+def _fake_async_sandbox_with_files() -> _FakeAsyncSandbox:
+    fake = _FakeAsyncSandbox()
+    fake.files = _FakeAsyncFiles()
+    return fake
+
+
+def _patch_async_files_client(monkeypatch: Any, fake: _FakeAsyncSandbox) -> None:
+    async def fake_client(self):
+        return fake
+
+    monkeypatch.setattr("src.infra.backend.e2b.E2BBackend._async_sandbox", fake_client)
+
+
+async def test_async_file_ops_never_touch_fast_lane(monkeypatch: Any) -> None:
+    """异步文件操作全部原生 async（或慢道回落），绝不占 8 线程快道。"""
+    import asyncio
+
+    from src.infra.backend import e2b as e2b_mod
+    from src.infra.backend.e2b import E2BBackend
+
+    async def _fast_lane_must_not_be_used(*_args, **_kwargs):
+        raise AssertionError("fast lane used for async file op")
+
+    monkeypatch.setattr(
+        e2b_mod, "run_blocking_io", _fast_lane_must_not_be_used, raising=False
+    )
+
+    fake = _fake_async_sandbox_with_files()
+    _patch_async_files_client(monkeypatch, fake)
+    backend = E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
+
+    read_result = await asyncio.wait_for(backend.aread("/home/user/note.txt"), timeout=5)
+    ls_result = await asyncio.wait_for(backend.als("/home/user"), timeout=5)
+    write_result = await asyncio.wait_for(backend.awrite("/home/user/new.txt", "hello"), timeout=5)
+    upload_result = await asyncio.wait_for(
+        backend.aupload_files([("/home/user/up.bin", b"\x00\x01")]), timeout=5
+    )
+    download_result = await asyncio.wait_for(
+        backend.adownload_files(["/home/user/up.bin"]), timeout=5
+    )
+
+    assert read_result.error is None
+    assert ls_result.error is None
+    assert write_result.error is None
+    assert upload_result[0].error is None
+    assert download_result[0].error is None
+
+
+async def test_aread_native_binary_returns_base64(monkeypatch: Any) -> None:
+    import asyncio
+
+    from src.infra.backend.e2b import E2BBackend
+
+    fake = _fake_async_sandbox_with_files()
+    fake.files.contents["/home/user/img.bin"] = b"\x00\x01\x02PNG"
+    _patch_async_files_client(monkeypatch, fake)
+    backend = E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
+
+    result = await asyncio.wait_for(backend.aread("/home/user/img.bin"), timeout=5)
+
+    assert result.error is None
+    assert result.file_data is not None
+    assert result.file_data.get("encoding") == "base64"
+
+
+async def test_file_ops_fallback_uses_slow_lane_not_fast(monkeypatch: Any) -> None:
+    """async 客户端建不起来时：文件操作回落慢道，不动快道。"""
+    import asyncio
+
+    from src.infra.backend import e2b as e2b_mod
+    from src.infra.backend.e2b import E2BBackend
+
+    slow_used: list[str] = []
+
+    async def fake_slow(func, *args, timeout=None, **kwargs):
+        slow_used.append(func.__name__ or "fn")
+        return func(*args, **kwargs)
+
+    async def _fast_must_not(*_a, **_k):
+        raise AssertionError("fast lane used in fallback")
+
+    async def broken_client(self):
+        raise RuntimeError("cube not e2b-compatible here")
+
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", fake_slow)
+    monkeypatch.setattr(
+        e2b_mod, "run_blocking_io", _fast_must_not, raising=False
+    )
+    monkeypatch.setattr(E2BBackend, "_async_sandbox", broken_client)
+    backend = E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
+    backend.supports_async_sdk = True
+
+    result = await asyncio.wait_for(backend.aread("/home/user/note.txt"), timeout=5)
+
+    assert result.error is None
+    assert "file-content" in (result.file_data or {}).get("content", "")
+    assert slow_used  # 走了慢道

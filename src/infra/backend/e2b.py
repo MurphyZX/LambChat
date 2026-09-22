@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 from deepagents.backends.sandbox import BaseSandbox
 from deepagents.backends.utils import create_file_data, slice_read_response
 
-from src.infra.async_utils import run_blocking_io, run_long_blocking_io
+from src.infra.async_utils import run_long_blocking_io
 from src.infra.backend.protocol_compat import (
     ExecuteResponse,
     FileDownloadResponse,
@@ -605,7 +605,103 @@ class E2BBackend(BaseSandbox):
             return BaseSandbox.ls(self, path)
 
     async def als(self, path: str) -> LsResult:
-        return await run_blocking_io(self.ls, path)
+        """原生 async files.list；客户端不可用时回落慢道（不占快道）。"""
+        resolved = self._resolve_path(path)
+        sbx = await self._async_client_or_none()
+        if sbx is None:
+            return await run_long_blocking_io(self.ls, path)
+        try:
+            entries = await self._asdk("files.list", lambda: sbx.files.list(path=resolved))
+            result: list[FileInfo] = []
+            for entry in entries:
+                info: FileInfo = {"path": entry.path}
+                if self._is_entry_dir(entry):
+                    info["is_dir"] = True
+                if hasattr(entry, "size"):
+                    info["size"] = entry.size
+                result.append(info)
+            return LsResult(entries=result)
+        except Exception as e:
+            logger.warning(f"E2B async files.list({path}) failed: {e}, falling back")
+            return await BaseSandbox.als(self, path)
+
+    async def aread(
+        self,
+        file_path: str,
+        offset: int = 0,
+        limit: int = 2000,
+    ) -> ReadResult:
+        """原生 async files.read：与同步 read 同款二进制检测/大小上限/切片。"""
+        resolved = self._resolve_path(file_path)
+        sbx = await self._async_client_or_none()
+        if sbx is None:
+            return await run_long_blocking_io(self.read, file_path, offset, limit)
+        try:
+            size = await self._afile_size(sbx, resolved)
+            if size is not None and size > SANDBOX_READ_MAX_BYTES:
+                return ReadResult(
+                    error=(
+                        f"file too large to read directly: {size} bytes "
+                        f"(limit {SANDBOX_READ_MAX_BYTES} bytes)"
+                    )
+                )
+            content = await self._asdk(
+                "files.read", lambda: sbx.files.read(path=resolved, format="text")
+            )
+            if "\x00" in content:
+                raw = await self._asdk(
+                    "files.read", lambda: sbx.files.read(path=resolved, format="bytes")
+                )
+                return self._read_as_base64(bytes(raw))
+            stripped = content.strip()
+            if len(stripped) >= 100:
+                sample = stripped[:4096]
+                non_text = sum(1 for c in sample if ord(c) < 32 and c not in "\t\n\r")
+                if non_text / len(sample) > 0.3:
+                    raw = await self._asdk(
+                        "files.read", lambda: sbx.files.read(path=resolved, format="bytes")
+                    )
+                    return self._read_as_base64(bytes(raw))
+            return slice_read_response(create_file_data(content), offset, limit)
+        except Exception as e:
+            logger.warning(f"E2B async files.read({file_path}) failed: {e}, falling back")
+            return await run_long_blocking_io(self.read, file_path, offset, limit)
+
+    async def _afile_size(self, sbx: Any, path: str) -> int | None:
+        parent = os.path.dirname(path) or "/"
+        try:
+            entries = await self._asdk("files.list", lambda: sbx.files.list(path=parent))
+        except Exception as e:
+            logger.debug("E2B async files.list(%s) size preflight failed: %s", parent, e)
+            return None
+        for entry in entries:
+            if getattr(entry, "path", None) == path and hasattr(entry, "size"):
+                try:
+                    return int(entry.size)
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    async def _async_client_or_none(self) -> Any:
+        """取 async 客户端；不可用时登记失败并返回 None（调用方走慢道）。"""
+        if not self.supports_async_sdk or self._async_disabled:
+            return None
+        try:
+            return await self._async_sandbox()
+        except Exception as e:
+            self._register_async_init_failure(e)
+            return None
+
+    def _register_async_init_failure(self, error: Exception) -> None:
+        self._async_init_failures += 1
+        if self._async_init_failures >= 2:
+            self._async_disabled = True
+        logger.warning(
+            "async sandbox client unavailable for %s (%s); using thread lane (failures=%d)",
+            self.id,
+            error,
+            self._async_init_failures,
+        )
 
     # magic bytes → MIME
     _MAGIC: list[tuple[bytes, str]] = [
@@ -825,8 +921,7 @@ class E2BBackend(BaseSandbox):
             logger.warning(f"E2B glob({pattern}) failed: {e}, falling back to execute()")
             return BaseSandbox.glob(self, pattern, requested_path)
 
-    async def aglob(self, pattern: str, path: str | None = None) -> GlobResult:
-        return await run_blocking_io(self.glob, pattern, path)
+    # aglob 不覆写：BaseSandbox 默认走 aexecute（原生 async，自带超时约束）
 
     # =========================================================================
     # File upload / download (already native, no change needed to logic)
@@ -855,7 +950,36 @@ class E2BBackend(BaseSandbox):
         return responses
 
     async def aupload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
-        return await run_long_blocking_io(self.upload_files, files)
+        """原生 async files.write；父目录经 aexecute 建立；回落慢道。"""
+        if len(files) > SANDBOX_BATCH_FILES_LIMIT:
+            return [
+                file_upload_response(path=path, error="too_many_files") for path, _content in files
+            ]
+        sbx = await self._async_client_or_none()
+        if sbx is None:
+            return await run_long_blocking_io(self.upload_files, files)
+
+        responses: list[FileUploadResponse] = []
+        for path, content in files:
+            resolved = self._resolve_path(path)
+            if len(content) > SANDBOX_UPLOAD_MAX_BYTES:
+                responses.append(file_upload_response(path=resolved, error="file_too_large"))
+                continue
+            try:
+                parent = os.path.dirname(resolved)
+                if parent:
+                    await self.aexecute(f"mkdir -p {shlex.quote(parent)}")
+
+                async def _write_one(p: str = resolved, c: Any = content) -> Any:
+                    return await sbx.files.write(path=p, data=c)
+
+                await self._asdk("files.write", _write_one)
+                responses.append(FileUploadResponse(path=resolved, error=None))
+            except Exception as e:
+                error_type = classify_upload_error(str(e))
+                logger.error(f"Failed to upload {resolved}: {e}")
+                responses.append(FileUploadResponse(path=resolved, error=error_type))
+        return responses
 
     def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
         if len(paths) > SANDBOX_BATCH_FILES_LIMIT:
@@ -912,7 +1036,46 @@ class E2BBackend(BaseSandbox):
         return None
 
     async def adownload_files(self, paths: list[str]) -> list[FileDownloadResponse]:
-        return await run_long_blocking_io(self.download_files, paths)
+        """原生 async files.read(bytes)；大小预检同同步版；回落慢道。"""
+        if len(paths) > SANDBOX_BATCH_FILES_LIMIT:
+            return [
+                file_download_response(path=path, content=None, error="too_many_files")
+                for path in paths
+            ]
+        sbx = await self._async_client_or_none()
+        if sbx is None:
+            return await run_long_blocking_io(self.download_files, paths)
+
+        responses: list[FileDownloadResponse] = []
+        for path in paths:
+            resolved = self._resolve_path(path)
+            try:
+                size = await self._afile_size(sbx, resolved)
+                if size is not None and size > SANDBOX_DOWNLOAD_MAX_BYTES:
+                    logger.warning(
+                        "Skipping async download for large file %s: %s bytes > %s",
+                        resolved,
+                        size,
+                        SANDBOX_DOWNLOAD_MAX_BYTES,
+                    )
+                    responses.append(
+                        FileDownloadResponse(path=resolved, content=None, error="file_not_found")
+                    )
+                    continue
+
+                async def _read_bytes(p: str = resolved) -> Any:
+                    return await sbx.files.read(path=p, format="bytes")
+
+                raw = await self._asdk("files.read", _read_bytes)
+                responses.append(
+                    FileDownloadResponse(path=resolved, content=bytes(raw), error=None)
+                )
+            except Exception as e:
+                logger.error(f"Failed to download {resolved}: {e}")
+                responses.append(
+                    file_download_response(path=resolved, content=None, error="file_not_found")
+                )
+        return responses
 
     # =========================================================================
     # Sandbox lifecycle helpers
