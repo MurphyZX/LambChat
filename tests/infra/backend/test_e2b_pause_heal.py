@@ -180,7 +180,9 @@ def test_long_command_runs_midflight_keepalive(monkeypatch: Any) -> None:
     """超过沙箱 timeout 的命令执行期间，后台线程持续续期沙箱。"""
     import time as time_mod
 
+    # 同步 keeper 在 e2b.py 命名空间；async keeper 在 e2b_async，两个都收小
     monkeypatch.setattr("src.infra.backend.e2b._KEEPALIVE_MIN_INTERVAL", 0.02)
+    monkeypatch.setattr("src.infra.backend.e2b_async._KEEPALIVE_MIN_INTERVAL", 0.02)
     sandbox = _FakeE2BSandbox()
 
     def slow_run(**kwargs: Any):
@@ -258,10 +260,11 @@ async def test_aexecute_runs_native_async_without_thread_pool(monkeypatch: Any) 
     async def _pool_must_not_be_used(*_args, **_kwargs):
         raise AssertionError("thread pool used for e2b async command")
 
-    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _pool_must_not_be_used)
-    monkeypatch.setattr(
-        e2b_mod, "run_blocking_io", _pool_must_not_be_used, raising=False
-    )
+    import src.infra.backend.e2b_async as e2b_async_mod
+
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _pool_must_not_be_used, raising=False)
+    monkeypatch.setattr(e2b_async_mod, "run_long_blocking_io", _pool_must_not_be_used)
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _pool_must_not_be_used, raising=False)
 
     fake = _FakeAsyncSandbox([_ok("native-async\n")])
     _patch_async_client(monkeypatch, fake)
@@ -298,9 +301,9 @@ async def test_aexecute_async_wakes_and_retries_on_paused(monkeypatch: Any) -> N
 async def test_aexecute_async_midflight_keepalive_task(monkeypatch: Any) -> None:
     import asyncio
 
-    from src.infra.backend import e2b as e2b_mod
+    from src.infra.backend import e2b_async as e2b_async_mod
 
-    monkeypatch.setattr(e2b_mod, "_KEEPALIVE_MIN_INTERVAL", 0.02)
+    monkeypatch.setattr(e2b_async_mod, "_KEEPALIVE_MIN_INTERVAL", 0.02)
     fake = _FakeAsyncSandbox()
 
     async def slow_run(**kwargs: Any) -> Any:
@@ -310,7 +313,9 @@ async def test_aexecute_async_midflight_keepalive_task(monkeypatch: Any) -> None
 
     fake.commands.run = slow_run  # type: ignore[method-assign]
     _patch_async_client(monkeypatch, fake)
-    backend = e2b_mod.E2BBackend(sandbox=_FakeE2BSandbox(), timeout=0.08)
+    from src.infra.backend.e2b import E2BBackend as _E2BBackend
+
+    backend = _E2BBackend(sandbox=_FakeE2BSandbox(), timeout=0.08)
 
     before = len(fake.set_timeout_calls)
     result = await asyncio.wait_for(backend.aexecute("long", timeout=900), timeout=10)
@@ -327,7 +332,6 @@ async def test_cube_falls_back_to_thread_lane_when_e2b_client_unavailable(
     aexecute 自动回落线程慢道，行为不倒退。"""
     import asyncio
 
-    from src.infra.backend import e2b as e2b_mod
     from src.infra.backend.cubesandbox import CubeSandboxBackend
 
     routed: list[str] = []
@@ -336,7 +340,9 @@ async def test_cube_falls_back_to_thread_lane_when_e2b_client_unavailable(
         routed.append("long")
         return func(*args, **kwargs)
 
-    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", fake_long_run)
+    import src.infra.backend.e2b_async as e2b_async_mod
+
+    monkeypatch.setattr(e2b_async_mod, "run_long_blocking_io", fake_long_run)
 
     from types import SimpleNamespace
 
@@ -397,11 +403,15 @@ async def test_async_file_ops_never_touch_fast_lane(monkeypatch: Any) -> None:
     async def _fast_lane_must_not_be_used(*_args, **_kwargs):
         raise AssertionError("fast lane used for async file op")
 
+    import src.infra.backend.e2b_async as e2b_async_mod
+
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _fast_lane_must_not_be_used, raising=False)
     monkeypatch.setattr(
-        e2b_mod, "run_blocking_io", _fast_lane_must_not_be_used, raising=False
+        e2b_async_mod, "run_long_blocking_io", _fast_lane_must_not_be_used, raising=False
     )
 
     fake = _fake_async_sandbox_with_files()
+    fake.files.contents["/home/user/note.txt"] = "native-content"
     _patch_async_files_client(monkeypatch, fake)
     backend = E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
 
@@ -458,10 +468,11 @@ async def test_file_ops_fallback_uses_slow_lane_not_fast(monkeypatch: Any) -> No
     async def broken_client(self):
         raise RuntimeError("cube not e2b-compatible here")
 
-    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", fake_slow)
-    monkeypatch.setattr(
-        e2b_mod, "run_blocking_io", _fast_must_not, raising=False
-    )
+    import src.infra.backend.e2b_async as e2b_async_mod
+
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", fake_slow, raising=False)
+    monkeypatch.setattr(e2b_async_mod, "run_long_blocking_io", fake_slow)
+    monkeypatch.setattr(e2b_mod, "run_long_blocking_io", _fast_must_not, raising=False)
     monkeypatch.setattr(E2BBackend, "_async_sandbox", broken_client)
     backend = E2BBackend(sandbox=_FakeE2BSandbox(), timeout=300)
     backend.supports_async_sdk = True
