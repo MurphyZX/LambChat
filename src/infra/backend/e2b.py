@@ -22,7 +22,15 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 from deepagents.backends.sandbox import BaseSandbox
 from deepagents.backends.utils import create_file_data, slice_read_response
 
-from src.infra.async_utils import run_long_blocking_io
+from src.infra.backend.e2b_async import (
+    _DEFAULT_COMMAND_TIMEOUT,
+    _KEEPALIVE_MIN_INTERVAL,
+    SANDBOX_BATCH_FILES_LIMIT,
+    SANDBOX_DOWNLOAD_MAX_BYTES,
+    SANDBOX_READ_MAX_BYTES,
+    SANDBOX_UPLOAD_MAX_BYTES,
+    E2BAsyncMixin,
+)
 from src.infra.backend.protocol_compat import (
     ExecuteResponse,
     FileDownloadResponse,
@@ -55,20 +63,8 @@ logger = get_logger(__name__)
 _T = TypeVar("_T")
 
 
-class _AsyncClientInitError(RuntimeError):
-    """e2b async 客户端无法建立（平台不兼容/不可达），调用方回落线程路径。"""
-
-
 # 默认超时 30 分钟（秒）
 _DEFAULT_TIMEOUT = 30 * 60
-# 单条命令的默认超时下限：沙箱 timeout（空闲回收节奏）调小不应钳住命令时长
-_DEFAULT_COMMAND_TIMEOUT = 15 * 60
-# 长命令期间后台续期线程的最小间隔（秒）；测试会改小
-_KEEPALIVE_MIN_INTERVAL = 30.0
-SANDBOX_READ_MAX_BYTES = 2 * 1024 * 1024
-SANDBOX_DOWNLOAD_MAX_BYTES = 50 * 1024 * 1024
-SANDBOX_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
-SANDBOX_BATCH_FILES_LIMIT = 100
 SANDBOX_GLOB_MAX_MATCHES = 1000
 SANDBOX_GLOB_TIMEOUT_SECONDS = 15
 
@@ -81,7 +77,7 @@ def _grep_result(parsed: list[GrepMatch] | str, max_count: int | None) -> GrepRe
     return GrepResult(matches=matches, truncated=truncated)
 
 
-class E2BBackend(BaseSandbox):
+class E2BBackend(E2BAsyncMixin, BaseSandbox):
     """E2B 沙箱后端
 
     使用 e2b Python SDK 执行命令和操作文件。
@@ -174,85 +170,6 @@ class E2BBackend(BaseSandbox):
     # =========================================================================
     # e2b async 原生路径（零线程占用）
     # =========================================================================
-
-    async def _async_sandbox(self) -> Any:
-        """懒连接 e2b 官方 async 客户端；connect 会自动恢复 paused 沙箱。"""
-        if self._async_client is None:
-            async with self._async_init_lock:
-                if self._async_client is None:
-                    from e2b import AsyncSandbox as AsyncE2BSandbox
-
-                    self._async_client = await AsyncE2BSandbox.connect(
-                        self.id, **self._async_connect_opts()
-                    )
-        return self._async_client
-
-    def _async_connect_opts(self) -> dict:
-        """e2b async 客户端连接参数；子类可覆写指向 e2b 兼容平台（如 Cube）。"""
-        opts: dict = {
-            "timeout": self._timeout,
-            "api_key": settings.E2B_API_KEY or None,
-            "domain": os.environ.get("E2B_DOMAIN") or "e2b.app",
-            "request_timeout": float(os.environ.get("E2B_REQUEST_TIMEOUT", "120")),
-        }
-        api_url = os.environ.get("E2B_API_URL")
-        if api_url:
-            opts["api_url"] = api_url
-        return opts
-
-    async def _awake_sandbox_async(self) -> None:
-        """async 唤醒：重连 async 客户端（connect 自动恢复 paused 并刷新 timeout）。"""
-        self._async_client = None
-        await self._async_sandbox()
-
-    async def _amaybe_extend_timeout(self) -> None:
-        """async 版周期续期；时间戳与同步路径共享同一个沙箱死限。"""
-        interval = max(60.0, self._timeout / 3)
-        now = time.monotonic()
-        if now - self._last_timeout_extend < interval:
-            return
-        try:
-            sbx = await self._async_sandbox()
-            await sbx.set_timeout(self._timeout)
-        except Exception as e:  # noqa: BLE001
-            logger.warning("async keepalive set_timeout failed for %s: %s", self.id, e)
-            return
-        self._last_timeout_extend = now
-
-    async def _asdk(self, op: str, fn: Callable[[], Any]) -> Any:
-        """async SDK 调用：暂停/断连错误唤醒后单次重试。"""
-        return await self._heal.arun(op, fn, self._awake_sandbox_async)
-
-    async def _arun_command_with_keepalive(
-        self, fn: Callable[[], Any], effective_timeout: int
-    ) -> Any:
-        """长命令期间用 asyncio task 周期续期，命令时长不受沙箱超时约束。"""
-        if effective_timeout < self._timeout:
-            return await fn()
-        interval = max(_KEEPALIVE_MIN_INTERVAL, self._timeout / 4)
-        stop = asyncio.Event()
-
-        async def _keeper() -> None:
-            while not stop.is_set():
-                try:
-                    await asyncio.wait_for(stop.wait(), timeout=interval)
-                except asyncio.TimeoutError:
-                    try:
-                        sbx = await self._async_sandbox()
-                        await sbx.set_timeout(self._timeout)
-                    except Exception as e:  # noqa: BLE001
-                        logger.debug("async midflight keepalive failed: %s", e)
-
-        task = asyncio.create_task(_keeper())
-        try:
-            return await fn()
-        finally:
-            stop.set()
-            task.cancel()
-            try:
-                await task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
-                pass
 
     def _command_timeout(self, timeout: int | None) -> int:
         """单条命令超时：显式值原样透传，默认保持 15 分钟下限。
@@ -379,95 +296,6 @@ class E2BBackend(BaseSandbox):
             exit_code=-1,
             truncated=False,
         )
-
-    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
-        if self.supports_async_sdk and not self._async_disabled:
-            try:
-                return await self._aexecute_native(command, timeout=timeout)
-            except _AsyncClientInitError as e:
-                # async 客户端建不起来（平台不完全兼容/网络不可达）：
-                # 回落线程慢道；连续失败后本实例禁用 async 路径。
-                self._async_init_failures += 1
-                if self._async_init_failures >= 2:
-                    self._async_disabled = True
-                logger.warning(
-                    "async sandbox client unavailable for %s (%s); "
-                    "falling back to thread lane (failures=%d)",
-                    self.id,
-                    e,
-                    self._async_init_failures,
-                )
-                return await self._aexecute_via_thread(command, timeout=timeout)
-        return await self._aexecute_via_thread(command, timeout=timeout)
-
-    async def _aexecute_native(
-        self, command: str, *, timeout: int | None = None
-    ) -> ExecuteResponse:
-        """e2b 官方 async SDK 路径：纯 await，零线程占用。
-
-        命令本质是 HTTP/WS 调用，同步 SDK 时代只能拿线程扛整段命令时长；
-        async 客户端后长命令不再占任何阻塞 IO 线程池，续期 keeper 也从
-        专线线程退化为普通 asyncio task。Cube 等 e2b 兼容平台共用此路径，
-        不兼容时由 aexecute 自动回落线程慢道。
-        """
-        effective_timeout = self._command_timeout(timeout)
-        try:
-            sbx = await self._async_sandbox()
-        except Exception as e:
-            raise _AsyncClientInitError(str(e)) from e
-        await self._amaybe_extend_timeout()
-        kwargs: dict = {"cmd": self._with_work_dir(command), "timeout": effective_timeout}
-        if self.env_vars:
-            kwargs["envs"] = self.env_vars
-        try:
-            result = await self._asdk(
-                "commands.run",
-                lambda: self._arun_command_with_keepalive(
-                    lambda: sbx.commands.run(**kwargs), effective_timeout
-                ),
-            )
-            output = result.stdout or ""
-            if result.stderr:
-                output = f"{output}\n{result.stderr}" if output else result.stderr
-            result = ExecuteResponse(output=output, exit_code=result.exit_code, truncated=False)
-        except Exception as e:
-            result = self._command_error_response(e, effective_timeout, command)
-        notice = self._consume_startup_notice()
-        if notice:
-            output = result.output or ""
-            result = ExecuteResponse(
-                output=f"{notice}\n{output}" if output else notice,
-                exit_code=result.exit_code,
-                truncated=result.truncated,
-            )
-        return result
-
-    async def _aexecute_via_thread(
-        self, command: str, *, timeout: int | None = None
-    ) -> ExecuteResponse:
-        """线程路径（Cube 等无 async SDK 的平台）：走慢道独立线程池。"""
-        effective_timeout = self._command_timeout(timeout)
-        try:
-            result = await run_long_blocking_io(
-                lambda: self.execute(command, timeout=timeout),
-                timeout=effective_timeout + 15,
-            )
-        except asyncio.TimeoutError:
-            logger.warning(f"Client-side timeout after {effective_timeout}s: {command[:100]}...")
-            result = ExecuteResponse(
-                output=f"Command timed out after {effective_timeout} seconds",
-                exit_code=-1,
-                truncated=False,
-            )
-        notice = self._consume_startup_notice()
-        if notice:
-            output = result.output or ""
-            result = ExecuteResponse(
-                output=f"{notice}\n{output}" if output else notice,
-                exit_code=result.exit_code,
-                truncated=result.truncated,
-            )
-        return result
 
     def grep(
         self,
@@ -603,114 +431,6 @@ class E2BBackend(BaseSandbox):
         except Exception as e:
             logger.warning(f"E2B files.list({path}) failed: {e}, falling back to execute()")
             return BaseSandbox.ls(self, path)
-
-    async def als(self, path: str) -> LsResult:
-        """原生 async files.list；客户端不可用时回落慢道（不占快道）。"""
-        resolved = self._resolve_path(path)
-        sbx = await self._async_client_or_none()
-        if sbx is None:
-            return await run_long_blocking_io(self.ls, path)
-        try:
-            entries = await self._asdk("files.list", lambda: sbx.files.list(path=resolved))
-            result: list[FileInfo] = []
-            for entry in entries:
-                info: FileInfo = {"path": entry.path}
-                if self._is_entry_dir(entry):
-                    info["is_dir"] = True
-                if hasattr(entry, "size"):
-                    info["size"] = entry.size
-                result.append(info)
-            return LsResult(entries=result)
-        except Exception as e:
-            logger.warning(f"E2B async files.list({path}) failed: {e}, falling back")
-            return await BaseSandbox.als(self, path)
-
-    async def aread(
-        self,
-        file_path: str,
-        offset: int = 0,
-        limit: int = 2000,
-    ) -> ReadResult:
-        """原生 async files.read：与同步 read 同款二进制检测/大小上限/切片。"""
-        resolved = self._resolve_path(file_path)
-        sbx = await self._async_client_or_none()
-        if sbx is None:
-            return await run_long_blocking_io(self.read, file_path, offset, limit)
-        try:
-            size = await self._afile_size(sbx, resolved)
-            if size is not None and size > SANDBOX_READ_MAX_BYTES:
-                return ReadResult(
-                    error=(
-                        f"file too large to read directly: {size} bytes "
-                        f"(limit {SANDBOX_READ_MAX_BYTES} bytes)"
-                    )
-                )
-            content = await self._asdk(
-                "files.read", lambda: sbx.files.read(path=resolved, format="text")
-            )
-            if "\x00" in content:
-                raw = await self._asdk(
-                    "files.read", lambda: sbx.files.read(path=resolved, format="bytes")
-                )
-                return self._read_as_base64(bytes(raw))
-            stripped = content.strip()
-            if len(stripped) >= 100:
-                sample = stripped[:4096]
-                non_text = sum(1 for c in sample if ord(c) < 32 and c not in "\t\n\r")
-                if non_text / len(sample) > 0.3:
-                    raw = await self._asdk(
-                        "files.read", lambda: sbx.files.read(path=resolved, format="bytes")
-                    )
-                    return self._read_as_base64(bytes(raw))
-            return slice_read_response(create_file_data(content), offset, limit)
-        except Exception as e:
-            logger.warning(f"E2B async files.read({file_path}) failed: {e}, falling back")
-            return await run_long_blocking_io(self.read, file_path, offset, limit)
-
-    async def _afile_size(self, sbx: Any, path: str) -> int | None:
-        parent = os.path.dirname(path) or "/"
-        try:
-            entries = await self._asdk("files.list", lambda: sbx.files.list(path=parent))
-        except Exception as e:
-            logger.debug("E2B async files.list(%s) size preflight failed: %s", parent, e)
-            return None
-        for entry in entries:
-            if getattr(entry, "path", None) == path and hasattr(entry, "size"):
-                try:
-                    return int(entry.size)
-                except (TypeError, ValueError):
-                    return None
-        return None
-
-    async def _async_client_or_none(self) -> Any:
-        """取 async 客户端；不可用时登记失败并返回 None（调用方走慢道）。"""
-        if not self.supports_async_sdk or self._async_disabled:
-            return None
-        try:
-            return await self._async_sandbox()
-        except Exception as e:
-            self._register_async_init_failure(e)
-            return None
-
-    def _register_async_init_failure(self, error: Exception) -> None:
-        self._async_init_failures += 1
-        if self._async_init_failures >= 2:
-            self._async_disabled = True
-        logger.warning(
-            "async sandbox client unavailable for %s (%s); using thread lane (failures=%d)",
-            self.id,
-            error,
-            self._async_init_failures,
-        )
-
-    # magic bytes → MIME
-    _MAGIC: list[tuple[bytes, str]] = [
-        (b"\x89PNG", "image/png"),
-        (b"\xff\xd8", "image/jpeg"),
-        (b"GIF8", "image/gif"),
-        (b"RIFFWEBP", "image/webp"),
-        (b"%PDF-", "application/pdf"),
-    ]
 
     @staticmethod
     def _guess_mime_type(path: str, data: bytes) -> str:
@@ -949,38 +669,6 @@ class E2BBackend(BaseSandbox):
                 responses.append(FileUploadResponse(path=path, error=error_type))
         return responses
 
-    async def aupload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
-        """原生 async files.write；父目录经 aexecute 建立；回落慢道。"""
-        if len(files) > SANDBOX_BATCH_FILES_LIMIT:
-            return [
-                file_upload_response(path=path, error="too_many_files") for path, _content in files
-            ]
-        sbx = await self._async_client_or_none()
-        if sbx is None:
-            return await run_long_blocking_io(self.upload_files, files)
-
-        responses: list[FileUploadResponse] = []
-        for path, content in files:
-            resolved = self._resolve_path(path)
-            if len(content) > SANDBOX_UPLOAD_MAX_BYTES:
-                responses.append(file_upload_response(path=resolved, error="file_too_large"))
-                continue
-            try:
-                parent = os.path.dirname(resolved)
-                if parent:
-                    await self.aexecute(f"mkdir -p {shlex.quote(parent)}")
-
-                async def _write_one(p: str = resolved, c: Any = content) -> Any:
-                    return await sbx.files.write(path=p, data=c)
-
-                await self._asdk("files.write", _write_one)
-                responses.append(FileUploadResponse(path=resolved, error=None))
-            except Exception as e:
-                error_type = classify_upload_error(str(e))
-                logger.error(f"Failed to upload {resolved}: {e}")
-                responses.append(FileUploadResponse(path=resolved, error=error_type))
-        return responses
-
     def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
         if len(paths) > SANDBOX_BATCH_FILES_LIMIT:
             return [
@@ -1034,48 +722,6 @@ class E2BBackend(BaseSandbox):
                 except (TypeError, ValueError):
                     return None
         return None
-
-    async def adownload_files(self, paths: list[str]) -> list[FileDownloadResponse]:
-        """原生 async files.read(bytes)；大小预检同同步版；回落慢道。"""
-        if len(paths) > SANDBOX_BATCH_FILES_LIMIT:
-            return [
-                file_download_response(path=path, content=None, error="too_many_files")
-                for path in paths
-            ]
-        sbx = await self._async_client_or_none()
-        if sbx is None:
-            return await run_long_blocking_io(self.download_files, paths)
-
-        responses: list[FileDownloadResponse] = []
-        for path in paths:
-            resolved = self._resolve_path(path)
-            try:
-                size = await self._afile_size(sbx, resolved)
-                if size is not None and size > SANDBOX_DOWNLOAD_MAX_BYTES:
-                    logger.warning(
-                        "Skipping async download for large file %s: %s bytes > %s",
-                        resolved,
-                        size,
-                        SANDBOX_DOWNLOAD_MAX_BYTES,
-                    )
-                    responses.append(
-                        FileDownloadResponse(path=resolved, content=None, error="file_not_found")
-                    )
-                    continue
-
-                async def _read_bytes(p: str = resolved) -> Any:
-                    return await sbx.files.read(path=p, format="bytes")
-
-                raw = await self._asdk("files.read", _read_bytes)
-                responses.append(
-                    FileDownloadResponse(path=resolved, content=bytes(raw), error=None)
-                )
-            except Exception as e:
-                logger.error(f"Failed to download {resolved}: {e}")
-                responses.append(
-                    file_download_response(path=resolved, content=None, error="file_not_found")
-                )
-        return responses
 
     # =========================================================================
     # Sandbox lifecycle helpers
