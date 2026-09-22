@@ -529,6 +529,15 @@ async def extract_session_memory(
 
     metadata = session_doc.get("metadata") or {}
     agent_id = str(metadata.get("agent_id") or "")
+
+    from src.infra.memory.extraction_gate import evaluate_extraction_gate
+
+    gate = await evaluate_extraction_gate(
+        session_id, str(session_doc.get("name") or ""), agent_id, turns
+    )
+    if gate is not None and gate.skip:
+        return ExtractionOutcome("succeeded_no_output")
+
     system_prompt = load_stage_one_system_prompt()
     user_prompt = render_stage_one_input(str(session_doc.get("name") or ""), agent_id, turns)
 

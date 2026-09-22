@@ -464,6 +464,16 @@ class Settings(BaseSettings):
     MEMORY_EXTRACTION_MAX_ATTEMPTS: int = 3
     MEMORY_EXTRACTION_TRANSCRIPT_MAX_CHARS: int = 24_000
     MEMORY_EXTRACTION_INTERVAL_SECONDS: int = 900
+    # System One 决策模型（TypeSafe Jev / 自托管 von，/v1/systemone 协议）：
+    # 高频小判定独立客户端；base 为空 = 功能整体关闭。自托管 von 无鉴权可留空 key。
+    SYSTEMONE_API_BASE: str = ""
+    SYSTEMONE_API_KEY: str = ""
+    SYSTEMONE_MODEL: str = "jev-latest"
+    SYSTEMONE_TIMEOUT_SECONDS: float = 5.0
+    # 记忆提取预门：off=关闭（默认）；shadow=只记录判定不生效；gate=P(值得记忆)
+    # 低于阈值时跳过 LLM 提取（判定失败一律走 LLM，fail-open）
+    MEMORY_EXTRACTION_SYSTEMONE_MODE: str = "off"
+    MEMORY_EXTRACTION_SYSTEMONE_GATE_THRESHOLD: float = 0.35
 
     # Audio transcription tool settings
     ENABLE_AUDIO_TRANSCRIPTION: bool = False
