@@ -2894,6 +2894,8 @@
     "S3_SECRET_KEY": "S3 secret key",
     "SANDBOX_GREP_TIMEOUT": "Sandbox grep command timeout in seconds",
     "ENABLE_WEB_SEARCH": "Enable web search tool for agents",
+    "WEB_SEARCH_SYSTEMONE_MODE": "System One relevance prefilter for web_search results: off = no filtering (default); shadow = log only; filter = drop irrelevant results (always keep the best one).",
+    "WEB_SEARCH_SYSTEMONE_RELEVANCE_THRESHOLD": "Keep threshold: results scoring below this relevance are dropped.",
     "SANDBOX_LOCAL_EXEC_TIMEOUT": "Local sandbox command execution timeout (seconds): hung commands are killed at the deadline; changes apply to subsequent commands immediately.",
     "SANDBOX_PLATFORM": "Sandbox platform to use",
     "SANDBOX_PAUSE_WHEN_IDLE": "Pause the cloud sandbox when a conversation turn ends and no in-progress conversation needs it (auto-resumes on next use)",

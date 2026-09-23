@@ -2894,6 +2894,8 @@
     "S3_SECRET_KEY": "S3 秘密密钥",
     "SANDBOX_GREP_TIMEOUT": "沙箱 grep 命令超时时间（秒）",
     "ENABLE_WEB_SEARCH": "启用供 Agent 使用的网页搜索工具",
+    "WEB_SEARCH_SYSTEMONE_MODE": "web_search 结果 System One 相关性预筛：off=不过滤（默认）；shadow=只记录判定；filter=丢弃无关结果（每调用至少保留最优一条）。",
+    "WEB_SEARCH_SYSTEMONE_RELEVANCE_THRESHOLD": "预筛保留阈值：相关性低于该值的结果被丢弃。",
     "SANDBOX_LOCAL_EXEC_TIMEOUT": "本地沙箱命令执行超时（秒）：卡死命令到点自动击杀，改动即时生效于后续命令。",
     "SANDBOX_PLATFORM": "使用的沙箱平台",
     "SANDBOX_PAUSE_WHEN_IDLE": "对话轮结束且无进行中的对话需要沙箱时，自动暂停云端沙箱以节省成本（下次使用自动恢复）",

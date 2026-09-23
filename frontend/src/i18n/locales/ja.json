@@ -2894,6 +2894,8 @@
     "S3_SECRET_KEY": "S3シークレットキー",
     "SANDBOX_GREP_TIMEOUT": "サンドボックスgrepコマンドのタイムアウト（秒）",
     "ENABLE_WEB_SEARCH": "Agent 用ウェブ検索ツールを有効化",
+    "WEB_SEARCH_SYSTEMONE_MODE": "web_search 結果の System One 関連性プレフィルター: off=無効（既定）、shadow=記録のみ、filter=無関係な結果を破棄（最良の1件は必ず保持）。",
+    "WEB_SEARCH_SYSTEMONE_RELEVANCE_THRESHOLD": "保持しきい値: この関連性未満の結果は破棄されます。",
     "SANDBOX_LOCAL_EXEC_TIMEOUT": "ローカルサンドボックスのコマンド実行タイムアウト（秒）。ハングしたコマンドは期限で強制終了され、変更は以降のコマンドに即時反映されます。",
     "SANDBOX_PLATFORM": "使用するサンドボックスプラットフォーム",
     "SANDBOX_PAUSE_WHEN_IDLE": "会話ターン終了後、進行中の会話がサンドボックスを必要としない場合、コスト削減のためクラウドサンドボックスを自動一時停止します（次回利用時に自動復帰）",

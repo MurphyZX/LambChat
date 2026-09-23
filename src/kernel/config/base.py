@@ -483,6 +483,10 @@ class Settings(BaseSettings):
     MEMORY_DEDUP_SYSTEMONE_GRAY_LOW: float = 0.75
     MEMORY_DEDUP_SYSTEMONE_GRAY_HIGH: float = 0.92
     MEMORY_DEDUP_SYSTEMONE_SAME_THRESHOLD: float = 0.8
+    # web_search 结果 System One 相关性预筛：off=不过滤（默认）；shadow=只记录
+    # 判定分布；filter=相关性 < 阈值的结果丢弃（每调用至少保留最优一条）
+    WEB_SEARCH_SYSTEMONE_MODE: str = "off"
+    WEB_SEARCH_SYSTEMONE_RELEVANCE_THRESHOLD: float = 0.05
 
     # Audio transcription tool settings
     ENABLE_AUDIO_TRANSCRIPTION: bool = False
