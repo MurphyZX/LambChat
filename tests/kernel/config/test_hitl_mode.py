@@ -1,5 +1,5 @@
-from src.kernel.config.definitions import SETTING_DEFINITIONS
 from src.kernel.config.base import Settings
+from src.kernel.config.definitions import SETTING_DEFINITIONS
 from src.kernel.config.service import _normalize_runtime_setting
 
 
