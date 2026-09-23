@@ -57,11 +57,15 @@ async def test_off_mode_matches_legacy_threshold_behavior(monkeypatch):
     monkeypatch.setattr(dedup_arbiter, "judge_noul", explode)
 
     doc_low = _doc(similarity_to=0.80)
-    result = await dedup_arbiter.resolve_semantic_match(_fetch([doc_low]), "u1", QUERY, "新记忆", "fact")
+    result = await dedup_arbiter.resolve_semantic_match(
+        _fetch([doc_low]), "u1", QUERY, "新记忆", "fact"
+    )
     assert result is None  # 0.80 < 0.88 旧行为：新建
 
     doc_high = _doc(similarity_to=0.95)
-    result = await dedup_arbiter.resolve_semantic_match(_fetch([doc_high]), "u1", QUERY, "新记忆", "fact")
+    result = await dedup_arbiter.resolve_semantic_match(
+        _fetch([doc_high]), "u1", QUERY, "新记忆", "fact"
+    )
     assert result is doc_high  # ≥0.88 旧行为：合并
 
 
@@ -92,7 +96,9 @@ async def test_arbitrate_mode_gray_zone_different_fact_creates_new(monkeypatch):
     _configure(monkeypatch, mode="arbitrate")
     monkeypatch.setattr(dedup_arbiter, "judge_noul", _judge_returning(0.1))
     doc = _doc(similarity_to=0.90)  # 0.88 以上：旧行为合并，仲裁判不同
-    result = await dedup_arbiter.resolve_semantic_match(_fetch([doc]), "u1", QUERY, "相关但不同", "fact")
+    result = await dedup_arbiter.resolve_semantic_match(
+        _fetch([doc]), "u1", QUERY, "相关但不同", "fact"
+    )
     assert result is None
 
 

@@ -6,8 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.infra.memory import extraction
-from src.infra.memory import extraction_gate
+from src.infra.memory import extraction, extraction_gate
 from src.infra.memory.extraction import extract_session_memory
 from src.kernel.config import settings
 
@@ -189,7 +188,10 @@ def _trace_docs():
         {
             "run_id": "run-1",
             "started_at": "2026-09-01",
-            "conversation_search": {"user_text": "随便聊聊今天天气", "assistant_final_text": "好的呀"},
+            "conversation_search": {
+                "user_text": "随便聊聊今天天气",
+                "assistant_final_text": "好的呀",
+            },
         },
         {
             "run_id": "run-2",
@@ -211,7 +213,10 @@ async def test_extract_skips_llm_when_gate_decides_not_memorable(monkeypatch):
     monkeypatch.setattr(extraction, "_get_extraction_model", explode_model)
 
     outcome = await extract_session_memory(
-        FakeBackend(), FakeDb(_trace_docs()), "u1", {"session_id": "s1", "name": "闲聊", "metadata": {}}
+        FakeBackend(),
+        FakeDb(_trace_docs()),
+        "u1",
+        {"session_id": "s1", "name": "闲聊", "metadata": {}},
     )
 
     assert outcome.status == "succeeded_no_output"

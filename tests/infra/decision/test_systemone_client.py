@@ -50,7 +50,10 @@ async def test_judge_noul_returns_probability_and_builds_request(monkeypatch):
     )
 
     value = await systemone.judge_noul(
-        "用户询问皮蛋供应商", "值得记忆吗？", criteria={"true": "t", "false": "f"}, transport=transport
+        "用户询问皮蛋供应商",
+        "值得记忆吗？",
+        criteria={"true": "t", "false": "f"},
+        transport=transport,
     )
 
     assert value == pytest.approx(0.83)
