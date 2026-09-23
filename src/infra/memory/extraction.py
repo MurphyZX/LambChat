@@ -569,6 +569,9 @@ async def extract_session_memory(
         "summary": redact_secrets(index_fields["summary"]),
         "tags": [redact_secrets(t) for t in index_fields["tags"]],
     }
+    from src.infra.memory.extraction_gate import log_context_second_opinion
+
+    await log_context_second_opinion(session_id, index_fields, payload["raw_memory"])
     source_refs = [
         {"session_id": session_id, "run_id": turn["run_id"]} for turn in turns if turn.get("run_id")
     ][:20]

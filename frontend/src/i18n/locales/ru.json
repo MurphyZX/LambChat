@@ -2799,6 +2799,11 @@
     "SYSTEMONE_TIMEOUT_SECONDS": "Таймаут в секундах для вызовов System One.",
     "MEMORY_EXTRACTION_SYSTEMONE_MODE": "Режим предварительного фильтра извлечения памяти: off — выключен; shadow — только логирование; gate — пропускать LLM-извлечение для малоценных сессий.",
     "MEMORY_EXTRACTION_SYSTEMONE_GATE_THRESHOLD": "Порог режима gate: пропускать LLM-извлечение, когда вероятность ценности памяти ниже этого значения.",
+    "MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW": "Записывать второе мнение System One о домене context при извлечении (только лог, без перезаписи).",
+    "MEMORY_DEDUP_SYSTEMONE_MODE": "Арбитраж семантической дедупликации при записи: off = один порог; shadow = только лог; arbitrate = серую зону решает System One.",
+    "MEMORY_DEDUP_SYSTEMONE_GRAY_LOW": "Нижняя граница серой зоны: ниже этой схожести — всегда новая запись.",
+    "MEMORY_DEDUP_SYSTEMONE_GRAY_HIGH": "Верхняя граница серой зоны: выше этой схожести — слияние без арбитража.",
+    "MEMORY_DEDUP_SYSTEMONE_SAME_THRESHOLD": "Порог одинакового факта: слияние только при P(тот же факт) не ниже этого значения.",
     "MEMORY_EXTRACTION_MAX_AGE_DAYS": "Извлекать только сессии, завершённые не более указанного числа дней назад.",
     "MEMORY_EXTRACTION_MAX_ATTEMPTS": "Максимальное число попыток извлечения памяти после сбоев для одной сессии.",
     "MEMORY_EXTRACTION_MAX_SESSIONS_PER_PASS": "Максимальное число сессий, резервируемых и обрабатываемых за один проход.",
@@ -3439,7 +3444,8 @@
     "storage": "Хранилище",
     "title": "Генерация заголовка",
     "turnstile": "Turnstile",
-    "webSearch": "Веб-поиск"
+    "webSearch": "Веб-поиск",
+    "dedup": "Семантическая дедупликация"
   },
   "systemHealth": {
     "fetchFailed": "Не удалось получить данные",

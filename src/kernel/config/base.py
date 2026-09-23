@@ -474,6 +474,15 @@ class Settings(BaseSettings):
     # 低于阈值时跳过 LLM 提取（判定失败一律走 LLM，fail-open）
     MEMORY_EXTRACTION_SYSTEMONE_MODE: str = "off"
     MEMORY_EXTRACTION_SYSTEMONE_GATE_THRESHOLD: float = 0.35
+    # 提取时对 context 域做 System One 第二意见（只记日志不改写，攒纠偏 ground truth）
+    MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW: bool = False
+    # 写时语义去重仲裁：off=沿用 0.88 单阈值；shadow=只记录仲裁结果不生效；
+    # arbitrate=灰区 [gray_low, gray_high) 交给 System One 判同条，≥gray_high 直接
+    # 同条，<gray_low 直接新建；判定失败回退 0.88 规则
+    MEMORY_DEDUP_SYSTEMONE_MODE: str = "off"
+    MEMORY_DEDUP_SYSTEMONE_GRAY_LOW: float = 0.75
+    MEMORY_DEDUP_SYSTEMONE_GRAY_HIGH: float = 0.92
+    MEMORY_DEDUP_SYSTEMONE_SAME_THRESHOLD: float = 0.8
 
     # Audio transcription tool settings
     ENABLE_AUDIO_TRANSCRIPTION: bool = False

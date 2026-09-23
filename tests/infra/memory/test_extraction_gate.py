@@ -252,3 +252,39 @@ async def test_extract_proceeds_when_gate_decides_memorable(monkeypatch):
 
     assert outcome.status == "succeeded"
     assert backend.retain_calls, "gate 放行后必须照常走 LLM 提取"
+
+
+# ---------------------------------------------------------------------------
+# context 域影子第二意见
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_context_shadow_disabled_by_default(monkeypatch):
+    monkeypatch.setattr(settings, "MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW", False)
+
+    async def explode(*args, **kwargs):
+        raise AssertionError("关闭时不得调用 System One")
+
+    monkeypatch.setattr(extraction_gate, "system_one", explode)
+    await extraction_gate.log_context_second_opinion("s1", {"context": "project"}, "内容")
+
+
+@pytest.mark.asyncio
+async def test_context_shadow_logs_disagreement_without_rewrite(monkeypatch):
+    monkeypatch.setattr(settings, "MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW", True)
+    monkeypatch.setattr(settings, "SYSTEMONE_API_BASE", "http://von.local")
+
+    captured: dict = {}
+
+    async def fake_system_one(state, questions, **kwargs):
+        captured["state"] = state
+        return {"ctx": {"type": "choice", "choice": "reference", "confidence": 0.9}}
+
+    monkeypatch.setattr(extraction_gate, "system_one", fake_system_one)
+    # 只记日志：函数无返回值，不抛错即通过；断言 state 带上了索引字段
+    await extraction_gate.log_context_second_opinion(
+        "s1", {"context": "project", "title": "T", "summary": "S", "tags": ["a"]}, "RAW"
+    )
+    assert "Title: T" in captured["state"]
+    assert "Summary: S" in captured["state"]

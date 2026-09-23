@@ -14,8 +14,9 @@ import logging
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
-from src.infra.decision.client import is_systemone_configured, judge_noul
+from src.infra.decision.client import is_systemone_configured, judge_noul, system_one
 from src.kernel.config import settings
 
 logger = logging.getLogger(__name__)
@@ -136,3 +137,71 @@ async def evaluate_extraction_gate(
         elapsed_ms,
     )
     return GateResult(p_memorable=p_memorable, skip=skip)
+
+
+_CONTEXT_INSTRUCTIONS = "Classify this memory entry into the most appropriate context family."
+_CONTEXT_CRITERIA = {
+    "user": (
+        "Stable facts or preferences about the user personally: identity, habits, "
+        "skills, likes/dislikes, communication preferences"
+    ),
+    "feedback": (
+        "The user's feedback, criticism, or evaluation of the product/assistant "
+        "behavior that should inform future interactions"
+    ),
+    "project": (
+        "Task or project context: what the user is working on, requirements, "
+        "decisions, status, deadlines of specific work"
+    ),
+    "reference": (
+        "External reference material or factual knowledge looked up for a task, "
+        "not about the user or their projects"
+    ),
+}
+
+
+async def log_context_second_opinion(
+    session_id: str,
+    index_fields: dict[str, Any],
+    raw_memory_head: str,
+) -> None:
+    """提取时的 context 域第二意见：只记日志不改写（攒纠偏 ground truth）。
+
+    实测（120 条生产记忆）：家族级一致 ~78%，分歧集中在 reference↔project
+    模糊带，故仅影子观察。
+    """
+    if not getattr(settings, "MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW", False):
+        return
+    if not is_systemone_configured():
+        return
+    state = (
+        f"Title: {index_fields.get('title') or ''}\n"
+        f"Summary: {index_fields.get('summary') or ''}\n"
+        f"Tags: {', '.join(index_fields.get('tags') or [])}\n"
+        f"Content:\n{raw_memory_head[:800]}"
+    )
+    answers = await system_one(
+        state,
+        {
+            "ctx": {
+                "type": "choice",
+                "instructions": _CONTEXT_INSTRUCTIONS,
+                "criteria": _CONTEXT_CRITERIA,
+            }
+        },
+    )
+    answer = (answers or {}).get("ctx") or {}
+    picked = answer.get("choice")
+    if not picked:
+        logger.warning(
+            "[MemoryExtraction] systemone context shadow unavailable: session=%s", session_id
+        )
+        return
+    logger.info(
+        "[MemoryExtraction] systemone context shadow: session=%s stored=%s picked=%s confidence=%.3f%s",
+        session_id,
+        index_fields.get("context"),
+        picked,
+        float(answer.get("confidence") or 0),
+        "" if picked == str(index_fields.get("context")) else " DISAGREE",
+    )

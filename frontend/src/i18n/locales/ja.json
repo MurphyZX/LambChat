@@ -2799,6 +2799,11 @@
     "SYSTEMONE_TIMEOUT_SECONDS": "System One 判定呼び出しのタイムアウト秒数。",
     "MEMORY_EXTRACTION_SYSTEMONE_MODE": "記憶抽出プレゲートモード: off=無効、shadow=判定の記録のみ、gate=低価値セッションは LLM 抽出をスキップ。",
     "MEMORY_EXTRACTION_SYSTEMONE_GATE_THRESHOLD": "ゲートモードのしきい値: 記憶価値の確率がこの値未満なら LLM 抽出をスキップ。",
+    "MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW": "抽出時の context 域について System One の第二意見をログに記録します（書き換えなし）。",
+    "MEMORY_DEDUP_SYSTEMONE_MODE": "書き込み時の意味重複仲裁: off=単一しきい値、shadow=記録のみ、arbitrate=グレーゾーンを System One が判定。",
+    "MEMORY_DEDUP_SYSTEMONE_GRAY_LOW": "グレーゾーン下限: この類似度未満は常に新規作成。",
+    "MEMORY_DEDUP_SYSTEMONE_GRAY_HIGH": "グレーゾーン上限: この類似度以上は仲裁なしで統合。",
+    "MEMORY_DEDUP_SYSTEMONE_SAME_THRESHOLD": "同一事実しきい値: P(同一事実) がこの値以上の場合のみ統合。",
     "MEMORY_EXTRACTION_MAX_AGE_DAYS": "終了後この日数以内のセッションのみ抽出します。",
     "MEMORY_EXTRACTION_MAX_ATTEMPTS": "1セッションの記憶抽出が失敗した場合の最大試行回数。",
     "MEMORY_EXTRACTION_MAX_SESSIONS_PER_PASS": "1回の抽出処理で取得して処理するセッションの上限。",
@@ -3439,7 +3444,8 @@
     "storage": "ストレージ",
     "title": "タイトル生成",
     "turnstile": "Turnstile",
-    "webSearch": "ウェブ検索"
+    "webSearch": "ウェブ検索",
+    "dedup": "意味重複排除"
   },
   "systemHealth": {
     "fetchFailed": "ヘルスデータの取得に失敗",

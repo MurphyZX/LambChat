@@ -2799,6 +2799,11 @@
     "SYSTEMONE_TIMEOUT_SECONDS": "Timeout in seconds for System One decision calls.",
     "MEMORY_EXTRACTION_SYSTEMONE_MODE": "Memory extraction pre-gate mode: off = disabled; shadow = log decisions only; gate = skip LLM extraction for low-value sessions.",
     "MEMORY_EXTRACTION_SYSTEMONE_GATE_THRESHOLD": "Gate-mode threshold: skip LLM extraction when P(memorable) is below this value.",
+    "MEMORY_EXTRACTION_SYSTEMONE_CONTEXT_SHADOW": "Log a System One second opinion on the extracted context family (log-only, no rewrite).",
+    "MEMORY_DEDUP_SYSTEMONE_MODE": "Write-time semantic dedup arbitration: off = single threshold; shadow = log-only; arbitrate = gray zone decided by System One.",
+    "MEMORY_DEDUP_SYSTEMONE_GRAY_LOW": "Gray-zone lower bound: below this similarity, always create a new memory.",
+    "MEMORY_DEDUP_SYSTEMONE_GRAY_HIGH": "Gray-zone upper bound: at or above this similarity, merge without arbitration.",
+    "MEMORY_DEDUP_SYSTEMONE_SAME_THRESHOLD": "Same-fact threshold: merge only when P(same fact) is at least this value.",
     "MEMORY_EXTRACTION_MAX_AGE_DAYS": "Only extract sessions that ended within this many days.",
     "MEMORY_EXTRACTION_MAX_ATTEMPTS": "Maximum extraction attempts after failures for one session.",
     "MEMORY_EXTRACTION_MAX_SESSIONS_PER_PASS": "Maximum sessions claimed and processed in one extraction pass.",
@@ -3439,7 +3444,8 @@
     "storage": "Storage",
     "title": "Title Generation",
     "turnstile": "Turnstile",
-    "webSearch": "Web Search"
+    "webSearch": "Web Search",
+    "dedup": "Semantic dedup"
   },
   "systemHealth": {
     "fetchFailed": "Failed to fetch health data",
