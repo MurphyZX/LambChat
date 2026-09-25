@@ -3867,5 +3867,19 @@
     "maximize": "最大化",
     "restore": "还原",
     "close": "关闭"
+  },
+  "workspacePanel": {
+    "title": "工作区",
+    "viewChats": "会话",
+    "refresh": "刷新",
+    "retry": "重试",
+    "daemonOffline": "本地沙箱未连接，无法浏览工作区文件",
+    "noSession": "打开一个会话后即可浏览其工作区文件",
+    "emptyDir": "空工作区",
+    "copyPath": "复制路径",
+    "revealInFileManager": "在文件管理器中显示",
+    "binaryFileHint": "（二进制文件，暂不支持内联预览）",
+    "settings": "设置",
+    "account": "账号"
   }
 }

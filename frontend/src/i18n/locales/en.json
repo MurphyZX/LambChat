@@ -3867,5 +3867,19 @@
     "maximize": "Maximize",
     "restore": "Restore",
     "close": "Close"
+  },
+  "workspacePanel": {
+    "title": "Workspace",
+    "viewChats": "Chats",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "daemonOffline": "Local sandbox offline — workspace files unavailable",
+    "noSession": "Open a session to browse its workspace files",
+    "emptyDir": "Empty workspace",
+    "copyPath": "Copy path",
+    "revealInFileManager": "Reveal in file manager",
+    "binaryFileHint": "(Binary file — inline preview not supported)",
+    "settings": "Settings",
+    "account": "Account"
   }
 }
