@@ -155,7 +155,9 @@ async def validate_agent_model_access(
     elif isinstance(selected_model, str) and selected_model:
         model = await storage.get_by_value(selected_model)
 
-    if not model or not model.enabled:
+    if not model:
+        raise AuthorizationError("model_not_found")
+    if not model.enabled:
         raise AuthorizationError("model_disabled")
 
     allowed_model_set = set(allowed_model_ids or [])
