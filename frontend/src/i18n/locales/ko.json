@@ -3867,5 +3867,19 @@
     "maximize": "최대화",
     "restore": "이전 크기로",
     "close": "닫기"
+  },
+  "workspacePanel": {
+    "title": "워크스페이스",
+    "viewChats": "채팅",
+    "refresh": "새로고침",
+    "retry": "재시도",
+    "daemonOffline": "로컬 샌드박스가 연결되지 않아 워크스페이스를 탐색할 수 없습니다",
+    "noSession": "세션을 열면 워크스페이스 파일을 탐색할 수 있습니다",
+    "emptyDir": "빈 워크스페이스",
+    "copyPath": "경로 복사",
+    "revealInFileManager": "파일 관리자에서 보기",
+    "binaryFileHint": "(바이너리 파일 — 인라인 미리보기 미지원)",
+    "settings": "설정",
+    "account": "계정"
   }
 }

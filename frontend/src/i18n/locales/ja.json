@@ -3867,5 +3867,19 @@
     "maximize": "最大化",
     "restore": "元に戻す",
     "close": "閉じる"
+  },
+  "workspacePanel": {
+    "title": "ワークスペース",
+    "viewChats": "チャット",
+    "refresh": "更新",
+    "retry": "再試行",
+    "daemonOffline": "ローカルサンドボックスが未接続のため、ワークスペースを参照できません",
+    "noSession": "セッションを開くとワークスペースのファイルを参照できます",
+    "emptyDir": "空のワークスペース",
+    "copyPath": "パスをコピー",
+    "revealInFileManager": "ファイルマネージャーで表示",
+    "binaryFileHint": "（バイナリファイル — インラインプレビュー非対応）",
+    "settings": "設定",
+    "account": "アカウント"
   }
 }
