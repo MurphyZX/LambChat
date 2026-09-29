@@ -937,7 +937,7 @@ async def test_upload_url_to_sandbox_resolves_own_proxy_url_to_storage_direct_ur
     # 沙箱命令拿到的是存储直链，不再是绕 API 的代理 URL
     assert storage.presigned_url in backend.commands[0]
     assert "https://app.example.com/api/upload/file/" not in backend.commands[0]
-    assert storage.presign_calls == [("document/user-1/report.docx", 300)]
+    assert storage.presign_calls == [("document/user-1/report.docx", 3600)]
 
 
 @pytest.mark.asyncio
@@ -1096,6 +1096,82 @@ async def test_upload_url_to_sandbox_api_fallback_uses_resolved_direct_url(
     assert result == {"success": True, "path": "/workspace/report.docx", "size": 7}
     # API 侧回退下载也直连存储，不绕代理重定向
     assert requested_urls == [storage.presigned_url]
+
+
+@pytest.mark.asyncio
+async def test_upload_url_to_sandbox_presigned_403_retries_with_original_url(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """预签名直链 403（过期/签名拒绝）时回落原代理 URL 重试——加速路径永不更差。"""
+    storage = _FakeStorageService()
+    _patch_storage(monkeypatch, storage)
+    original_url = "https://app.example.com/api/upload/file/document/user-1/report.docx"
+
+    class _NoExecBackend:
+        async def aupload_files(self, files):
+            return [SimpleNamespace(error=None)]
+
+    requested_urls: list[str] = []
+
+    class _ForbiddenResponse:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        def raise_for_status(self) -> None:
+            request = upload_url_tool.httpx.Request("GET", storage.presigned_url)
+            response = upload_url_tool.httpx.Response(403, request=request)
+            raise upload_url_tool.httpx.HTTPStatusError(
+                "forbidden", request=request, response=response
+            )
+
+    class _OkResponse:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        def raise_for_status(self) -> None:
+            return None
+
+        async def aiter_bytes(self):
+            yield b"content"
+
+    class _FakeHttpClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        def stream(self, method: str, request_url: str):
+            requested_urls.append(request_url)
+            if request_url == storage.presigned_url:
+                return _ForbiddenResponse()
+            return _OkResponse()
+
+    monkeypatch.setattr(
+        upload_url_tool.httpx,
+        "AsyncClient",
+        lambda **_kwargs: _FakeHttpClient(),
+    )
+    caplog.set_level(logging.INFO)
+
+    result = json.loads(
+        await upload_url_tool.upload_url_to_sandbox.coroutine(
+            url="/api/upload/file/document/user-1/report.docx",
+            file_path="/workspace/report.docx",
+            runtime=_Runtime(_NoExecBackend()),
+        )
+    )
+
+    assert result == {"success": True, "path": "/workspace/report.docx", "size": 7}
+    assert requested_urls == [storage.presigned_url, original_url]
+    assert "presigned_url_403_retry_original=True" in caplog.text
 
 
 @pytest.mark.asyncio

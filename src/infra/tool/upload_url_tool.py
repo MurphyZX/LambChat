@@ -40,8 +40,10 @@ _FALLBACK_UPLOAD_MAX_BYTES = 2 * 1024 * 1024
 # 本服务文件代理路径前缀（api/routes/upload.py 的 /api/upload/file/{key}）
 _PROXY_URL_PREFIX = "/api/upload/file/"
 
-# 预签名直链有效期（秒）：沙箱拿到命令后立即下载，无需长窗口
-_PRESIGN_TTL_SECONDS = 300
+# 预签名直链有效期（秒）：URL 在单次工具调用内即产即用、不落任何持久层，
+# 但沙箱可能处于暂停唤醒中导致命令晚执行（E2B 恢复可达数十秒、daemon
+# 排队更久），留足窗口；即便真的过期，API 侧回退会对 403 自动回落原 URL
+_PRESIGN_TTL_SECONDS = 3600
 
 
 async def _json_dumps_result(data: dict[str, Any]) -> str:
@@ -197,6 +199,7 @@ async def upload_url_to_sandbox(
             )
     # 自己的代理 URL 就地换成存储直链（省沙箱→API→存储的重定向跳），
     # 解析不出来时沿用原 URL，语义不变
+    original_url = url
     direct_url = await _resolve_storage_direct_url(url, base_url)
     if direct_url:
         url = direct_url
@@ -216,59 +219,72 @@ async def upload_url_to_sandbox(
         except Exception:
             logger.warning("[upload_url_to_sandbox] Sandbox download failed (execution_error)")
 
-    # 下载文件
-    content: bytes
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=_DOWNLOAD_TIMEOUT) as client:
-            with SpooledTemporaryFile(max_size=_SPOOL_MAX_MEMORY_BYTES, mode="w+b") as spooled:
-                total_size = 0
-                async with client.stream("GET", url) as resp:
-                    resp.raise_for_status()
-                    async for chunk in resp.aiter_bytes():
-                        if not chunk:
-                            continue
-                        total_size += len(chunk)
-                        if total_size > _MAX_FILE_SIZE:
-                            return await _json_dumps_result(
-                                {
-                                    "success": False,
-                                    "error": (
-                                        f"File too large: {total_size} bytes (max {_MAX_FILE_SIZE})"
-                                    ),
-                                }
-                            )
-                        if total_size > _FALLBACK_UPLOAD_MAX_BYTES:
-                            return await _json_dumps_result(
-                                {
-                                    "success": False,
-                                    "error": (
-                                        "File too large for API-side fallback upload; "
-                                        "use a backend with sandbox-side download support"
-                                    ),
-                                }
-                            )
-                        await run_long_blocking_io(spooled.write, chunk)
-                await run_long_blocking_io(spooled.seek, 0)
-                content = await run_long_blocking_io(spooled.read)
-    except httpx.HTTPStatusError as e:
-        logger.warning(
-            "[upload_url_to_sandbox] download_failed category=http_status status_code=%s",
-            e.response.status_code,
-        )
-        return await _json_dumps_result(
-            {
-                "success": False,
-                "error": f"Download failed: HTTP {e.response.status_code}",
-            }
-        )
-    except Exception as e:
-        logger.warning(
-            "[upload_url_to_sandbox] download_failed category=%s",
-            type(e).__name__,
-        )
-        return await _json_dumps_result(
-            {"success": False, "error": "Download failed; please retry later"}
-        )
+    # 下载文件。预签名直链 403（过期/签名拒绝）时回落原代理 URL 重试一次：
+    # 直链只是内部加速，任何情况下不允许比直接用原 URL 更差
+    content: bytes = b""
+    urls_to_try = [url, original_url] if direct_url is not None else [url]
+    for attempt_index, attempt_url in enumerate(urls_to_try):
+        try:
+            async with httpx.AsyncClient(
+                follow_redirects=True, timeout=_DOWNLOAD_TIMEOUT
+            ) as client:
+                with SpooledTemporaryFile(max_size=_SPOOL_MAX_MEMORY_BYTES, mode="w+b") as spooled:
+                    total_size = 0
+                    async with client.stream("GET", attempt_url) as resp:
+                        resp.raise_for_status()
+                        async for chunk in resp.aiter_bytes():
+                            if not chunk:
+                                continue
+                            total_size += len(chunk)
+                            if total_size > _MAX_FILE_SIZE:
+                                return await _json_dumps_result(
+                                    {
+                                        "success": False,
+                                        "error": (
+                                            f"File too large: {total_size} bytes "
+                                            f"(max {_MAX_FILE_SIZE})"
+                                        ),
+                                    }
+                                )
+                            if total_size > _FALLBACK_UPLOAD_MAX_BYTES:
+                                return await _json_dumps_result(
+                                    {
+                                        "success": False,
+                                        "error": (
+                                            "File too large for API-side fallback upload; "
+                                            "use a backend with sandbox-side download support"
+                                        ),
+                                    }
+                                )
+                            await run_long_blocking_io(spooled.write, chunk)
+                    await run_long_blocking_io(spooled.seek, 0)
+                    content = await run_long_blocking_io(spooled.read)
+            break
+        except httpx.HTTPStatusError as e:
+            presigned_403_retryable = (
+                attempt_index == 0 and len(urls_to_try) > 1 and e.response.status_code == 403
+            )
+            if presigned_403_retryable:
+                logger.info("[upload_url_to_sandbox] presigned_url_403_retry_original=True")
+                continue
+            logger.warning(
+                "[upload_url_to_sandbox] download_failed category=http_status status_code=%s",
+                e.response.status_code,
+            )
+            return await _json_dumps_result(
+                {
+                    "success": False,
+                    "error": f"Download failed: HTTP {e.response.status_code}",
+                }
+            )
+        except Exception as e:
+            logger.warning(
+                "[upload_url_to_sandbox] download_failed category=%s",
+                type(e).__name__,
+            )
+            return await _json_dumps_result(
+                {"success": False, "error": "Download failed; please retry later"}
+            )
 
     # 上传到沙箱
     try:
