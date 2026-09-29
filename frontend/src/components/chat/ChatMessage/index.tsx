@@ -741,7 +741,7 @@ export const ChatMessage = memo(function ChatMessage({
         {/* Content */}
         <div className="min-w-0 min-h-0 py-1 sm:py-2">
           {/* Header: Avatar + Role label + Stop button */}
-          <div className="mb-3 flex flex-nowrap items-center gap-2">
+          <div className="chat-assistant-heading mb-3 flex flex-nowrap items-center gap-2">
             <AssistantAvatar
               className="size-5 sm:size-6 shrink-0 rounded-full"
               personaAvatar={personaAvatar}

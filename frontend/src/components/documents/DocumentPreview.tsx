@@ -17,7 +17,8 @@ export default function DocumentPreview(props: DocumentPreviewProps) {
       automatic={state.automatic}
       onClose={state.onClose}
       registryKey={state.registryKey}
-      viewMode={state.isMobile ? "center" : state.viewMode}
+      viewMode={state.viewMode}
+      onViewModeChange={state.setViewMode}
       isFullscreen={state.isFullscreen}
       panelElementRef={state.panelRef}
       mobileFillViewport={state.mobileFillViewport}

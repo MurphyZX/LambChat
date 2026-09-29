@@ -31,6 +31,18 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+test("new-chat requests focus the composer even when another empty draft is already open", async () => {
+  const props = { onSend: vi.fn(), onStop: vi.fn(), isLoading: false };
+  const { rerender } = render(<ChatInput {...props} focusRequest={0} />);
+  const editor = await screen.findByRole("textbox");
+  editor.blur();
+  rerender(<ChatInput {...props} focusRequest={1} />);
+  await waitFor(() => expect(editor).toHaveFocus());
+  editor.blur();
+  rerender(<ChatInput {...props} focusRequest={2} />);
+  await waitFor(() => expect(editor).toHaveFocus());
+});
+
 function fireLexicalArrow(editor: HTMLElement, key: "ArrowUp" | "ArrowDown") {
   const event = new KeyboardEvent("keydown", {
     key,

@@ -2,6 +2,7 @@
  * 用户管理页面组件
  */
 
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect, useCallback } from "react";
 import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import {
@@ -462,10 +463,7 @@ export function UsersPanel() {
       <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
         {users.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <Users
-              size={48}
-              className="mb-4 text-theme-text-secondary opacity-40"
-            />
+            <SceneIllustration scene="welcome" className="mb-4" />
             <p className="text-theme-text-secondary">
               {debouncedSearch
                 ? t("users.noMatchingUsers")
@@ -658,16 +656,14 @@ export function UsersPanel() {
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
-        <div className="glass-divider px-3 py-3 sm:px-6">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
 
       {/* 模态框 */}
       {showFormModal && (

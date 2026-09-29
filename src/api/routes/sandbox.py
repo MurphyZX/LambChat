@@ -653,7 +653,7 @@ _FS_READ_MAX_LINES = 2000
 async def _resolve_fs_target(user: TokenPayload, session_id: str) -> tuple[str, str | None]:
     """把会话解析成 (虚拟 cwd, machine_id)，供 fs op 下发。
 
-    cwd 权威来自会话存储的 ``metadata.conversation_config.agent_options``——
+    cwd 权威来自会话存储的 ``metadata.agent_options``——
     绝不采信请求方传入的工作区/机器参数（前端只指定会话，绑定由库解析）。
     未绑定本地目录的会话回落默认工作区 ``/workspace/{sid}``，与
     search_agent 构造 WorkspaceAliasBackend 的分支语义一致。
@@ -666,8 +666,7 @@ async def _resolve_fs_target(user: TokenPayload, session_id: str) -> tuple[str, 
 
     session = await _owned_session_or_404(user, session_id)
     metadata = session.metadata or {}
-    config = metadata.get("conversation_config")
-    agent_options = config.get("agent_options") if isinstance(config, dict) else None
+    agent_options = metadata.get("agent_options")
     agent_options = agent_options if isinstance(agent_options, dict) else {}
     platform_choice = agent_options.get("sandbox")
     platform = (

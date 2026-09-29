@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import "../../../styles/desktop.css";
 import { ProfileModal } from "../../profile/ProfileModal";
 import { Header } from "./Header";
 import {
@@ -284,6 +285,7 @@ export function AppShell({
       />
 
       <div
+        data-workspace-ui={activeTab === "chat" ? "" : undefined}
         className="flex w-full overflow-hidden"
         style={{
           backgroundColor: "var(--theme-bg)",

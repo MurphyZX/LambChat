@@ -212,6 +212,18 @@ test("editor uses complementary semantics when docked", () => {
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
+test("an open preview follows viewport changes from fullscreen through overlay to docked", () => {
+  installMatchMedia(390);
+  render(<ToolResultPanel open onClose={vi.fn()} title="Responsive preview">body</ToolResultPanel>);
+  expect(screen.getByRole("dialog")).toHaveAttribute("data-panel-presentation", "fullscreen");
+  installMatchMedia(800);
+  fireEvent(window, new Event("resize"));
+  expect(screen.getByRole("dialog")).toHaveAttribute("data-panel-presentation", "overlay");
+  installMatchMedia(1440);
+  fireEvent(window, new Event("resize"));
+  expect(screen.getByRole("complementary")).toHaveAttribute("data-panel-presentation", "docked");
+});
+
 test("editor close is labelled and resize rail is keyboard accessible", () => {
   render(
     <EditorSidebar open onClose={vi.fn()} title="Model editor">

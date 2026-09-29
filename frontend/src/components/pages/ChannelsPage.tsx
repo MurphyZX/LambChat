@@ -2,6 +2,7 @@
  * Channels Page - Lists all available channels and their instances
  */
 
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BotMessageSquare, Bot, Radio, Plus, MoreVertical } from "lucide-react";
@@ -194,12 +195,7 @@ export function ChannelsPage() {
           <div className="mx-auto max-w-full">
             {channelTypes.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-[var(--theme-primary)]/20" />
-                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[var(--theme-primary-light)]">
-                    <Radio className="h-10 w-10 text-[var(--theme-text-secondary)]" />
-                  </div>
-                </div>
+                <SceneIllustration scene="message" />
                 <h3 className="mt-6 text-20 font-semibold text-[var(--theme-text)]">
                   {t("channel.noChannels", "No channels available")}
                 </h3>

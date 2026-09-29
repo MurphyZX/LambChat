@@ -235,7 +235,7 @@ export function PersonaPlazaPanel() {
       <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
         {filtered.length === 0 ? (
           <EmptyState
-            icon={<UserRound size={28} />}
+            illustration="welcome"
             title={
               query || activeTag
                 ? t("personaPresets.noMatch", "没有匹配的角色")
@@ -281,16 +281,14 @@ export function PersonaPlazaPanel() {
         )}
       </div>
 
-      {total > pageSize && (
-        <div className="glass-divider px-3 py-3 sm:px-6">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
 
       <PersonaEditorModal
         showModal={showModal}

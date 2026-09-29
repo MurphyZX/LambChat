@@ -27,6 +27,7 @@ import { authApi } from "../../../services/api";
 import { notificationApi } from "../../../services/api/notification";
 import { useSessionTitle } from "../../../hooks/useSessionTitle";
 import { NotificationDialog } from "../../notification/NotificationDialog";
+import { OPEN_NOTIFICATIONS_EVENT, NOTIFICATION_COUNT_EVENT } from "../DesktopSidebarShell/desktopShellPlatform";
 import { Permission } from "../../../types";
 import type { TabType } from "./types";
 import type { Project } from "../../../types";
@@ -93,11 +94,18 @@ export function Header({
   const refreshNotifCount = () => {
     notificationApi
       .getActive()
-      .then((items) => setActiveNotifCount(items.length));
+      .then((items) => {
+        setActiveNotifCount(items.length);
+        window.dispatchEvent(new CustomEvent(NOTIFICATION_COUNT_EVENT, { detail: items.length }));
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
     refreshNotifCount();
+    const open = () => setNotifDialogOpen(true);
+    window.addEventListener(OPEN_NOTIFICATIONS_EVENT, open);
+    return () => window.removeEventListener(OPEN_NOTIFICATIONS_EVENT, open);
   }, []);
 
   // Close mobile menu on outside click
@@ -133,7 +141,7 @@ export function Header({
 
   return (
     <>
-      <header className="relative z-50 flex items-center px-3 sm:px-5 py-3 -mb-2 shrink-0 rounded-bl-xl after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-2 after:bg-[linear-gradient(to_bottom,var(--theme-bg),transparent)]">
+      <header className="chat-header relative z-50 flex items-center px-3 sm:px-5 py-3 -mb-2 shrink-0 rounded-bl-xl after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-2 after:bg-[linear-gradient(to_bottom,var(--theme-bg),transparent)]">
         <div className="flex items-center gap-2 flex-shrink-0">
           {activeTab === "chat" ? (
             <>

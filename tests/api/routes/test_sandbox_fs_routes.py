@@ -35,7 +35,7 @@ def _fake_session(user_id="u1", agent_options=None) -> SimpleNamespace:
     options = {"sandbox": "local"}
     if agent_options is not None:
         options.update(agent_options)
-    metadata = {"conversation_config": {"agent_options": options}}
+    metadata = {"agent_options": options}
     return SimpleNamespace(user_id=user_id, metadata=metadata)
 
 
@@ -289,9 +289,9 @@ async def test_fs_list_platform_falls_back_to_global_default(monkeypatch):
 
 def _cloud_app(monkeypatch, session, manager, als_result=None, aread_result=None):
     """云端端点测试 app:SessionManager + 沙箱管理器/backend 打桩。"""
-    from src.infra.session import manager as session_manager_module
-    from src.infra.sandbox import session_manager as sandbox_module
     from src.api.routes import sandbox as route_module
+    from src.infra.sandbox import session_manager as sandbox_module
+    from src.infra.session import manager as session_manager_module
 
     class _FakeSessionManager:
         async def get_session(self, sid):

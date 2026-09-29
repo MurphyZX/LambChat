@@ -21,6 +21,7 @@ import type { UpdateState } from "../../../types";
 import { DESKTOP_SIDEBAR_TOGGLE_EVENT } from "../DesktopSidebarShell/desktopShellPlatform";
 import type { DesktopOs } from "./titlebarPlatform";
 import { UpdateTitlebarIndicator } from "./UpdateTitlebarIndicator";
+import "../../../styles/desktop.css";
 
 /**
  * 桌面端自绘标题栏（Windows/Linux 全自绘；macOS Overlay 模式下只承担

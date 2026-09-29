@@ -3,6 +3,15 @@ function readSource(path: string): string {
   return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
+test("mobile navigation fits the workspace below the desktop titlebar", () => {
+  const sidebar = readSource("../../../panels/SessionSidebar.tsx");
+  const heights = [...sidebar.matchAll(/height:\s*\n?\s*"(calc\([^"\n]+)"/g)];
+  expect(heights).toHaveLength(2);
+  for (const [, height] of heights) {
+    expect(height).toContain("- var(--titlebar-inset, 0px)");
+  }
+});
+
 test("app shell reserves native mobile status bar safe area", () => {
   const shell = readSource("../AppShell.tsx");
   const tokens = readSource("../../../../styles/tokens.css");

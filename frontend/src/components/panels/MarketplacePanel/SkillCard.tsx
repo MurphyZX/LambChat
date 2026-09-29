@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SkillBaseCard } from "../../common/SkillBaseCard";
-import { getCategoryIcon, nameToGradient } from "../../common/cardUtils";
+import {
+  COVER_PALETTES,
+  getCategoryIcon,
+  nameToGradient,
+} from "../../common/cardUtils";
 import type { MarketplaceSkillResponse } from "../../../types";
 import { formatDate } from "../../../utils/datetime";
 
@@ -57,12 +61,13 @@ export function SkillCard({
   onDelete,
 }: SkillCardProps) {
   const { t } = useTranslation();
-  const gradient = nameToGradient(skill.skill_name);
+  const gradient = nameToGradient(skill.skill_name, COVER_PALETTES);
   const primaryTag = skill.tags[0];
   const CategoryIcon = primaryTag ? getCategoryIcon(primaryTag) : Sparkles;
 
   return (
     <SkillBaseCard
+      cover
       title={skill.skill_name}
       description={skill.description || t("marketplace.noDescription")}
       gradient={gradient}

@@ -1,3 +1,4 @@
+import { SceneIllustration } from "../../common/SceneIllustration";
 import {
   useState,
   useEffect,
@@ -334,9 +335,7 @@ export function MemoryPanel() {
       <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6">
         {!isLoading && memories.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--glass-bg)]">
-              <Brain size={32} className="text-[var(--theme-text-secondary)]" />
-            </div>
+            <SceneIllustration scene="reading" className="mx-auto mb-4" />
             <p className="text-18 font-medium font-serif text-[var(--theme-text)]">
               {searchQuery || filterType
                 ? t("memory.noResults")
@@ -462,16 +461,14 @@ export function MemoryPanel() {
       </div>
 
       {/* Pagination */}
-      {total > PAGE_SIZE && (
-        <div className="glass-divider bg-transparent px-4 py-4 sm:px-6">
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
 
       {/* Detail modal */}
       {selected && (

@@ -1,3 +1,4 @@
+import { SceneIllustration } from "../../common/SceneIllustration";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -100,9 +101,7 @@ function SessionScheduledTaskPanelBody({
         </div>
       ) : tasks.length === 0 ? (
         <div className="scheduled-task-empty-state min-h-0 flex-1 px-6">
-          <div className="scheduled-task-empty-state__icon h-12 w-12">
-            <CalendarClock size={24} />
-          </div>
+          <SceneIllustration scene="message" className="mx-auto mb-4" />
           <p className="scheduled-task-empty-state__body">
             {t(
               "scheduledTask.noConversationTasks",

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import {
   Server,
   ToggleLeft,
@@ -52,21 +53,20 @@ export function MCPServerCard({
 
   return (
     <div
-      className={`pps-card group flex h-full flex-col overflow-hidden rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none cursor-pointer transition-all duration-200 ${
-        !server.enabled ? "opacity-50 saturate-50" : "hover:shadow-md"
-      }`}
+      className={`scb group flex h-full flex-col overflow-hidden cursor-pointer ${!server.enabled ? "scb--muted" : ""}`}
+      style={
+        {
+          "--panel-card-accent": gradient[0],
+          "--panel-card-accent-end": gradient[2],
+        } as CSSProperties
+      }
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("button")) {
           onClick?.();
         }
       }}
     >
-      <div
-        className="pps-card__banner relative h-12 shrink-0"
-        style={{
-          background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
-        }}
-      >
+      <div className="scb__banner relative h-12 shrink-0">
         <div className="absolute inset-0 flex items-center justify-end px-2 z-[3]">
           <div className="flex gap-1.5">
             {server.is_internal && (
@@ -95,7 +95,7 @@ export function MCPServerCard({
           </div>
           <div className="min-w-0 flex-1">
             <h3
-              className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
+              className="line-clamp-2 break-words text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
               title={server.name}
             >
               {server.name}

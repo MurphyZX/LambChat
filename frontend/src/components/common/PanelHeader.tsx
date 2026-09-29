@@ -13,6 +13,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { MoreHorizontal, Search } from "lucide-react";
 import { PanelSearchInput } from "./PanelSearchInput";
 
@@ -68,6 +69,7 @@ export function PanelHeader({
   children,
   className,
 }: PanelHeaderProps) {
+  const { t } = useTranslation();
   const actionNodes = useMemo(() => flattenActionNodes(actions), [actions]);
   const searchActionNodes = useMemo(
     () => flattenActionNodes(searchActions),
@@ -100,8 +102,20 @@ export function PanelHeader({
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        mobileMenuRef.current
+          ?.querySelector<HTMLButtonElement>("button")
+          ?.focus();
+      }
+    };
     document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isMobileMenuOpen]);
 
   const rootClassName = [
@@ -144,8 +158,8 @@ export function PanelHeader({
               <button
                 type="button"
                 className="panel-header__mobile-more"
-                title="筛选与操作"
-                aria-label="筛选与操作"
+                title={t("common.filtersAndActions")}
+                aria-label={t("common.filtersAndActions")}
                 aria-expanded={isMobileMenuOpen}
                 onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               >
@@ -200,8 +214,8 @@ export function PanelHeader({
                 <button
                   type="button"
                   className="panel-header__mobile-more panel-header__mobile-more--inline"
-                  title="筛选与操作"
-                  aria-label="筛选与操作"
+                  title={t("common.filtersAndActions")}
+                  aria-label={t("common.filtersAndActions")}
                   aria-expanded={isMobileMenuOpen}
                   onClick={() => setIsMobileMenuOpen((prev) => !prev)}
                 >
@@ -218,7 +232,15 @@ export function PanelHeader({
                       <div
                         key={index}
                         className="panel-header__mobile-menu-item"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={(e) => {
+                          if (
+                            (e.target as Element).closest(
+                              ".ui-select, [data-filter-menu]",
+                            )
+                          )
+                            return;
+                          setIsMobileMenuOpen(false);
+                        }}
                       >
                         {action}
                       </div>

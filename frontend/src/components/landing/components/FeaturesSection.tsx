@@ -1,3 +1,4 @@
+import { SceneIllustration } from "../../common/SceneIllustration";
 import { useTranslation } from "react-i18next";
 import { FEATURES } from "../data";
 import { SectionHeading } from "./SectionHeading";
@@ -22,25 +23,20 @@ export function FeaturesSection() {
               key={f.titleKey}
               data-reveal
               data-reveal-delay={String(Math.min(i + 1, 6))}
-              className="blog-feature-card blog-glass-inner-glow group relative rounded-2xl border border-stone-100/80 dark:border-stone-800/40 bg-white/80 dark:bg-stone-900/40 p-7 sm:p-8 transition-all duration-500 hover:-translate-y-2 hover:bg-white dark:hover:bg-stone-900/60"
+              className="blog-feature-card relative rounded-2xl border border-theme-border bg-theme-bg-card p-7 sm:p-8"
             >
-              {/* Top gradient accent */}
-              <div
-                className={`absolute top-0 left-7 sm:left-8 w-8 h-[2px] bg-gradient-to-r ${f.gradient} rounded-full opacity-50 group-hover:opacity-90 group-hover:w-12 transition-all duration-500`}
-              />
               {/* Number badge */}
               <span className="blog-feature-number">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <div
-                className={`flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${f.gradient} text-18 sm:text-20 mb-5 sm:mb-6 shadow-sm transition-all duration-500 group-hover:scale-115 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-black/5 dark:group-hover:shadow-black/20`}
-              >
-                {f.icon}
-              </div>
-              <h3 className="text-15 sm:text-16 font-bold text-stone-900 dark:text-stone-100 mb-2.5 leading-snug">
+              <SceneIllustration
+                scene={f.illustration}
+                className="mb-4"
+              />
+              <h3 className="text-15 sm:text-16 font-bold text-theme-text mb-2.5 leading-snug">
                 {t(`landing.${f.titleKey}`, f.titleKey)}
               </h3>
-              <p className="text-13 sm:text-14 leading-[1.7] text-stone-400 dark:text-stone-500">
+              <p className="text-13 sm:text-14 leading-[1.7] text-theme-text-secondary">
                 {t(`landing.${f.descKey}`, f.descKey)}
               </p>
             </div>

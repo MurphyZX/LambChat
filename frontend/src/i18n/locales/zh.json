@@ -1180,6 +1180,8 @@
     "on": "开",
     "operationFailed": "操作失败",
     "page": "第 {{page}} 页",
+    "filtersAndActions": "筛选与操作",
+    "pagination": "分页导航",
     "permissionRequired": "需要权限",
     "poweredBy": "由 Clivia 驱动",
     "prev": "上一页",
@@ -3130,6 +3132,7 @@
     "send": "发送消息"
   },
   "sidebar": {
+    "noProjects": "暂无项目",
     "addToFavorites": "添加到收藏",
     "batchDeleteConfirm": "确定要删除选中的 {{count}} 个会话吗？此操作无法撤销。",
     "batchDeletePartialFailed": "{{count}} 个会话删除失败",
@@ -3168,6 +3171,8 @@
     "navigate": "导航",
     "navigation": "导航",
     "newChat": "新建对话",
+    "newChatInProject": "在「{{project}}」中新建对话",
+    "startFirstChat": "开始第一个对话",
     "newChatShortcut": "Ctrl+Shift+O",
     "newProject": "新建项目",
     "noMatchingSessions": "没有找到匹配的会话",
@@ -3893,5 +3898,13 @@
     "viewChats": "会话",
     "viewCloud": "云端电脑",
     "viewLocal": "本地电脑"
+  },
+  "projectWorkspace": {
+    "details": "工作区详情",
+    "choose": "绑定本地目录",
+    "clear": "解除目录绑定",
+    "inherits": "此项目的新会话默认使用这台电脑和目录，已有会话保持不变。",
+    "optional": "可选。绑定后，新会话共用此目录，文件保留在本机。",
+    "privacy": "在所选电脑操作文件；读取内容可能发送给对话模型。"
   }
 }

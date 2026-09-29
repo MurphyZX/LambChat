@@ -92,12 +92,12 @@ export function WorkspacePanel({
 
   // ── 视图：默认跟随会话平台，会话切换时回归跟随；用户手选持久化 ──
   const [view, setView] = useState<WorkspaceView>(() =>
-    sandboxMode === "cloud" ? "cloud" : readStoredView(),
+    sandboxMode === "cloud" ? "cloud" : sandboxMode === "local" ? "local" : readStoredView(),
   );
-  const sessionRef = useRef(sessionId);
+  const sessionRef = useRef({ sessionId, sandboxMode });
   useEffect(() => {
-    if (sessionRef.current !== sessionId) {
-      sessionRef.current = sessionId;
+    if (sessionRef.current.sessionId !== sessionId || sessionRef.current.sandboxMode !== sandboxMode) {
+      sessionRef.current = { sessionId, sandboxMode };
       setView(sandboxMode === "cloud" ? "cloud" : "local");
     }
   }, [sessionId, sandboxMode]);
@@ -334,7 +334,7 @@ export function WorkspacePanel({
   return (
     <div className="flex h-full flex-col bg-[var(--theme-bg-sidebar)]">
       {/* 视图切换(图标式,主流桌面端样式)+ 状态徽标 + 刷新（顶部节奏与会话视图操作行对齐） */}
-      <div className="flex items-center justify-between gap-1 px-2 pt-2 pb-1.5">
+      <div className="flex items-center justify-between gap-1 ps-[9px] pe-[7px] pt-2 pb-1.5">
         <div className="flex items-center gap-0.5 rounded-lg bg-stone-200/60 p-0.5 dark:bg-stone-800/60">
           <Tooltip content={t("workspacePanel.viewLocal", { defaultValue: "本地电脑" })} placement="bottom">
             <button
@@ -373,7 +373,7 @@ export function WorkspacePanel({
             <button
               onClick={handleRefresh}
               disabled={state === "loading" || cloudStatusLoading}
-              className="flex size-7 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200/60 dark:text-stone-400 dark:hover:bg-stone-700/40 transition-colors disabled:opacity-40"
+              className="flex size-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200/60 dark:text-stone-400 dark:hover:bg-stone-700/40 transition-colors disabled:opacity-40"
               aria-label={t("workspacePanel.refresh", { defaultValue: "刷新" })}
             >
               <RefreshCw
@@ -451,7 +451,7 @@ export function WorkspacePanel({
             </button>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex-1 overflow-y-auto ps-1 pe-0 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {state === "loading" && root.length === 0 ? (
               <div className="flex items-center justify-center pt-6">
                 <Loader2 size={16} className="animate-spin text-stone-400" />

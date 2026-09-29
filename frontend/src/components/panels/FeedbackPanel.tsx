@@ -8,6 +8,7 @@
  * - 图片：3 列网格，hover 放大
  */
 
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -621,12 +622,7 @@ export function FeedbackPanel() {
           <FeedbackPanelSkeleton />
         ) : !isLoading && feedbackList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800">
-              <ThumbsUp
-                size={24}
-                className="text-stone-300 dark:text-stone-600"
-              />
-            </div>
+            <SceneIllustration scene="message" className="mx-auto mb-4" />
             <p className="text-14 font-medium text-stone-500 dark:text-stone-400">
               {t("feedback.noFeedback")}
             </p>
@@ -649,16 +645,14 @@ export function FeedbackPanel() {
       </div>
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="glass-divider bg-transparent px-4 py-3 sm:px-6">
-          <Pagination
-            page={Math.floor(skip / limit) + 1}
-            pageSize={limit}
-            total={total}
-            onChange={(page) => setSkip((page - 1) * limit)}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={Math.floor(skip / limit) + 1}
+          pageSize={limit}
+          total={total}
+          onChange={(page) => setSkip((page - 1) * limit)}
+        />
+      </div>
 
       {/* Modals */}
       <ConfirmDialog

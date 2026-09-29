@@ -72,7 +72,10 @@ export function UsagePanel() {
   const fxRates = useFxRates();
   const { hasPermission } = useAuth();
   const { availableModels } = useSettingsContext();
-  const modelLabels = useMemo(() => buildModelLabelMap(availableModels), [availableModels]);
+  const modelLabels = useMemo(
+    () => buildModelLabelMap(availableModels),
+    [availableModels],
+  );
   const isAdmin = hasPermission(Permission.USAGE_ADMIN);
 
   const [logs, setLogs] = useState<UsageLog[]>([]);
@@ -465,17 +468,15 @@ export function UsagePanel() {
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
-        <div className="glass-divider px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            itemLabel={t("usage.logItems")}
-            onChange={(p) => setSkip((p - 1) * pageSize)}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          itemLabel={t("usage.logItems")}
+          onChange={(p) => setSkip((p - 1) * pageSize)}
+        />
+      </div>
     </div>
   );
 }

@@ -236,7 +236,7 @@ export function ChatInputToolbar({
   const selectedTeamName = selectedTeam?.name ?? null;
 
   return (
-    <div className="flex max-w-full flex-nowrap justify-between gap-1 px-2 pb-3 pt-3 mx-0.5">
+    <div className="chat-input-toolbar flex max-w-full flex-nowrap justify-between gap-1 px-2 pb-3 pt-3 mx-0.5">
       {/* 左行不设横向滚动：滚动容器会在手机端裁切 chip（视觉上与右簇重叠），
           超宽时由 chip 的 shrink + truncate 优雅降级 */}
       <div className="flex min-h-10 min-w-0 flex-1 items-center gap-0.5 sm:gap-1.5">

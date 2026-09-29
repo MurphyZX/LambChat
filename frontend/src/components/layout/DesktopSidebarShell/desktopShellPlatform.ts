@@ -13,6 +13,9 @@ export const DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT =
 /** TitleBar 折叠/展开按钮 → 桌面壳的事件桥（TitleBar 不感知折叠状态）。 */
 export const DESKTOP_SIDEBAR_TOGGLE_EVENT = "lambchat:desktop-sidebar-toggle";
 
+export const OPEN_NOTIFICATIONS_EVENT = "lambchat:open-notifications";
+export const NOTIFICATION_COUNT_EVENT = "lambchat:notification-count";
+
 export type DesktopSidebarView = "chat" | "files";
 
 /** Tauri 桌面壳环境（web/移动端 false）。 */

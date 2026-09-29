@@ -15,6 +15,18 @@
   display: none;
 }
 
+.user-message-bubble {
+  background: linear-gradient(135deg, var(--theme-primary-light), var(--theme-bg));
+  border-color: var(--theme-border);
+  border-radius: var(--radius-chat);
+  box-shadow: var(--shadow-low);
+}
+
+html:not(.dark):not(.theme-sepia) .user-message-bubble {
+  border-color: color-mix(in srgb, var(--theme-text) 16%, var(--theme-bg-card));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--theme-text) 5%, transparent);
+}
+
 /* Chat input — enhanced with Astryx-style shadow system */
 .chat-input-container {
   box-shadow: var(--shadow-low);

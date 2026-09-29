@@ -2,18 +2,11 @@
  * 通知管理面板 - Admin CRUD panel for notifications
  */
 
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Bell,
-  AlertCircle,
-  ChevronDown,
-  Save,
-} from "lucide-react";
+import { Plus, Pencil, Trash2, Bell, ChevronDown, Save } from "lucide-react";
 import { PanelHeader } from "../common/PanelHeader";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { PanelLoadingState } from "../common/PanelLoadingState";
@@ -407,12 +400,7 @@ export function NotificationPanel() {
   if (!canManage) {
     return (
       <div className="glass-shell flex h-full flex-col items-center justify-center gap-4 p-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-          <AlertCircle
-            size={32}
-            className="text-stone-400 dark:text-stone-500"
-          />
-        </div>
+        <SceneIllustration scene="message" className="mx-auto mb-4" />
         <p className="text-18 font-medium font-serif text-stone-700 dark:text-stone-300">
           {t("common.accessDenied")}
         </p>
@@ -446,9 +434,7 @@ export function NotificationPanel() {
           <PanelLoadingState />
         ) : !isLoading && notifications.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-              <Bell size={32} className="text-stone-400 dark:text-stone-500" />
-            </div>
+            <SceneIllustration scene="message" className="mx-auto mb-4" />
             <p className="text-18 font-medium font-serif text-stone-700 dark:text-stone-300">
               {t("notification.noNotifications")}
             </p>
@@ -584,16 +570,14 @@ export function NotificationPanel() {
       </div>
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="glass-divider bg-transparent px-4 py-4 sm:px-6 lg:px-8">
-          <Pagination
-            page={Math.floor(skip / limit) + 1}
-            pageSize={limit}
-            total={total}
-            onChange={(page) => setSkip((page - 1) * limit)}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={Math.floor(skip / limit) + 1}
+          pageSize={limit}
+          total={total}
+          onChange={(page) => setSkip((page - 1) * limit)}
+        />
+      </div>
 
       {/* Create Modal */}
       {isCreating && (

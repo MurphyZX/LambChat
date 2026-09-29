@@ -1180,6 +1180,8 @@
     "on": "켜짐",
     "operationFailed": "작업에 실패했습니다",
     "page": "{{page}}페이지",
+    "filtersAndActions": "필터 및 작업",
+    "pagination": "페이지 탐색",
     "permissionRequired": "권한이 필요합니다",
     "poweredBy": "Clivia 제공",
     "prev": "이전",
@@ -3130,6 +3132,7 @@
     "send": "메시지 전송"
   },
   "sidebar": {
+    "noProjects": "프로젝트가 없습니다",
     "addToFavorites": "즐겨찾기에 추가",
     "batchDeleteConfirm": "선택한 {{count}}개의 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "batchDeletePartialFailed": "{{count}}개 세션 삭제 실패",
@@ -3168,6 +3171,8 @@
     "navigate": "이동",
     "navigation": "탐색",
     "newChat": "새 채팅",
+    "newChatInProject": "{{project}}에서 새 대화 시작",
+    "startFirstChat": "첫 대화 시작하기",
     "newChatShortcut": "Ctrl+Shift+O",
     "newProject": "새 프로젝트",
     "noMatchingSessions": "일치하는 세션이 없습니다",
@@ -3893,5 +3898,13 @@
     "viewChats": "채팅",
     "viewCloud": "클라우드 PC",
     "viewLocal": "이 PC"
+  },
+  "projectWorkspace": {
+    "details": "작업 공간 상세 정보",
+    "choose": "로컬 폴더 연결",
+    "clear": "폴더 연결 해제",
+    "inherits": "이 프로젝트의 새 채팅은 이 컴퓨터와 폴더를 사용합니다. 기존 채팅은 변경되지 않습니다.",
+    "optional": "선택 사항입니다. 새 채팅에서 이 폴더를 공유하며 파일은 컴퓨터에 보관됩니다.",
+    "privacy": "선택한 컴퓨터에서 파일을 처리합니다. 읽은 내용은 대화 모델로 전송될 수 있습니다."
   }
 }

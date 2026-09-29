@@ -210,7 +210,7 @@ test("notification panel header aligns with shared panel spacing", () => {
     /className="flex-1 overflow-y-auto px-4 py-2 sm:p-6 lg:px-8"/,
   );
   expect(notificationPanel).toMatch(
-    /className="glass-divider bg-transparent px-4 py-4 sm:px-6 lg:px-8"/,
+    /className="panel-pagination empty:hidden"/,
   );
 });
 

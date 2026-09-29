@@ -7,6 +7,7 @@
 
 import { API_BASE } from "./config";
 import { authFetch } from "./fetch";
+import { waitForSessionWorkspace } from "./sessionWorkspace";
 
 /** fs/list 条目：path 为工作区内相对路径（posix 风格）。 */
 export interface SandboxFsEntry {
@@ -34,6 +35,7 @@ export interface SandboxFsReadResult {
 export const sandboxFsApi = {
   /** 列目录（懒加载源）：path 空 = 工作区根。 */
   async list(sessionId: string, path: string = ""): Promise<SandboxFsListResult> {
+    await waitForSessionWorkspace(sessionId);
     const query = new URLSearchParams({ session_id: sessionId });
     if (path) {
       query.set("path", path);
@@ -50,6 +52,7 @@ export const sandboxFsApi = {
     offset: number = 0,
     limit: number = 500,
   ): Promise<SandboxFsReadResult> {
+    await waitForSessionWorkspace(sessionId);
     const query = new URLSearchParams({
       session_id: sessionId,
       path,
@@ -86,6 +89,7 @@ export interface WorkspaceFsSource {
 
 export const sandboxCloudFsApi: WorkspaceFsSource = {
   async list(sessionId, path = "") {
+    await waitForSessionWorkspace(sessionId);
     const query = new URLSearchParams({ session_id: sessionId });
     if (path) {
       query.set("path", path);
@@ -96,6 +100,7 @@ export const sandboxCloudFsApi: WorkspaceFsSource = {
   },
 
   async read(sessionId, path, offset = 0, limit = 500) {
+    await waitForSessionWorkspace(sessionId);
     const query = new URLSearchParams({
       session_id: sessionId,
       path,

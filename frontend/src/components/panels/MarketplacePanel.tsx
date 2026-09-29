@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { X, ShoppingBag, Plus, RotateCw, Tag, Filter } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import { Pagination } from "../common/Pagination";
+import { useClientPagination } from "../../hooks/useClientPagination";
 import { PanelHeader } from "../common/PanelHeader";
 import { Button, IconButton } from "../common";
 import { MarketplacePanelSkeleton } from "../skeletons";
@@ -67,6 +69,11 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
     closePreview,
     setPreviewFileContent,
   } = useMarketplace();
+
+  const { page, pageSize, setPage, slice } = useClientPagination({
+    total: filteredSkills.length,
+    resetKey: JSON.stringify([searchQuery, selectedTags, activeFilter]),
+  });
 
   const {
     skills: userSkills,
@@ -365,7 +372,7 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
       <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
         {filteredSkills.length === 0 ? (
           <EmptyState
-            icon={<ShoppingBag size={28} />}
+            illustration="reading"
             title={
               hasActiveFilters
                 ? t("marketplace.noMatchingSkills")
@@ -386,7 +393,7 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
           />
         ) : (
           <div className="grid auto-grid-cols gap-5">
-            {filteredSkills.map((skill, index) => (
+            {slice(filteredSkills).map((skill, index) => (
               <SkillCard
                 key={skill.skill_name}
                 skill={skill}
@@ -410,6 +417,15 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filteredSkills.length}
+          onChange={setPage}
+        />
       </div>
 
       {/* Install/Update Confirmation Dialog */}

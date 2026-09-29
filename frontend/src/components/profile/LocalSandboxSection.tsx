@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -34,11 +34,6 @@ import { SandboxMachinesCard } from "./SandboxMachinesCard";
 import { SandboxDataLocationCard } from "./SandboxDataLocationCard";
 
 const PROCESS_POLL_INTERVAL_MS = 10 * 1000;
-
-/** 自动配对失败后的重试间隔（导出供测试用假时钟推进）。 */
-export const AUTO_PAIR_RETRY_DELAY_MS = 3 * 1000;
-/** 每挂载最多尝试次数（含首次）：有界重试，不无限循环。 */
-const AUTO_PAIR_MAX_ATTEMPTS = 3;
 
 const CONFIRM_POLICY_OPTIONS = [
   { key: "all", labelKey: "profile.localSandbox.policyOptions.all" },
@@ -161,56 +156,6 @@ export function LocalSandboxSection({
     processStatus === "unsupported" ||
     statusError === "unauthorized";
   const loading = processStatus === "";
-
-  // 登录即配对（自动）：未配对且 daemon 停止时——
-  // - 已有落盘 PAT：直接拉起 daemon（配对数据还在，只是进程没起来——
-  //   例如壳启动时 sidecar 缺失/版本门拒连后的恢复）；
-  // - 无 PAT：用壳会话 JWT 铸 PAT 自动配对（同账号；换账号配对仍走表单）。
-  // JWT 必须经 getValidAccessToken 取（过期自动静默刷新）——裸 localStorage
-  // 值在 access token 过期后铸 PAT 必 401，会让用户（尤其无密码的 OAuth
-  // 账号）永远落回密码表单。失败间隔退避重试，每挂载最多
-  // AUTO_PAIR_MAX_ATTEMPTS 次，条件变化/超上限即停。
-  const [autoPairRetryTick, setAutoPairRetryTick] = useState(0);
-  const autoPairAttempts = useRef(0);
-  useEffect(() => {
-    if (!shell || loading || !unpaired || unpairing) return;
-    if (autoPairAttempts.current >= AUTO_PAIR_MAX_ATTEMPTS) return;
-    const isRetry = autoPairAttempts.current > 0;
-    autoPairAttempts.current += 1;
-    let cancelled = false;
-    const timer = window.setTimeout(
-      () => {
-        if (cancelled) return;
-        (async () => {
-          try {
-            const existingPat = await readPairingPat().catch(() => null);
-            if (existingPat) {
-              await restartDaemon();
-              notifySandboxStatusRefresh();
-              refresh();
-              refreshProcessStatus();
-              return;
-            }
-            const sessionJwt = await getValidAccessToken();
-            if (!sessionJwt) return;
-            const pat = await sandboxApi.createPairingPat(sessionJwt);
-            await applyPatAndRestart(pat.token, pat.pat_id, policy);
-          } catch (err) {
-            console.warn("[LocalSandboxSection] auto pair failed:", err);
-            setAutoPairRetryTick((tick) => tick + 1);
-          }
-        })();
-      },
-      isRetry ? AUTO_PAIR_RETRY_DELAY_MS : 0,
-    );
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-    // autoPairRetryTick 仅作失败重试触发器；applyPatAndRestart/refresh 等
-    // 每渲染重建，attempt 计数在 ref 里防重复
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shell, loading, unpaired, unpairing, autoPairRetryTick]);
 
   // 分区头：独立形态是卡片大标题（同其他卡）；嵌入形态是 tile 内的软标题
   // （同通知页 h4 语言），带一句说明文案

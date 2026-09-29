@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+
 import { useTranslation } from "react-i18next";
 import type { TeamMember } from "../../types/team";
 import { TeamMemberCard } from "./TeamMemberCard";
@@ -36,7 +36,7 @@ export function TeamRoster({
         </div>
         <EmptyState
           className="flex-1"
-          icon={<Users size={28} />}
+          illustration="welcome"
           title={t("team.noRolesSelected")}
           description={t("team.noRolesDesc")}
         />

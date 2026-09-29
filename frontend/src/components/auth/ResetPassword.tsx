@@ -1,6 +1,6 @@
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { authApi } from "../../services/api";
@@ -100,19 +100,10 @@ export function ResetPassword() {
       >
         <div className="w-full max-w-[22.5rem] sm:max-w-[380px]">
           <div className="mb-5 text-center">
-            <div
-              className={`auth-status-icon relative mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${
-                type === "success"
-                  ? "bg-emerald-50 dark:bg-emerald-900/20"
-                  : "bg-red-50 dark:bg-red-900/20"
-              }`}
-            >
-              {type === "success" ? (
-                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <XCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
-              )}
-            </div>
+            <SceneIllustration
+              scene={type === "success" ? "welcome" : "message"}
+              className="mx-auto mb-3"
+            />
             <h1 className="text-24 font-bold tracking-[-0.02em] text-stone-900 dark:text-stone-100 mb-1 font-serif">
               {type === "success"
                 ? t("auth.resetPasswordSuccessTitle")

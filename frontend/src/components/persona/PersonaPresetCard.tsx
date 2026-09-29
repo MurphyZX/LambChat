@@ -52,14 +52,17 @@ export function PersonaPresetCard({
   });
 
   return (
-    <div className="scb group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none">
-      {/* Gradient Banner */}
-      <div
-        className="scb__banner relative h-12 shrink-0"
-        style={{
-          background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
-        }}
-      >
+    <div
+      style={
+        {
+          "--panel-card-accent": gradient[0],
+          "--panel-card-accent-end": gradient[2],
+        } as React.CSSProperties
+      }
+      className="scb group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
+    >
+      {/* Status and preference controls */}
+      <div className="scb__banner relative h-12 shrink-0">
         <div className="absolute top-2 right-2 flex gap-1.5">
           {selected && (
             <span className="scb__status-pill scb__status-pill--installed">

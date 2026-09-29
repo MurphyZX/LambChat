@@ -3,6 +3,7 @@
  * 点击跳转到对应会话并定位高亮那条消息。
  */
 
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -15,6 +16,8 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import { Pagination } from "../common/Pagination";
+import { useClientPagination } from "../../hooks/useClientPagination";
 import { PanelHeader } from "../common/PanelHeader";
 import { PanelLoadingState } from "../common/PanelLoadingState";
 import { useBookmarks } from "../../hooks/useBookmarks";
@@ -30,6 +33,9 @@ export function BookmarksPanel() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { status, items } = useBookmarks();
+  const { page, pageSize, setPage, slice } = useClientPagination({
+    total: items.length,
+  });
 
   const handleJump = useCallback(
     (bookmark: BookmarkItem) => {
@@ -59,7 +65,7 @@ export function BookmarksPanel() {
   }, []);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <PanelHeader
         title={t("bookmarks.title")}
         subtitle={t("bookmarks.subtitle")}
@@ -106,9 +112,7 @@ export function BookmarksPanel() {
 
         {status !== "error" && items.length === 0 && status !== "loading" && (
           <div className="flex min-h-64 flex-col items-center justify-center gap-4 p-8 text-center">
-            <div className="flex size-16 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] text-[var(--theme-primary)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border)),0_18px_34px_-28px_color-mix(in_srgb,var(--theme-primary)_46%,transparent)]">
-              <Bookmark size={26} strokeWidth={1.5} />
-            </div>
+            <SceneIllustration scene="reading" className="mb-4" />
             <div>
               <p className="font-serif text-16 font-semibold text-[var(--theme-text)]">
                 {t("bookmarks.empty")}
@@ -122,7 +126,7 @@ export function BookmarksPanel() {
 
         {items.length > 0 && (
           <div className="grid auto-grid-cols gap-3">
-            {items.map((bookmark) => (
+            {slice(items).map((bookmark) => (
               <div
                 key={bookmark.id}
                 role="button"
@@ -177,6 +181,14 @@ export function BookmarksPanel() {
             ))}
           </div>
         )}
+      </div>
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={items.length}
+          onChange={setPage}
+        />
       </div>
     </div>
   );

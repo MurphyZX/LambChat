@@ -71,6 +71,7 @@ export interface RichChatComposerHandle {
 
 export interface RichChatComposerProps {
   ariaLabel: string;
+  focusRequest?: number;
   placeholder?: string;
   initialPlainText?: string;
   className?: string;
@@ -90,9 +91,22 @@ export interface RichChatComposerProps {
   ) => boolean;
 }
 
-function EditablePlugin({ disabled }: { disabled: boolean }) {
+function EditablePlugin({
+  disabled,
+  focusRequest,
+}: {
+  disabled: boolean;
+  focusRequest?: number;
+}) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => editor.setEditable(!disabled), [disabled, editor]);
+  useEffect(() => {
+    if (!focusRequest || disabled) return;
+    const frame = requestAnimationFrame(() => {
+      editor.getRootElement()?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [editor, disabled, focusRequest]);
   return null;
 }
 
@@ -102,6 +116,7 @@ export const RichChatComposer = forwardRef<
 >(function RichChatComposer(
   {
     ariaLabel,
+    focusRequest,
     placeholder,
     initialPlainText = "",
     className,
@@ -210,7 +225,7 @@ export const RichChatComposer = forwardRef<
           runModes={runModes}
           onArrowKey={onArrowKey}
         />
-        <EditablePlugin disabled={disabled} />
+        <EditablePlugin disabled={disabled} focusRequest={focusRequest} />
       </div>
     </LexicalComposer>
   );

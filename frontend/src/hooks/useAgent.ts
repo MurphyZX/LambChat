@@ -1010,6 +1010,8 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
   );
 
   const clearMessages = useCallback(() => {
+    pendingProjectIdRef.current = null;
+    setCurrentProjectId(null);
     loadHistoryRequestIdRef.current += 1;
     streamVersionRef.current += 1;
     sseGenerationRef.current += 1;
@@ -1047,6 +1049,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     setActiveGoal,
     setConnectionStatus,
     setCurrentRunId,
+    setCurrentProjectId,
     setError,
     setGoalModeEnabled,
     setGoalsByRunId,
@@ -1152,6 +1155,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     setPendingProjectId: (id: string | null) => {
       pendingProjectIdRef.current = id;
       autoExpandProjectIdRef.current = id;
+      setCurrentProjectId(id);
     },
     autoExpandProjectId: autoExpandProjectIdRef.current,
     clearAutoExpandProjectId: (id?: string | null) => {

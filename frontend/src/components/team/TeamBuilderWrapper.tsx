@@ -34,8 +34,9 @@ import {
 import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
 import type { LocalizedText, PersonaStarterPrompt } from "../../types";
 import { EditorSidebar } from "../common/EditorSidebar";
-import { PanelHeader } from "../common/PanelHeader";
 import { nameToGradient } from "../common/cardUtils";
+import { Pagination } from "../common/Pagination";
+import { PanelHeader } from "../common/PanelHeader";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { EmptyState } from "../common/EmptyState";
 import { PersonaScopeDropdown } from "../persona/PersonaScopeDropdown";
@@ -188,8 +189,10 @@ export function TeamBuilderWrapper() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [scopeFilter, setScopeFilter] = useState<TeamScopeFilter>("all");
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMoreTeams, setHasMoreTeams] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState(false);
+  const requestRef = useRef(0);
   const [isImporting, setIsImporting] = useState(false);
   const [isScopeOpen, setIsScopeOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -202,81 +205,55 @@ export function TeamBuilderWrapper() {
     existingTeamId: null,
     hasTeamName: false,
   });
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<TeamBuilderHandle>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const scopeBtnRef = useRef<HTMLButtonElement>(null);
   const tagBtnRef = useRef<HTMLButtonElement>(null);
 
-  const fetchTeams = useCallback(
-    async (skip: number) => {
-      try {
-        if (skip === 0) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
-        }
-        const res = await teamApi.list({
-          skip,
-          limit: TEAM_PAGE_SIZE,
-          q: query.trim() || undefined,
-          tag: activeTag || undefined,
-          pinned: scopeFilter === "pinned" ? true : undefined,
-          favorite: scopeFilter === "favorite" ? true : undefined,
-        });
-        setTeams((prev) => {
-          if (skip === 0) return [...res.teams].sort(compareTeamPreference);
-          const existing = new Set(prev.map((team) => team.id));
-          return [
-            ...prev,
-            ...res.teams.filter((team) => !existing.has(team.id)),
-          ].sort(compareTeamPreference);
-        });
-        setHasMoreTeams(skip + res.teams.length < res.total);
-      } catch (e) {
-        console.error("Failed to load teams:", e);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [activeTag, query, scopeFilter],
+  useEffect(() => {
+    setPage(1);
+  }, [activeTag, query, scopeFilter]);
+
+  const loadTeams = useCallback(async () => {
+    const request = ++requestRef.current;
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await teamApi.list({
+        skip: (page - 1) * TEAM_PAGE_SIZE,
+        limit: TEAM_PAGE_SIZE,
+        q: query.trim() || undefined,
+        tag: activeTag || undefined,
+        pinned: scopeFilter === "pinned" ? true : undefined,
+        favorite: scopeFilter === "favorite" ? true : undefined,
+      });
+      if (request !== requestRef.current) return;
+      setTeams([...res.teams].sort(compareTeamPreference));
+      setTotal(res.total);
+    } catch (error) {
+      if (request !== requestRef.current) return;
+      console.error("Failed to load teams:", error);
+      setLoadError(true);
+    } finally {
+      if (request === requestRef.current) setLoading(false);
+    }
+  }, [activeTag, page, query, scopeFilter]);
+
+  useEffect(() => {
+    void loadTeams();
+    const request = requestRef.current;
+    return () => {
+      if (requestRef.current === request) requestRef.current = request + 1;
+    };
+  }, [loadTeams]);
+
+  useEffect(
+    () =>
+      subscribeTeamsChanged(() => {
+        void loadTeams();
+      }),
+    [loadTeams],
   );
-
-  const loadTeams = useCallback(() => {
-    void fetchTeams(0);
-  }, [fetchTeams]);
-
-  const loadNextPage = useCallback(() => {
-    if (loading || loadingMore || !hasMoreTeams) return;
-    void fetchTeams(teams.length);
-  }, [fetchTeams, hasMoreTeams, loading, loadingMore, teams.length]);
-
-  useEffect(() => {
-    loadTeams();
-  }, [loadTeams]);
-
-  useEffect(() => {
-    return subscribeTeamsChanged(() => {
-      loadTeams();
-    });
-  }, [loadTeams]);
-
-  useEffect(() => {
-    const target = loadMoreRef.current;
-    const root = scrollAreaRef.current;
-    if (!target || !root || !hasMoreTeams) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
-      },
-      { root, rootMargin: "180px 0px", threshold: 0 },
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasMoreTeams, loadNextPage]);
 
   const handleCreateNew = () => {
     setEditingTeamId(null);
@@ -581,15 +558,28 @@ export function TeamBuilderWrapper() {
         }
       />
 
-      <div
-        ref={scrollAreaRef}
-        className="skill-content-area flex-1 overflow-y-auto px-4 py-4 sm:p-6 lg:px-8 lg:py-8"
-      >
+      <div className="skill-content-area flex-1 overflow-y-auto px-4 py-4 sm:p-6 lg:px-8 lg:py-8">
+        {loadError && (
+          <div
+            role="alert"
+            className="p-4 text-center text-theme-text-secondary"
+          >
+            <p>{t("common.loadFailed")}</p>
+            <button
+              type="button"
+              className="btn-secondary mt-3"
+              onClick={() => void loadTeams()}
+            >
+              {t("common.refresh")}
+            </button>
+          </div>
+        )}
+
         {loading ? (
-          <EmptyState icon={<Users size={28} />} title={t("team.loading")} />
+          <EmptyState illustration="welcome" title={t("team.loading")} />
         ) : teams.length === 0 ? (
           <EmptyState
-            icon={<Users size={28} />}
+            illustration="welcome"
             title={
               hasActiveFilters
                 ? t("team.noMatchingTeams")
@@ -619,21 +609,21 @@ export function TeamBuilderWrapper() {
         ) : (
           <div className="grid auto-grid-cols gap-3">
             {teams.map((team) => {
-              const colors = nameToGradient(team.name);
+              const gradient = nameToGradient(team.name);
               const activeCount = team.members.filter((m) => m.enabled).length;
               return (
                 <div
                   key={team.id}
+                  style={
+                    {
+                      "--panel-card-accent": gradient[0],
+                      "--panel-card-accent-end": gradient[2],
+                    } as React.CSSProperties
+                  }
                   className="team-card scb group flex h-full flex-col overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
-                  style={{ "--team-accent": colors[0] } as React.CSSProperties}
                 >
-                  {/* Gradient Banner */}
-                  <div
-                    className="scb__banner relative h-12 shrink-0"
-                    style={{
-                      background: `linear-gradient(45deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
-                    }}
-                  >
+                  {/* Status and preference controls */}
+                  <div className="scb__banner relative h-12 shrink-0">
                     <div className="absolute left-2 top-2 flex gap-1.5">
                       <button
                         type="button"
@@ -788,15 +778,18 @@ export function TeamBuilderWrapper() {
                 </div>
               );
             })}
-            {(hasMoreTeams || loadingMore) && (
-              <div ref={loadMoreRef} className="team-load-sentinel">
-                {loadingMore ? t("team.loadingMore") : ""}
-              </div>
-            )}
           </div>
         )}
       </div>
 
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={TEAM_PAGE_SIZE}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
       <EditorSidebar
         open={editorOpen}
         onClose={handleClose}

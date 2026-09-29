@@ -1,6 +1,7 @@
+import { SceneIllustration } from "../../common/SceneIllustration";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import i18n from "../../../i18n";
 import { resolveAgentDisplayName } from "../../agent/agentCatalog";
@@ -75,6 +76,7 @@ export function ScheduledTaskPanel({
   const canDelete = hasPermission(Permission.SCHEDULED_TASK_DELETE);
   const { taskId } = useParams<{ taskId?: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -86,6 +88,15 @@ export function ScheduledTaskPanel({
   const [deleteTarget, setDeleteTarget] = useState<ScheduledTask | null>(null);
   const [editingTask, setEditingTask] = useState<ScheduledTask | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  useEffect(() => {
+    if (canWrite && searchParams.get("create") === "1") {
+      setIsCreating(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("create");
+      setSearchParams(next, { replace: true });
+    }
+  }, [canWrite, searchParams, setSearchParams]);
+
   const [agents, setAgents] = useState<AgentInfo[]>(providedAgents || []);
   const [personaPresets, setPersonaPresets] = useState<PersonaPreset[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -402,9 +413,7 @@ export function ScheduledTaskPanel({
           <div className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
             {tasks.length === 0 ? (
               <div className="scheduled-task-empty-state">
-                <div className="scheduled-task-empty-state__icon">
-                  <Clock size={32} />
-                </div>
+                <SceneIllustration scene="message" className="mx-auto mb-4" />
                 <p className="scheduled-task-empty-state__title font-serif">
                   {t("scheduledTask.noTasks")}
                 </p>
@@ -550,16 +559,14 @@ export function ScheduledTaskPanel({
           </div>
 
           {/* Pagination */}
-          {total > limit && (
-            <div className="glass-divider bg-transparent px-4 py-4 sm:px-6">
-              <Pagination
-                page={Math.floor(skip / limit) + 1}
-                pageSize={limit}
-                total={total}
-                onChange={(page) => setSkip((page - 1) * limit)}
-              />
-            </div>
-          )}
+          <div className="panel-pagination empty:hidden">
+            <Pagination
+              page={Math.floor(skip / limit) + 1}
+              pageSize={limit}
+              total={total}
+              onChange={(page) => setSkip((page - 1) * limit)}
+            />
+          </div>
 
           {/* Create Modal */}
           {isCreating && canWrite && (

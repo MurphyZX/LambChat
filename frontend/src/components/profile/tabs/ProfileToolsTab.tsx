@@ -1,3 +1,4 @@
+import { SceneIllustration } from "../../common/SceneIllustration";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -178,10 +179,7 @@ export function ProfileToolsTab() {
         </div>
       ) : groupedByServer.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center text-stone-400 dark:text-stone-500">
-          <Wrench
-            size={32}
-            className="mb-2 text-stone-300 dark:text-stone-600"
-          />
+          <SceneIllustration scene="reading" className="mb-4" />
           <p className="text-14">{t("tools.noTools", "No tools available")}</p>
         </div>
       ) : (

@@ -1,5 +1,7 @@
+import { Pagination } from "../../../common/Pagination";
+import { useClientPagination } from "../../../../hooks/useClientPagination";
 import { useState, useEffect, useMemo } from "react";
-import { Cpu, Save, List, ChevronDown } from "lucide-react";
+import { Save, List, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ModelPanelSkeleton } from "../../../skeletons";
 import { RoleSelector } from "../../AgentPanel/shared/RoleSelector";
@@ -29,6 +31,10 @@ export function RolesModelTab({
   const [selectedRole, setSelectedRole] = useState<string | null>(
     roles.length > 0 ? roles[0].id : null,
   );
+  const { page, pageSize, setPage, slice } = useClientPagination({
+    total: availableModels.length,
+    resetKey: selectedRole,
+  });
   const [localRoleModels, setLocalRoleModels] =
     useState<Record<string, string[]>>(roleModelsMap);
   const [isSaving, setIsSaving] = useState(false);
@@ -64,7 +70,7 @@ export function RolesModelTab({
   if (availableModels.length === 0) {
     return (
       <EmptyState
-        icon={<Cpu size={28} />}
+        illustration="reading"
         title={t("agentConfig.noModelsConfigured")}
         description={t("agentConfig.noModelsConfiguredHint")}
       />
@@ -173,7 +179,7 @@ export function RolesModelTab({
 
             {/* Model rows */}
             <div className="divide-y divide-[var(--glass-border)]">
-              {availableModels.map((model) => {
+              {slice(availableModels).map((model) => {
                 const isSelected = currentRoleModels.includes(model.id);
                 const hasDesc = !!model.description;
                 return (
@@ -239,6 +245,14 @@ export function RolesModelTab({
             </div>
           </div>
 
+          <div className="panel-pagination empty:hidden">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={availableModels.length}
+              onChange={setPage}
+            />
+          </div>
           {hasChanges && (
             <div className="flex items-center justify-end">
               <Button

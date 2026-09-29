@@ -1,3 +1,4 @@
+import { SceneIllustration } from "../../common/SceneIllustration";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -96,9 +97,7 @@ export function TaskSessionList({
       <div className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
         {sessions.length === 0 ? (
           <div className="scheduled-task-empty-state">
-            <div className="scheduled-task-empty-state__icon">
-              <MessageSquare size={32} />
-            </div>
+            <SceneIllustration scene="message" className="mx-auto mb-4" />
             <p className="scheduled-task-empty-state__title font-serif">
               {t("scheduledTask.noSessions")}
             </p>
@@ -182,16 +181,14 @@ export function TaskSessionList({
       </div>
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="glass-divider bg-transparent px-4 py-4 sm:px-6">
-          <Pagination
-            page={Math.floor(skip / limit) + 1}
-            pageSize={limit}
-            total={total}
-            onChange={(page) => setSkip((page - 1) * limit)}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={Math.floor(skip / limit) + 1}
+          pageSize={limit}
+          total={total}
+          onChange={(page) => setSkip((page - 1) * limit)}
+        />
+      </div>
     </div>
   );
 }

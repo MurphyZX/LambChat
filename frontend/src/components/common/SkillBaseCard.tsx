@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { Checkbox } from "./Checkbox";
 
 export interface SkillBaseCardProps {
@@ -6,6 +6,7 @@ export interface SkillBaseCardProps {
   description?: string;
   descriptionMaxLines?: 2 | 3;
   gradient?: string[];
+  cover?: boolean;
   bannerLeadingOverlay?: ReactNode;
   bannerOverlay?: ReactNode;
   icon?: ReactNode;
@@ -29,6 +30,7 @@ export function SkillBaseCard({
   description,
   descriptionMaxLines = 2,
   gradient,
+  cover = false,
   bannerLeadingOverlay,
   bannerOverlay,
   icon,
@@ -41,25 +43,41 @@ export function SkillBaseCard({
   selected = false,
   selectionMode = false,
   onSelect,
-  animated = false,
-  animationDelay = 0,
   className = "",
   onClick,
 }: SkillBaseCardProps) {
   const lineClamp = descriptionMaxLines === 3 ? "line-clamp-3" : "line-clamp-2";
 
+  const heading = (
+    <div className="flex items-start gap-3">
+      {icon && <div className="scb__icon-ring shrink-0">{icon}</div>}
+      <div className="min-w-0 flex-1">
+        <h3
+          title={title}
+          className="line-clamp-2 break-words text-16 font-semibold font-serif text-[var(--theme-text)] leading-tight"
+        >
+          {title}
+        </h3>
+        {!cover && statusPills}
+      </div>
+    </div>
+  );
+
   return (
     <div
-      className={`scb group flex h-full flex-col overflow-hidden rounded-2xl bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none dark:border dark:border-[var(--theme-border)] ${
+      className={`scb ${cover ? "scb--cover" : ""} group flex h-full flex-col overflow-hidden rounded-2xl bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none dark:border dark:border-[var(--theme-border)] ${
         muted ? "scb--muted" : ""
-      } ${
-        selected
-          ? "ring-2 ring-[var(--theme-primary)] animate-[select-glow_2s_ease-in-out]"
-          : ""
-      } ${animated ? "scb--animated" : ""} ${
+      } ${selected ? "ring-2 ring-[var(--theme-primary)]" : ""} ${
         selectionMode && onSelect ? "cursor-pointer" : ""
       } ${className}`}
-      style={animated ? { animationDelay: `${animationDelay}ms` } : undefined}
+      style={
+        gradient
+          ? ({
+              "--panel-card-accent": gradient[0],
+              "--panel-card-accent-end": gradient[2],
+            } as CSSProperties)
+          : undefined
+      }
       onClick={
         selectionMode && onSelect
           ? (e) => {
@@ -73,85 +91,25 @@ export function SkillBaseCard({
           : onClick
       }
     >
-      {gradient && (
-        <div
-          className="scb__banner relative h-12 shrink-0"
-          style={{
-            background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
-          }}
-        >
-          <div className="absolute inset-0 flex items-start justify-between px-2 py-2 z-[3]">
-            <div className="flex items-center gap-1.5">
-              {bannerLeadingOverlay}
-              {!bannerLeadingOverlay && selectionMode && onSelect && (
-                <div
-                  className={`transition-all duration-200 ${
-                    selected
-                      ? "scale-110"
-                      : "sm:scale-90 sm:group-hover:scale-100"
-                  }`}
-                >
-                  <Checkbox
-                    size="lg"
-                    checked={selected}
-                    onChange={() => onSelect()}
-                    className="shadow-sm sm:opacity-0 sm:group-hover:opacity-100"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="ml-auto flex items-center gap-1.5">
-              {bannerLeadingOverlay && selectionMode && onSelect && (
-                <div
-                  className={`transition-all duration-200 ${
-                    selected
-                      ? "scale-110"
-                      : "sm:scale-90 sm:group-hover:scale-100"
-                  }`}
-                >
-                  <Checkbox
-                    size="lg"
-                    checked={selected}
-                    onChange={() => onSelect()}
-                    className="shadow-sm sm:opacity-0 sm:group-hover:opacity-100"
-                  />
-                </div>
-              )}
-              {bannerOverlay}
-            </div>
+      {cover && <div className="scb__cover">{heading}</div>}
+      {(bannerLeadingOverlay ||
+        bannerOverlay ||
+        (selectionMode && onSelect)) && (
+        <div className="scb__toolbar flex min-w-0 flex-wrap items-center justify-between gap-2 px-4 pt-4">
+          <div className="flex min-w-0 items-center gap-2">
+            {bannerLeadingOverlay}
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {selectionMode && onSelect && (
+              <Checkbox size="lg" checked={selected} onChange={onSelect} />
+            )}
+            {bannerOverlay}
           </div>
         </div>
       )}
-
-      {!gradient && selectionMode && onSelect && (
-        <div
-          className={`absolute top-3 right-3 z-10 transition-all duration-200 ${
-            selected ? "scale-110" : "sm:scale-90 sm:group-hover:scale-100"
-          }`}
-        >
-          <Checkbox
-            size="lg"
-            checked={selected}
-            onChange={() => onSelect()}
-            className="shadow-sm sm:opacity-0 sm:group-hover:opacity-100"
-          />
-        </div>
-      )}
-
-      <div
-        className={`flex flex-1 flex-col p-4 ${
-          gradient ? "-mt-3 pt-5" : "sm:p-5"
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          {icon && <div className="scb__icon-ring shrink-0">{icon}</div>}
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight">
-              {title}
-            </h3>
-            {statusPills}
-          </div>
-        </div>
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        {!cover && heading}
+        {cover && statusPills}
 
         {description && (
           <p

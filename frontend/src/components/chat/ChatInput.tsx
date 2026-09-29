@@ -39,10 +39,7 @@ const { buildRunModesOptions, collectActiveRunModes } = runModeOptions;
 import { FILE_CATEGORY_PERMISSIONS } from "./chatInputConstants";
 import { getMentionPopupFixedPlacement } from "./chatInputViewport";
 import { useExpandedComposerHost } from "./chatInputExpandedHost";
-import {
-  getMatchingSlashDropdownItems,
-  type ChatInputSlashCommand,
-} from "./chatInputSlashCommands";
+import { getMatchingSlashDropdownItems, type ChatInputSlashCommand } from "./chatInputSlashCommands";
 import {
   consumePendingSelectionActionPrompt,
   SELECTION_ACTION_EVENT,
@@ -136,6 +133,7 @@ export const ChatInput = memo(function ChatInput({
   onAttachmentsChange: externalOnAttachmentsChange,
   onMentionQueryChange,
   pendingInput,
+  focusRequest,
   onPendingInputConsumed,
   className,
   activeGoal,
@@ -684,7 +682,7 @@ export const ChatInput = memo(function ChatInput({
   );
   return (
     <div
-      className="chat-input-shell px-2 sm:px-8 pb-3 sm:pb-5"
+      className="chat-input-shell px-2 sm:px-8 pb-3 sm:pb-2"
       style={{ backgroundColor: "var(--theme-bg)" }}
     >
       {composerExpanded
@@ -828,6 +826,7 @@ export const ChatInput = memo(function ChatInput({
                     >
                       <RichChatComposer
                         ref={composerRef}
+                        focusRequest={focusRequest}
                         ariaLabel={t("chat.messageInput", "Message")}
                         initialPlainText={input}
                         placeholder={composerPlaceholder}

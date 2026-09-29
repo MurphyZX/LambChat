@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Plus,
-  Package,
-  FolderOpen,
-  Check,
-  Github,
-  Archive,
-  X,
-} from "lucide-react";
+import { Plus, Package, Check, Github, Archive, X } from "lucide-react";
 import { PanelHeader } from "../../common/PanelHeader";
 import { SkillsListSkeleton, SkillsPanelSkeleton } from "../../skeletons";
 import { Pagination } from "../../common/Pagination";
@@ -210,7 +202,7 @@ export function SkillsList({
       <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 lg:px-8 lg:py-8">
         {filteredSkills.length === 0 ? (
           <EmptyState
-            icon={<FolderOpen size={28} />}
+            illustration="reading"
             title={
               hasActiveFilters
                 ? t("skills.noMatchingSkills")
@@ -261,16 +253,14 @@ export function SkillsList({
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
-        <div className="glass-divider px-3 py-3 sm:px-4">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
     </div>
   );
 }

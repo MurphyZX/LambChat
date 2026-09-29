@@ -270,12 +270,12 @@ async def test_browse_reaper_loops_while_leased(
     mod.schedule_browse_reaper("user-1")
     for _ in range(3):
         await asyncio.sleep(0.03)
-        lease_redis.kv[f"sandbox:browse:user-1"] = "1"  # 持续续租
+        lease_redis.kv["sandbox:browse:user-1"] = "1"  # 持续续租
     await asyncio.sleep(0.03)
     assert e2b_env.stopped == []  # 仍在浏览，从未暂停
     assert "user-1" in mod._reaping_users  # 回收器仍挂着
 
-    lease_redis.kv.pop(f"sandbox:browse:user-1", None)  # 停止浏览
+    lease_redis.kv.pop("sandbox:browse:user-1", None)  # 停止浏览
     await asyncio.sleep(0.12)
     assert e2b_env.stopped == ["user-1"]
 

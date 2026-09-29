@@ -1,5 +1,7 @@
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import type { Project } from "../../types";
+import { ProjectWorkspaceField } from "../sidebar/ProjectWorkspaceField";
 
 interface NewProjectModalProps {
   icon: string;
@@ -8,6 +10,8 @@ interface NewProjectModalProps {
   onNameChange: (name: string) => void;
   onCreate: () => void;
   onClose: () => void;
+  workspace?: Project["workspace"];
+  onWorkspaceChange?: (workspace: Project["workspace"]) => void;
 }
 
 export function NewProjectModal({
@@ -17,6 +21,8 @@ export function NewProjectModal({
   onNameChange,
   onCreate,
   onClose,
+  workspace,
+  onWorkspaceChange,
 }: NewProjectModalProps) {
   const { t } = useTranslation();
 
@@ -64,6 +70,7 @@ export function NewProjectModal({
             className="flex-1 text-14 bg-transparent text-stone-700 dark:text-stone-200 placeholder-stone-400 focus:outline-none"
           />
         </div>
+        {onWorkspaceChange && <ProjectWorkspaceField value={workspace} onChange={onWorkspaceChange} />}
         <div className="flex justify-end gap-2 pt-1">
           <button
             onClick={() => {

@@ -1,3 +1,4 @@
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Settings,
@@ -33,7 +34,6 @@ import type {
   SettingType,
   Role,
 } from "../../types";
-
 import {
   MODEL_CONFIG_SETTING_KEYS,
   TYPE_COLORS,
@@ -706,7 +706,7 @@ export function SettingsPanel() {
               <PanelLoadingState text={t("settings.loading")} />
             ) : filteredSettings.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-stone-400 dark:text-stone-500">
-                <Search size={40} className="mb-2 opacity-30" />
+                <SceneIllustration scene="reading" className="mb-4" />
                 <p className="text-14">
                   {isSearching
                     ? t("settings.noMatch")

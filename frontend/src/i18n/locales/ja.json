@@ -1180,6 +1180,8 @@
     "on": "オン",
     "operationFailed": "操作に失敗しました",
     "page": "{{page}}ページ",
+    "filtersAndActions": "フィルターと操作",
+    "pagination": "ページ切り替え",
     "permissionRequired": "権限が必要です",
     "poweredBy": "Clivia 搭載",
     "prev": "前へ",
@@ -3130,6 +3132,7 @@
     "send": "メッセージを送信"
   },
   "sidebar": {
+    "noProjects": "プロジェクトはありません",
     "addToFavorites": "お気に入りに追加",
     "batchDeleteConfirm": "選択した{{count}}件のセッションを削除しますか？この操作は取り消せません。",
     "batchDeletePartialFailed": "{{count}}件のセッションの削除に失敗しました",
@@ -3168,6 +3171,8 @@
     "navigate": "移動",
     "navigation": "ナビゲーション",
     "newChat": "新しいチャット",
+    "newChatInProject": "「{{project}}」で新しいチャット",
+    "startFirstChat": "最初のチャットを始める",
     "newChatShortcut": "Ctrl+Shift+O",
     "newProject": "新しいプロジェクト",
     "noMatchingSessions": "一致するセッションが見つかりません",
@@ -3893,5 +3898,13 @@
     "viewChats": "チャット",
     "viewCloud": "クラウドPC",
     "viewLocal": "このPC"
+  },
+  "projectWorkspace": {
+    "details": "ワークスペースの詳細",
+    "choose": "ローカルフォルダーを指定",
+    "clear": "フォルダーの指定を解除",
+    "inherits": "このプロジェクトの新しいチャットは、このコンピューターとフォルダーを使用します。既存のチャットは変更されません。",
+    "optional": "任意。新しいチャットでこのフォルダーを共有し、ファイルはこのコンピューターに保存されます。",
+    "privacy": "選択した端末でファイルを操作します。読んだ内容は会話モデルに送信される場合があります。"
   }
 }

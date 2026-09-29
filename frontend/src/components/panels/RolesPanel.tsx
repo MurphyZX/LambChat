@@ -2,6 +2,7 @@
  * 角色管理页面组件
  */
 
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Shield,
@@ -670,10 +671,7 @@ export function RolesPanel() {
       <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
         {filteredRoles.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <Shield
-              size={48}
-              className="mb-4 text-theme-text-secondary opacity-40"
-            />
+            <SceneIllustration scene="welcome" className="mb-4" />
             <p className="text-theme-text-secondary">
               {searchQuery ? t("roles.noMatchingRoles") : t("roles.noRoles")}
             </p>
@@ -771,16 +769,14 @@ export function RolesPanel() {
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
-        <div className="glass-divider px-3 py-3 sm:px-4">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
 
       {/* 模态框 */}
       {showFormModal && (

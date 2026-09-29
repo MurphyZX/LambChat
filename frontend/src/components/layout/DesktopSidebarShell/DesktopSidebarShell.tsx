@@ -1,8 +1,8 @@
 /**
- * 桌面侧栏壳（仅 Tauri 桌面壳渲染；web/移动端原样透传 children）。
- * 结构对齐 ZCode 桌面端：单栏侧边栏（无图标导航栏）——
+ * 宽屏侧栏壳（客户端和网页共用；窄屏保留移动抽屉）。
+ * 结构对齐 ZCode 桌面端：图标导航栏 + 可拉伸列表栏——
  *
- *   [会话|电脑 tabs]              ← 壳唯一的自有 chrome（视图切换）
+ *   [会话|电脑|文件|更多 rail]              ← 壳唯一的自有 chrome（视图切换）
  *   原版 SessionSidebar 内容      ← 操作行/列表/底部用户区全部复用原版
  *   ───────── 或 电脑面板（工作区文件树）
  *
@@ -21,14 +21,22 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { MessagesSquare, Monitor } from "lucide-react";
+import { Bell, Search, PanelLeft } from "lucide-react";
 import clsx from "clsx";
+import { BrandLogo } from "../../common/BrandLogo";
+import { BrandWordmark } from "../../common/BrandWordmark";
+import { APP_NAME } from "../../../constants";
+import { SidebarWorkspaceContext } from "./SidebarWorkspaceContext";
+import { DesktopActivityRail } from "./DesktopActivityRail";
 import { WorkspacePanel } from "../../workspacePanel/WorkspacePanel";
 import {
   DESKTOP_SIDEBAR_TOGGLE_EVENT,
-  shouldUseDesktopShellGate,
+  DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT,
+  OPEN_NOTIFICATIONS_EVENT,
+  NOTIFICATION_COUNT_EVENT,
+  isDesktopShell,
   type DesktopSidebarView,
 } from "./desktopShellPlatform";
 
@@ -75,6 +83,9 @@ interface DesktopSidebarShellProps {
   machineId?: string | null;
   /** 会话 sandbox_workspace 的原样 JSON（reveal 用）。 */
   workspaceSelection?: string | null;
+  onShowProfile?: () => void;
+  mobileOpen?: boolean;
+  onToggleMobile?: (open: boolean) => void;
   children: ReactNode;
 }
 
@@ -88,6 +99,7 @@ function useDesktopShellShortcuts(
   navigate: (to: string) => void,
 ) {
   useEffect(() => {
+    if (!isDesktopShell()) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().includes("MAC");
       const modifier = isMac ? e.metaKey : e.ctrlKey;
@@ -106,16 +118,29 @@ function useDesktopShellShortcuts(
 }
 
 export function DesktopSidebarShell({
-  collapsed,
-  onToggleCollapsed,
+  collapsed: chatCollapsed,
+  onToggleCollapsed: onToggleChatCollapsed,
   sessionId,
   sandboxMode,
   machineId,
   workspaceSelection,
   children,
+  onShowProfile,
+  mobileOpen = false,
+  onToggleMobile,
 }: DesktopSidebarShellProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isChatPage = pathname === "/" || pathname === "/chat" || pathname.startsWith("/chat/");
+  const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
+  const collapsed = isChatPage ? chatCollapsed : expandedPanel !== pathname;
+  const onToggleCollapsed = useCallback((next: boolean) => {
+    if (isChatPage) onToggleChatCollapsed(next);
+    else setExpandedPanel(next ? null : pathname);
+  }, [isChatPage, onToggleChatCollapsed, pathname]);
+  const [wide, setWide] = useState(() => window.innerWidth >= 640);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [view, setView] = useState<DesktopSidebarView>(readStoredView);
   const [width, setWidth] = useState(readStoredWidth);
   const [resizing, setResizing] = useState(false);
@@ -123,16 +148,49 @@ export function DesktopSidebarShell({
   // pointerup 闭包可能拿到过期渲染的 width（同批连发事件），以 ref 为准持久化
   const widthRef = useRef(width);
 
-  useDesktopShellShortcuts(collapsed, onToggleCollapsed, navigate);
+  useEffect(() => {
+    const update = (event: Event) => setNotificationCount((event as CustomEvent<number>).detail);
+    window.addEventListener(NOTIFICATION_COUNT_EVENT, update);
+    return () => window.removeEventListener(NOTIFICATION_COUNT_EVENT, update);
+  }, []);
+
+  useEffect(() => {
+    const resize = () => {
+      setWide(window.innerWidth >= 640);
+      const next = readStoredWidth();
+      widthRef.current = next;
+      setWidth(next);
+    };
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const { cursor, userSelect } = document.body.style;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = cursor;
+      document.body.style.userSelect = userSelect;
+    };
+  }, [resizing]);
+
+  const setNavigationCollapsed = useCallback((next: boolean) => {
+    if (wide) onToggleCollapsed(next);
+    else onToggleMobile?.(!next);
+  }, [wide, onToggleCollapsed, onToggleMobile]);
+  const navigationCollapsed = wide ? collapsed : !mobileOpen;
+  useDesktopShellShortcuts(navigationCollapsed, setNavigationCollapsed, navigate);
 
   // 标题栏折叠按钮的事件桥（TitleBar 不持有折叠状态）
   useEffect(() => {
-    const handleToggle = () => onToggleCollapsed(!collapsed);
+    const handleToggle = () => setNavigationCollapsed(!navigationCollapsed);
     window.addEventListener(DESKTOP_SIDEBAR_TOGGLE_EVENT, handleToggle);
     return () => {
       window.removeEventListener(DESKTOP_SIDEBAR_TOGGLE_EVENT, handleToggle);
     };
-  }, [collapsed, onToggleCollapsed]);
+  }, [navigationCollapsed, setNavigationCollapsed]);
 
   const switchView = useCallback(
     (next: DesktopSidebarView) => {
@@ -143,13 +201,13 @@ export function DesktopSidebarShell({
         /* 私密模式等场景静默 */
       }
       // 从折叠态点视图 = 同时展开侧栏
-      onToggleCollapsed(false);
+      onToggleChatCollapsed(false);
     },
-    [onToggleCollapsed],
+    [onToggleChatCollapsed],
   );
 
   const handleResizeDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (collapsed) return;
+    if (collapsed || e.button !== 0) return;
     e.preventDefault();
     dragRef.current = { startX: e.clientX, startW: width };
     setResizing(true);
@@ -180,109 +238,121 @@ export function DesktopSidebarShell({
     }
   };
 
-  const tabButtonClass = (active: boolean) =>
-    clsx(
-      "flex h-7 items-center gap-1.5 rounded-[10px] px-[9px] text-13 font-medium transition-colors",
-      active
-        ? "bg-[var(--theme-bg-card)] text-[var(--color-text-primary)] shadow-[var(--shadow-card)]"
-        : "text-[var(--color-text-secondary)] hover:bg-[var(--theme-bg-subtle)] hover:text-[var(--color-text-primary)]",
-    );
+  const workspace = (
+    <WorkspacePanel sessionId={sessionId ?? null} sandboxMode={sandboxMode}
+      machineId={machineId} workspaceSelection={workspaceSelection} />
+  );
 
   return (
-    <div className="hidden sm:flex h-full shrink-0">
+    <SidebarWorkspaceContext.Provider value={{ view, switchView, workspace }}>
+    <div className={wide ? "relative flex h-full shrink-0" : "contents"}>
+      {wide && <DesktopActivityRail view={view} collapsed={collapsed} onSwitchView={switchView} onShowProfile={onShowProfile} />}
       <div
-        data-desktop-sidebar=""
-        className={clsx(
+        data-desktop-sidebar={wide ? "" : undefined}
+        inert={wide && collapsed}
+        className={wide ? clsx(
           "relative h-full shrink-0 overflow-hidden bg-[var(--theme-bg-sidebar)]",
           !collapsed && "border-r border-[var(--theme-border)]",
           resizing ? "transition-none" : "transition-[width] duration-200 ease-out",
-        )}
-        style={{ width: collapsed ? 0 : width }}
+        ) : "contents"}
+        style={wide ? { width: collapsed ? 0 : width } : undefined}
       >
-        <div className="absolute inset-0 flex flex-col">
-          {/* 顶部标签行：会话|电脑（操作行/用户区沿用原版 SessionSidebar 内容；
-              px-[9px] 与下方操作行按钮左缘/图标对齐同一节奏） */}
-          <div className="flex h-9 shrink-0 items-center gap-0.5 px-2">
-            <button
-              type="button"
-              onClick={() => switchView("chat")}
-              aria-pressed={view === "chat"}
-              className={tabButtonClass(view === "chat")}
-            >
-              <MessagesSquare size={15} className="shrink-0" />
-              <span>{t("workspacePanel.viewChats", { defaultValue: "会话" })}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView("files")}
-              aria-pressed={view === "files"}
-              className={tabButtonClass(view === "files")}
-            >
-              <Monitor size={15} className="shrink-0" />
-              <span>{t("workspacePanel.title", { defaultValue: "电脑" })}</span>
-            </button>
+        <div className={wide ? "absolute inset-0 flex flex-col" : "contents"}>
+          {wide && <>
+          <div data-sidebar-brand="" className="flex h-12 shrink-0 items-center gap-2 ps-[13px] pe-[7px]">
+            <Link to="/chat" aria-label={APP_NAME} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline focus-visible:outline-2">
+              <BrandLogo alt={APP_NAME} className="-mx-1 size-7 shrink-0" />
+              <BrandWordmark decorative className="h-7 w-auto min-w-0" />
+            </Link>
+            <div className="ml-auto flex shrink-0 items-center">
+              <button type="button" title={t("nav.notifications")} aria-label={t("nav.notifications")}
+                onClick={() => window.dispatchEvent(new Event(OPEN_NOTIFICATIONS_EVENT))}
+                className="relative flex size-8 items-center justify-center rounded-lg text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2">
+                <Bell size={16} />
+                {notificationCount > 0 && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[var(--theme-primary)]" aria-label={String(notificationCount)} />}
+              </button>
+              <button type="button" title={t("sidebar.searchSessions")} aria-label={t("sidebar.searchSessions")}
+                onClick={() => window.dispatchEvent(new Event(DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT))}
+                className="flex size-8 items-center justify-center rounded-lg text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2">
+                <Search size={16} />
+              </button>
+            </div>
+            {!isDesktopShell() && (
+              <button type="button" onClick={() => onToggleCollapsed(true)}
+                aria-label={t("sidebar.collapseSidebar")}
+                className="ml-auto flex size-8 items-center justify-center rounded-md text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2">
+                <PanelLeft size={16} />
+              </button>
+            )}
           </div>
-
+          </>}
           {/* 内容区（chat/files 常驻挂载保状态，仅切显隐） */}
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className={wide ? "flex min-h-0 flex-1 flex-col" : "contents"}>
             <div
-              className={clsx(
+              className={!wide ? "contents" : clsx(
                 "min-h-0 flex-1",
                 view === "chat" && !collapsed ? "flex" : "hidden",
               )}
             >
-              <div className="min-h-0 w-full flex-1">{children}</div>
+              <div className={wide ? "min-h-0 w-full flex-1" : "contents"}>{children}</div>
             </div>
             <div
               className={clsx(
                 "min-h-0 flex-1",
-                view === "files" && !collapsed ? "flex" : "hidden",
+                wide && view === "files" && !collapsed ? "flex" : "hidden",
               )}
             >
               <div className="min-h-0 w-full flex-1">
-                <WorkspacePanel
-                  sessionId={sessionId ?? null}
-                  sandboxMode={sandboxMode}
-                  machineId={machineId}
-                  workspaceSelection={workspaceSelection}
-                />
+                {wide && workspace}
               </div>
             </div>
           </div>
         </div>
-
-        {/* 宽度拖拽手柄（右缘；折叠时不交互） */}
-        {!collapsed && (
-          <div
-            onPointerDown={handleResizeDown}
-            onPointerMove={handleResizeMove}
-            onPointerUp={handleResizeUp}
-            onPointerCancel={handleResizeUp}
-            className="group absolute inset-y-0 right-0 z-10 flex w-[7px] cursor-col-resize items-stretch"
-            aria-hidden="true"
-          >
-            <div
-              className={clsx(
-                "mx-auto h-full w-px transition-colors",
-                resizing
-                  ? "bg-[var(--theme-primary)]"
-                  : "bg-transparent group-hover:bg-[var(--theme-border-hover)]",
-              )}
-            />
-          </div>
-        )}
       </div>
+      {/* Keep the hit area centered on the divider, outside the clipped content. */}
+      {wide && !collapsed && (
+        <div
+          onPointerDown={handleResizeDown}
+          onPointerMove={handleResizeMove}
+          onPointerUp={handleResizeUp}
+          onPointerCancel={handleResizeUp}
+          onLostPointerCapture={handleResizeUp}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const next = clampWidth(widthRef.current + (e.key === "ArrowLeft" ? -10 : 10));
+            widthRef.current = next;
+            setWidth(next);
+            try { localStorage.setItem(WIDTH_STORAGE_KEY, String(next)); } catch { /* storage unavailable */ }
+          }}
+          role="separator"
+          tabIndex={0}
+          aria-label={t("common.resizePanel")}
+          aria-orientation="vertical"
+          aria-valuemin={MIN_WIDTH}
+          aria-valuemax={clampWidth(MAX_WIDTH_CAP)}
+          aria-valuenow={width}
+          className="group/sidebar-resize absolute inset-y-0 -right-[3px] z-10 flex w-[7px] touch-none cursor-col-resize items-stretch focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-ring)]"
+        >
+          <div
+            className={clsx(
+              "mx-auto h-full w-px transition-colors",
+              resizing
+                ? "bg-[var(--theme-primary)]"
+                : "bg-transparent group-hover/sidebar-resize:bg-[var(--theme-border-hover)]",
+            )}
+          />
+        </div>
+      )}
     </div>
+    </SidebarWorkspaceContext.Provider>
   );
 }
 
 /**
- * web/移动端透传：非桌面壳时不引入双栏 DOM（零回归边界），
+ * 窄屏透传，保留 SessionSidebar 的移动抽屉；宽屏网页共用电脑入口。
  * children 即原 sidebar。
  */
 export function DesktopSidebarShellGate(props: DesktopSidebarShellProps) {
-  if (!shouldUseDesktopShellGate()) {
-    return <>{props.children}</>;
-  }
   return <DesktopSidebarShell {...props} />;
 }

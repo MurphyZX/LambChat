@@ -1,4 +1,5 @@
-import { Activity, Bot, FileText, Clock } from "lucide-react";
+import { SceneIllustration } from "../../common/SceneIllustration";
+import { Bot, FileText, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatDateTimeShort } from "../../../utils/datetime";
 import type { UsageLog } from "../../../types/usage";
@@ -504,13 +505,11 @@ export function UsageLogsTable({
   if (logs.length === 0) {
     return (
       <div className="usage-empty-state flex flex-col items-center justify-center py-16 text-center sm:py-20">
-        <div className="mb-4 rounded-2xl bg-[var(--glass-bg-subtle)] p-5 ring-1 ring-inset ring-[var(--theme-border-faint)]">
-          <Activity size={28} className="text-theme-text-tertiary/25" />
-        </div>
-        <p className="text-14 font-medium text-theme-text-secondary/60">
+        <SceneIllustration scene="reading" className="mb-4" />
+        <p className="text-14 font-medium text-theme-text-secondary">
           {t("usage.noUsage")}
         </p>
-        <p className="mt-1.5 text-12 text-theme-text-tertiary/50">
+        <p className="mt-1.5 text-12 text-theme-text-secondary">
           {t("usage.noUsageHint")}
         </p>
       </div>

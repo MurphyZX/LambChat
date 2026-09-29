@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
+import { SceneIllustration, type IllustrationScene } from "./SceneIllustration";
 
 export interface EmptyStateProps {
-  /** Lucide icon element or any ReactNode */
-  icon: ReactNode;
+  /** Avatar-derived artwork matching the panel's purpose. */
+  illustration?: IllustrationScene;
   /** Primary text (already translated) */
   title: ReactNode;
   /** Secondary/hint text (already translated) */
@@ -22,7 +23,7 @@ export interface EmptyStateProps {
  * PersonaPlazaPanel, etc.
  */
 export function EmptyState({
-  icon,
+  illustration,
   title,
   description,
   action,
@@ -30,7 +31,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={`skill-empty-state ${className ?? ""}`}>
-      <div className="skill-empty-state__icon">{icon}</div>
+      <SceneIllustration scene={illustration} />
       <p className="skill-empty-state__title">{title}</p>
       {description && (
         <p className="skill-empty-state__description">{description}</p>

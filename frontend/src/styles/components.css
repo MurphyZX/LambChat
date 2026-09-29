@@ -361,7 +361,8 @@
   min-height: 2.5rem;
   border-radius: 0.625rem;
   padding-inline: 0.875rem;
-  box-shadow: 0 8px 20px -14px color-mix(in srgb, var(--theme-primary) 70%, black);
+  box-shadow: 0 8px 20px -14px
+    color-mix(in srgb, var(--theme-primary) 70%, black);
 }
 
 .panel-header-primary-action > svg {
@@ -1143,128 +1144,86 @@
   color: #d6d3d1;
 }
 
-/* Pagination */
+/* Shared panel pagination. Container queries also cover narrow desktop panels. */
 .pagination-wrapper {
+  container-type: inline-size;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   width: 100%;
+  min-width: 0;
 }
-
+.pagination-summary {
+  color: var(--theme-text-secondary);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.pagination-position {
+  display: none;
+}
 .pagination-controls {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   flex-shrink: 0;
 }
-
-.pagination-btn {
-  display: flex;
+.pagination-btn,
+.pagination-page,
+.pagination-ellipsis {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.375rem;
-  color: #78716c;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
-  flex-shrink: 0;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: #f5f5f4;
-  color: #44403c;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.dark .pagination-btn {
-  color: #d6d3d1;
-}
-
-.dark .pagination-btn:hover:not(:disabled) {
-  background: #44403c;
-  color: #e7e5e4;
-}
-
-.pagination-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
   border-radius: 0.375rem;
   font-size: 0.8125rem;
-  color: #78716c;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-text-secondary);
   flex-shrink: 0;
 }
-
+.pagination-btn:hover:not(:disabled),
 .pagination-page:hover:not(.pagination-page-active) {
-  background: #f5f5f4;
-  color: #44403c;
+  background: var(--theme-bg-subtle);
+  color: var(--theme-text);
 }
-
-.dark .pagination-page {
-  color: #d6d3d1;
+.pagination-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
-
-.dark .pagination-page:hover:not(.pagination-page-active) {
-  background: #44403c;
-  color: #e7e5e4;
-}
-
 .pagination-page-active {
-  background: #1c1917 !important;
-  color: white !important;
+  background: var(--theme-text);
+  color: var(--theme-bg);
 }
-
-.dark .pagination-page-active {
-  background: #f5f5f4 !important;
-  color: #1c1917 !important;
+.pagination-btn:focus-visible,
+.pagination-page:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 2px;
 }
-
-.pagination-ellipsis {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  color: #a8a29e;
-  flex-shrink: 0;
-}
-
-.dark .pagination-ellipsis {
-  color: #d6d3d1;
-}
-
-/* Pagination mobile overrides */
-@media (max-width: 640px) {
-  .pagination-btn {
-    width: 1.75rem;
-    height: 1.75rem;
-  }
-
-  .pagination-page {
-    width: 1.75rem;
-    height: 1.75rem;
-    font-size: 0.75rem;
-  }
-
+@container (max-width: 30rem) {
+  .pagination-range,
+  .pagination-page,
   .pagination-ellipsis {
-    width: 1.5rem;
-    height: 1.75rem;
+    display: none;
   }
-
-  .pagination-controls {
-    gap: 0.125rem;
+  .pagination-position {
+    display: inline;
+  }
+  .pagination-btn {
+    min-width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+.panel-pagination {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-bg);
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  .panel-pagination {
+    padding-inline: 1.5rem;
   }
 }
 
@@ -1394,7 +1353,8 @@
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       color-mix(in srgb, var(--theme-bg-card) 96%, var(--theme-bg-subtle)) 0%,
       var(--theme-bg-card) 10rem
@@ -1408,9 +1368,9 @@
 
 /* --- Shared right sidebar chrome --- */
 :where(
-    .editor-sidebar--sidebar,
-    .tool-console-panel[data-tool-panel-mode="sidebar"]
-  ) {
+  .editor-sidebar--sidebar,
+  .tool-console-panel[data-tool-panel-mode="sidebar"]
+) {
   --right-sidebar-ring: color-mix(
     in srgb,
     var(--theme-text) 10%,
@@ -2447,6 +2407,28 @@
   }
 }
 
+/* Avatar-derived spot art stays legible without a white tile in either theme. */
+.scene-illustration {
+  width: 7rem;
+  height: 7rem;
+  max-width: 100%;
+  flex-shrink: 0;
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(0 1px 1px var(--theme-border));
+}
+
+.dark .scene-illustration {
+  filter: brightness(0.92) drop-shadow(0 0 1px var(--theme-text-secondary));
+}
+
+@media (max-width: 639px) {
+  .scene-illustration {
+    width: 6rem;
+    height: 6rem;
+  }
+}
+
 /* Scheduled task panel polish */
 .scheduled-task-empty-state {
   display: flex;
@@ -2457,27 +2439,6 @@
   justify-content: center;
   padding: 2rem;
   text-align: center;
-}
-
-.scheduled-task-empty-state__icon {
-  margin-bottom: 1rem;
-  display: flex;
-  width: 4rem;
-  height: 4rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background: radial-gradient(
-      circle at 35% 25%,
-      color-mix(in srgb, white 62%, transparent),
-      transparent 44%
-    ),
-    color-mix(in srgb, var(--theme-primary) 8%, var(--theme-bg-card));
-  color: var(--theme-primary);
-  box-shadow:
-    inset 0 0 0 1px
-      color-mix(in srgb, var(--theme-primary) 14%, var(--theme-border)),
-    0 18px 34px -28px color-mix(in srgb, var(--theme-primary) 46%, transparent);
 }
 
 .scheduled-task-empty-state__title {
@@ -3052,7 +3013,8 @@
   font-weight: 600;
   padding: 0 0.375rem;
   line-height: 1;
-  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--theme-primary) 60%, transparent);
+  box-shadow: 0 2px 8px -2px
+    color-mix(in srgb, var(--theme-primary) 60%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3227,7 +3189,8 @@
 
 .tool-console-panel[data-tool-panel-mode="sidebar"],
 .tool-console-panel[data-tool-panel-mode="mobile"] {
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       color-mix(in srgb, var(--theme-bg-card) 96%, var(--theme-bg-subtle)) 0%,
       var(--theme-bg-card) 10rem
@@ -3237,7 +3200,8 @@
 
 .tool-console-panel[data-tool-panel-mode="center"] {
   border: 1px solid color-mix(in srgb, var(--theme-border) 72%, transparent);
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       color-mix(in srgb, var(--theme-bg-card) 94%, var(--theme-bg-subtle)) 0%,
       var(--theme-bg-card) 11rem
@@ -3256,7 +3220,8 @@
 
 .tool-console-chrome {
   position: relative;
-  background: radial-gradient(
+  background:
+    radial-gradient(
       ellipse at 1.75rem 0,
       var(--tool-console-surface-glow),
       transparent 10rem
@@ -3354,7 +3319,8 @@
 }
 
 .tool-console-body {
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       color-mix(in srgb, var(--theme-bg) 62%, transparent),
       transparent 7rem
@@ -3634,7 +3600,8 @@
     var(--theme-primary) 16%,
     var(--theme-border)
   );
-  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--theme-text) 4%, transparent);
+  box-shadow: 0 2px 8px -2px
+    color-mix(in srgb, var(--theme-text) 4%, transparent);
 }
 
 /* Diff containers — edit file removed/added */
@@ -3718,13 +3685,11 @@
   );
   background-size: 11px 11px;
   background-repeat: space;
-  mask-image: radial-gradient(ellipse at center, #000 0%, transparent 60%),
+  mask-image:
+    radial-gradient(ellipse at center, #000 0%, transparent 60%),
     radial-gradient(ellipse at center, #000 0%, transparent 62%);
-  -webkit-mask-image: radial-gradient(
-      ellipse at center,
-      #000 0%,
-      transparent 60%
-    ),
+  -webkit-mask-image:
+    radial-gradient(ellipse at center, #000 0%, transparent 60%),
     radial-gradient(ellipse at center, #000 0%, transparent 62%);
   mask-repeat: no-repeat, no-repeat;
   -webkit-mask-repeat: no-repeat, no-repeat;

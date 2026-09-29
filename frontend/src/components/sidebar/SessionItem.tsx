@@ -264,6 +264,7 @@ function SessionItemComponent({
     <>
       <div
         draggable={!selectionMode}
+        aria-current={isActive ? "page" : undefined}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onTouchStart={handleItemTouchStart}
@@ -291,7 +292,7 @@ function SessionItemComponent({
         style={
           isDragging ? { touchAction: "none" } : { touchAction: "manipulation" }
         }
-        className={`group relative flex cursor-pointer items-center gap-3 h-10 rounded-[10px] px-[9px] transition-colors ${
+        className={`sidebar-session-row group relative flex cursor-pointer items-center gap-3 h-10 rounded-[10px] px-[9px] transition-colors ${
           isSelected
             ? "hover:bg-stone-100 dark:hover:bg-stone-800/40"
             : isActive

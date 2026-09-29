@@ -1,6 +1,7 @@
+import { Pagination } from "../../../common/Pagination";
+import { useClientPagination } from "../../../../hooks/useClientPagination";
 import React, { useState, useRef, useCallback } from "react";
 import {
-  Cpu,
   Plus,
   Trash2,
   Edit2,
@@ -387,6 +388,9 @@ const ModelCard = React.memo(function ModelCard({
 
 export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
   const { t } = useTranslation();
+  const { page, pageSize, setPage, slice } = useClientPagination({
+    total: models.length,
+  });
 
   // Modal state — only these booleans, all form state lives inside the modal components
   const [editingModel, setEditingModel] = useState<ModelConfig | null>(null);
@@ -676,7 +680,7 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
         {models.length === 0 ? (
           <EmptyState
             className="flex-1 animate-glass-enter"
-            icon={<Cpu size={28} />}
+            illustration="reading"
             title={t("agentConfig.noModelsConfigured")}
             description={t("agentConfig.noModelsConfiguredHint")}
             action={
@@ -691,32 +695,44 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
           />
         ) : (
           <div className="space-y-3">
-            {models.map((model, index) => (
-              <ModelCard
-                key={model.id}
-                model={model}
-                index={index}
-                isDragging={dragIndex === index}
-                isDragOver={
-                  overIndex === index &&
-                  dragIndex !== null &&
-                  dragIndex !== index
-                }
-                isDeleting={isDeleting === model.id}
-                isExpanded={expandedModelId === model.id}
-                onToggleExpand={handleToggleExpand}
-                onToggle={handleToggle}
-                onEdit={setEditingModel}
-                onDelete={handleDelete}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDragEnd={handleDragEnd}
-                t={t}
-              />
-            ))}
+            {slice(models).map((model, localIndex) => {
+              const index = (page - 1) * pageSize + localIndex;
+              return (
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  index={index}
+                  isDragging={dragIndex === index}
+                  isDragOver={
+                    overIndex === index &&
+                    dragIndex !== null &&
+                    dragIndex !== index
+                  }
+                  isDeleting={isDeleting === model.id}
+                  isExpanded={expandedModelId === model.id}
+                  onToggleExpand={handleToggleExpand}
+                  onToggle={handleToggle}
+                  onEdit={setEditingModel}
+                  onDelete={handleDelete}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDragEnd={handleDragEnd}
+                  t={t}
+                />
+              );
+            })}
           </div>
         )}
+      </div>
+
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={models.length}
+          onChange={setPage}
+        />
       </div>
 
       {/* Create / Edit Modal — isolated component, form state lives here */}

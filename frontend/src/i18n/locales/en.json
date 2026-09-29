@@ -1180,6 +1180,8 @@
     "on": "On",
     "operationFailed": "Operation failed",
     "page": "Page {{page}}",
+    "filtersAndActions": "Filters and actions",
+    "pagination": "Pagination",
     "permissionRequired": "Permission required",
     "poweredBy": "Powered by Clivia",
     "prev": "Previous",
@@ -3130,6 +3132,7 @@
     "send": "Send Message"
   },
   "sidebar": {
+    "noProjects": "No projects",
     "addToFavorites": "Add to Favorites",
     "batchDeleteConfirm": "Delete the {{count}} selected sessions? This action cannot be undone.",
     "batchDeletePartialFailed": "{{count}} session(s) failed to delete",
@@ -3168,6 +3171,8 @@
     "navigate": "navigate",
     "navigation": "Navigation",
     "newChat": "New Chat",
+    "newChatInProject": "New chat in {{project}}",
+    "startFirstChat": "Start your first chat",
     "newChatShortcut": "Ctrl+Shift+O",
     "newProject": "New Project",
     "noMatchingSessions": "No matching sessions found",
@@ -3893,5 +3898,13 @@
     "viewChats": "Chats",
     "viewCloud": "Cloud PC",
     "viewLocal": "This PC"
+  },
+  "projectWorkspace": {
+    "details": "Workspace details",
+    "choose": "Bind local folder",
+    "clear": "Remove folder binding",
+    "inherits": "New chats in this project use this computer and folder. Existing chats keep their settings.",
+    "optional": "Optional. New chats share this folder; files stay on your computer.",
+    "privacy": "Files run on the selected computer; read content may be sent to the chat model."
   }
 }
