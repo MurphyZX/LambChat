@@ -15,7 +15,7 @@ const rolesModelTabSource = readFileSync(
 test("agent model panel uses a glass-shell layout with a section switcher", () => {
   expect(panelSource).toMatch(/glass-shell/);
   expect(panelSource).toMatch(/agent-model-section-switcher/);
-  expect(agentSectionSource).toMatch(/glass-card/);
+  expect(agentSectionSource).toMatch(/grid auto-grid-cols items-stretch gap-4/);
 });
 
 test("roles model tab uses a compact scan-friendly config list", () => {

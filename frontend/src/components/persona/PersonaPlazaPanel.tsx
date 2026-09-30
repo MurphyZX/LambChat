@@ -98,9 +98,10 @@ export function PersonaPlazaPanel() {
       <PanelHeader
         className="skill-panel-header"
         title={t("personaPresets.title", "角色广场")}
+        count={total}
         subtitle={t("personaPresets.subtitle", "选择一个角色开始对话")}
         icon={
-          <UserRound size={18} className="text-stone-600 dark:text-stone-400" />
+          <UserRound size={18} className="text-theme-text-secondary" />
         }
         searchValue={query}
         onSearchChange={setQuery}
@@ -117,11 +118,10 @@ export function PersonaPlazaPanel() {
                   setIsScopeOpen((prev) => !prev);
                   setIsFilterOpen(false);
                 }}
-                className={`btn-secondary h-10 px-2.5 ${
-                  scopeFilter !== "all"
+                className={`btn-secondary h-10 px-2.5 ${scopeFilter !== "all"
                     ? "border-[var(--theme-primary)] text-[var(--theme-text)]"
                     : ""
-                }`}
+                  }`}
               >
                 {(() => {
                   const current = scopeTabs.find((s) => s.key === scopeFilter)!;
@@ -135,9 +135,8 @@ export function PersonaPlazaPanel() {
                 })()}
                 <ChevronDown
                   size={14}
-                  className={`transition-transform ${
-                    isScopeOpen ? "rotate-180" : ""
-                  }`}
+                  className={`transition-transform ${isScopeOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
             </div>
@@ -152,11 +151,10 @@ export function PersonaPlazaPanel() {
                     setIsFilterOpen((prev) => !prev);
                     setIsScopeOpen(false);
                   }}
-                  className={`btn-secondary h-10 px-2.5 ${
-                    activeTag
+                  className={`btn-secondary h-10 px-2.5 ${activeTag
                       ? "border-[var(--theme-primary)] text-[var(--theme-text)]"
                       : ""
-                  }`}
+                    }`}
                 >
                   <Tag size={14} />
                   <span className="hidden sm:inline">
@@ -169,9 +167,8 @@ export function PersonaPlazaPanel() {
                   )}
                   <ChevronDown
                     size={14}
-                    className={`transition-transform ${
-                      isFilterOpen ? "rotate-180" : ""
-                    }`}
+                    className={`transition-transform ${isFilterOpen ? "rotate-180" : ""
+                      }`}
                   />
                 </button>
               </div>
@@ -232,62 +229,64 @@ export function PersonaPlazaPanel() {
         }
       />
 
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
-        {filtered.length === 0 ? (
-          <EmptyState
-            illustration="welcome"
-            title={
-              query || activeTag
-                ? t("personaPresets.noMatch", "没有匹配的角色")
-                : t("personaPresets.empty", "暂无角色预设")
-            }
-            description={
-              query || activeTag
-                ? t("personaPresets.tryOtherFilters", "试试其他搜索条件")
-                : t("personaPresets.emptyHint", "管理员可以创建官方角色预设")
-            }
-            action={
-              hasActiveFilters ? (
-                <button onClick={clearFilters} className="btn-secondary">
-                  {t("personaPresets.clearFilters", "清除筛选")}
-                </button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <div className="grid auto-grid-cols gap-4 sm:gap-5">
-            {paged.map((preset, index) => (
-              <div
-                key={preset.id}
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <PersonaPresetCard
-                  preset={preset}
-                  selected={selectedPresetId === preset.id}
-                  activeTag={activeTag}
-                  canWrite={canWrite}
-                  canAdmin={canAdmin}
-                  onUse={handleUse}
-                  onClear={handleClear}
-                  onCopy={handleCopy}
-                  onTogglePreference={handleTogglePreference}
-                  onEdit={(p) => openModal(p)}
-                  onDelete={(p) => setDeleteTarget(p)}
-                  onToggleTag={toggleTag}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <div className="panel-content-card panel-content-card--grid">
+        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <EmptyState
+              illustration="welcome"
+              title={
+                query || activeTag
+                  ? t("personaPresets.noMatch", "没有匹配的角色")
+                  : t("personaPresets.empty", "暂无角色预设")
+              }
+              description={
+                query || activeTag
+                  ? t("personaPresets.tryOtherFilters", "试试其他搜索条件")
+                  : t("personaPresets.emptyHint", "管理员可以创建官方角色预设")
+              }
+              action={
+                hasActiveFilters ? (
+                  <button onClick={clearFilters} className="btn-secondary">
+                    {t("personaPresets.clearFilters", "清除筛选")}
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="grid auto-grid-cols items-stretch gap-4">
+              {paged.map((preset, index) => (
+                <div
+                  key={preset.id}
+                  style={{ animationDelay: `${index * 60}ms` }}
+                >
+                  <PersonaPresetCard
+                    preset={preset}
+                    selected={selectedPresetId === preset.id}
+                    activeTag={activeTag}
+                    canWrite={canWrite}
+                    canAdmin={canAdmin}
+                    onUse={handleUse}
+                    onClear={handleClear}
+                    onCopy={handleCopy}
+                    onTogglePreference={handleTogglePreference}
+                    onEdit={(p) => openModal(p)}
+                    onDelete={(p) => setDeleteTarget(p)}
+                    onToggleTag={toggleTag}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onChange={setPage}
-        />
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
       </div>
 
       <PersonaEditorModal
@@ -307,10 +306,10 @@ export function PersonaPlazaPanel() {
         message={
           deleteTarget
             ? t(
-                "personaPresets.confirmDeleteMessage",
-                "确定要删除角色「{{name}}」吗？此操作不可撤销。",
-                { name: deleteTarget.name },
-              )
+              "personaPresets.confirmDeleteMessage",
+              "确定要删除角色「{{name}}」吗？此操作不可撤销。",
+              { name: deleteTarget.name },
+            )
             : ""
         }
         confirmText={t("common.delete", "删除")}

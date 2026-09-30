@@ -15,10 +15,10 @@ const ENABLED_FILTER_OPTIONS: Array<{
   value: EnabledFilter;
   labelKey: string;
 }> = [
-  { value: "all", labelKey: "skills.filterAll" },
-  { value: "enabled", labelKey: "skills.filterEnabled" },
-  { value: "disabled", labelKey: "skills.filterDisabled" },
-];
+    { value: "all", labelKey: "skills.filterAll" },
+    { value: "enabled", labelKey: "skills.filterEnabled" },
+    { value: "disabled", labelKey: "skills.filterDisabled" },
+  ];
 
 interface SkillsListProps {
   embedded?: boolean;
@@ -135,7 +135,7 @@ export function SkillsList({
           <Check size={16} />
           <span className="hidden sm:inline">
             {selectedNames.size === filteredSkills.length &&
-            filteredSkills.length > 0
+              filteredSkills.length > 0
               ? t("common.deselectAll")
               : t("common.selectAll")}
           </span>
@@ -162,20 +162,20 @@ export function SkillsList({
         <PanelHeader
           className="skill-panel-header"
           title={t("skills.title")}
-          searchOnly
+          count={total}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder={t("skills.searchPlaceholder")}
           searchAccessory={filterMenu}
-          searchActions={headerActions}
+          actions={headerActions}
         />
       )}
       {!embedded && (
         <PanelHeader
           title={t("skills.title")}
-          subtitle={t("skills.subtitle")}
+          count={total}
           icon={
-            <Package size={20} className="text-stone-600 dark:text-stone-400" />
+            <Package size={20} className="text-theme-text-secondary" />
           }
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
@@ -199,67 +199,69 @@ export function SkillsList({
       )}
 
       {/* Skills List */}
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 lg:px-8 lg:py-8">
-        {filteredSkills.length === 0 ? (
-          <EmptyState
-            illustration="reading"
-            title={
-              hasActiveFilters
-                ? t("skills.noMatchingSkills")
-                : t("skills.noSkills")
-            }
-            description={
-              hasActiveFilters ? t("skills.subtitle") : t("skills.createFirst")
-            }
-            action={
-              !hasActiveFilters && canWrite ? (
-                <Button variant="primary" onClick={onCreate}>
-                  <Plus size={16} />
-                  <span>{t("skills.newSkill")}</span>
-                </Button>
-              ) : hasActiveFilters ? (
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={clearFilters}
-                >
-                  {t("marketplace.clearFilters")}
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <div className="skill-grid grid auto-grid-cols gap-4">
-            {paginatedSkills.map((skill) => (
-              <SkillCard
-                key={skill.name}
-                skill={skill}
-                onToggle={onToggle}
-                onTogglePreference={onTogglePreference}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onExportZip={onExportZip}
-                onPublish={
-                  canPublish ? (s: SkillResponse) => onPublish?.(s) : undefined
-                }
-                isPublished={skill.is_published}
-                selected={selectedNames.has(skill.name)}
-                onSelect={onSelectSkill}
-                selectionMode={true}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <div className="panel-content-card panel-content-card--grid">
+        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+          {filteredSkills.length === 0 ? (
+            <EmptyState
+              illustration="reading"
+              title={
+                hasActiveFilters
+                  ? t("skills.noMatchingSkills")
+                  : t("skills.noSkills")
+              }
+              description={
+                hasActiveFilters ? t("skills.subtitle") : t("skills.createFirst")
+              }
+              action={
+                !hasActiveFilters && canWrite ? (
+                  <Button variant="primary" onClick={onCreate}>
+                    <Plus size={16} />
+                    <span>{t("skills.newSkill")}</span>
+                  </Button>
+                ) : hasActiveFilters ? (
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={clearFilters}
+                  >
+                    {t("marketplace.clearFilters")}
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="skill-grid grid auto-grid-cols gap-4">
+              {paginatedSkills.map((skill) => (
+                <SkillCard
+                  key={skill.name}
+                  skill={skill}
+                  onToggle={onToggle}
+                  onTogglePreference={onTogglePreference}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onExportZip={onExportZip}
+                  onPublish={
+                    canPublish ? (s: SkillResponse) => onPublish?.(s) : undefined
+                  }
+                  isPublished={skill.is_published}
+                  selected={selectedNames.has(skill.name)}
+                  onSelect={onSelectSkill}
+                  selectionMode={true}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Pagination */}
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onChange={setPage}
-        />
+        {/* Pagination */}
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
       </div>
     </div>
   );

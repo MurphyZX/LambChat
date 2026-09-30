@@ -1,3 +1,4 @@
+import { PanelHeader } from "../common/PanelHeader";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -59,7 +60,7 @@ export function RevealedFilesPanel() {
       .then((data) => {
         if (!cancelled) setProjects(data);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       cancelled = true;
     };
@@ -163,6 +164,7 @@ export function RevealedFilesPanel() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col @container">
+        <PanelHeader title={t("fileLibrary.title")} count={totalSessions} />
         {/* Toolbar */}
         <Toolbar
           search={search}
@@ -184,69 +186,71 @@ export function RevealedFilesPanel() {
           onProjectChange={setSelectedProject}
         />
 
-        {/* Content area */}
-        <div className="flex-1 overflow-y-auto min-h-0 relative z-[1] flex flex-col">
-          {error && (
-            <div
-              role="alert"
-              className="p-4 text-center text-theme-text-secondary"
-            >
-              <p>{error}</p>
-              <button
-                type="button"
-                className="btn-secondary mt-3"
-                onClick={refresh}
+        <div className="panel-content-card">
+          {/* Content area */}
+          <div className="flex-1 overflow-y-auto min-h-0 relative z-[1] flex flex-col">
+            {error && (
+              <div
+                role="alert"
+                className="p-4 text-center text-theme-text-secondary"
               >
-                {t("common.refresh")}
-              </button>
-            </div>
-          )}
-          {!error && (
-            <EmptyState
-              isLoading={isLoading}
-              hasFiles={sessionGroups.length > 0}
-              hasActiveFilters={
-                !!(
-                  search ||
-                  selectedProject ||
-                  favoritesOnly ||
-                  activeFilter !== "all"
-                )
-              }
-            />
-          )}
-
-          {sessionGroups.length > 0 && (
-            <div className="flex flex-col pb-6 px-4 @md:px-6 gap-3">
-              <div className="w-full flex flex-col gap-3 @md:gap-6">
-                {sessionGroups.map((group) => (
-                  <SessionGroup
-                    key={group.session_id}
-                    sessionName={
-                      group.session_name || t("fileLibrary.untitledSession")
-                    }
-                    sessionId={group.session_id}
-                    files={group.files}
-                    onPreview={handlePreview}
-                    onGoToSession={handleGoToSession}
-                    onToggleFavorite={(f) => toggleFavorite(f.id)}
-                    viewMode={viewMode}
-                  />
-                ))}
+                <p>{error}</p>
+                <button
+                  type="button"
+                  className="btn-secondary mt-3"
+                  onClick={refresh}
+                >
+                  {t("common.refresh")}
+                </button>
               </div>
-            </div>
-          )}
-        </div>
-        <div className="panel-pagination empty:hidden">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={totalSessions}
-            onChange={setPage}
-          />
-        </div>
-      </div>
+            )}
+            {!error && (
+              <EmptyState
+                isLoading={isLoading}
+                hasFiles={sessionGroups.length > 0}
+                hasActiveFilters={
+                  !!(
+                    search ||
+                    selectedProject ||
+                    favoritesOnly ||
+                    activeFilter !== "all"
+                  )
+                }
+              />
+            )}
 
+            {sessionGroups.length > 0 && (
+              <div className="flex flex-col pb-6 px-4 @md:px-6 gap-3">
+                <div className="w-full flex flex-col gap-4">
+                  {sessionGroups.map((group) => (
+                    <SessionGroup
+                      key={group.session_id}
+                      sessionName={
+                        group.session_name || t("fileLibrary.untitledSession")
+                      }
+                      sessionId={group.session_id}
+                      files={group.files}
+                      onPreview={handlePreview}
+                      onGoToSession={handleGoToSession}
+                      onToggleFavorite={(f) => toggleFavorite(f.id)}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="panel-pagination empty:hidden">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={totalSessions}
+              onChange={setPage}
+            />
+          </div>
+        </div>
+
+      </div>
       {/* Document preview modal */}
       <DelayedUnmount show={!!previewFile}>
         {previewFile && (

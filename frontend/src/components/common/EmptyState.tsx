@@ -1,9 +1,11 @@
+import { MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 import { SceneIllustration, type IllustrationScene } from "./SceneIllustration";
 
 export interface EmptyStateProps {
   /** Avatar-derived artwork matching the panel's purpose. */
   illustration?: IllustrationScene;
+  icon?: ReactNode;
   /** Primary text (already translated) */
   title: ReactNode;
   /** Secondary/hint text (already translated) */
@@ -24,6 +26,7 @@ export interface EmptyStateProps {
  */
 export function EmptyState({
   illustration,
+  icon,
   title,
   description,
   action,
@@ -31,7 +34,11 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={`skill-empty-state ${className ?? ""}`}>
-      <SceneIllustration scene={illustration} />
+      {illustration ? <SceneIllustration scene={illustration} /> : (
+        <div className="flex size-10 items-center justify-center rounded-full bg-theme-bg-subtle text-theme-text-tertiary">
+          {icon ?? <MessageSquare size={20} />}
+        </div>
+      )}
       <p className="skill-empty-state__title">{title}</p>
       {description && (
         <p className="skill-empty-state__description">{description}</p>

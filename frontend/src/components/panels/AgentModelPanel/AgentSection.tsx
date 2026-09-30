@@ -54,16 +54,16 @@ export function AgentSection() {
       setAvailableAgents(
         canManageAgents && globalConfig
           ? globalConfig.agents
-              .filter((a) => a.enabled)
-              .map((a) => ({
-                id: a.id,
-                name: a.name,
-                description: a.description,
-                version: "",
-                icon: a.icon,
-                sort_order: a.sort_order,
-                labels: a.labels,
-              }))
+            .filter((a) => a.enabled)
+            .map((a) => ({
+              id: a.id,
+              name: a.name,
+              description: a.description,
+              version: "",
+              icon: a.icon,
+              sort_order: a.sort_order,
+              labels: a.labels,
+            }))
           : agentList.agents || [],
       );
 
@@ -166,28 +166,26 @@ export function AgentSection() {
   }
 
   return (
-    <div className="animate-glass-enter px-4 py-5 sm:px-6 lg:px-7">
+    <div className="panel-section">
       {error && <ConfigPanelErrorCallout message={error} className="mb-4" />}
 
       {canManageAgents && (
         <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-sans">
           <button
             onClick={() => setActiveTab("global")}
-            className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
-              activeTab === "global"
-                ? "bg-white text-stone-950 shadow-sm ring-1 ring-[var(--glass-border)] dark:bg-stone-800 dark:text-stone-50"
-                : "text-stone-500 hover:bg-white/60 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
-            }`}
+            className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${activeTab === "global"
+                ? "bg-theme-bg-card text-theme-text shadow-sm"
+                : "text-theme-text-secondary hover:bg-theme-bg-subtle"
+              }`}
           >
             {t("agentConfig.globalTab")}
           </button>
           <button
             onClick={() => setActiveTab("roles")}
-            className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
-              activeTab === "roles"
-                ? "bg-white text-stone-950 shadow-sm ring-1 ring-[var(--glass-border)] dark:bg-stone-800 dark:text-stone-50"
-                : "text-stone-500 hover:bg-white/60 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
-            }`}
+            className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${activeTab === "roles"
+                ? "bg-theme-bg-card text-theme-text shadow-sm"
+                : "text-theme-text-secondary hover:bg-theme-bg-subtle"
+              }`}
           >
             {t("agentConfig.rolesTab")}
           </button>
@@ -216,8 +214,8 @@ export function AgentSection() {
           <p className="text-14 text-theme-text-secondary px-1 leading-relaxed hidden sm:block">
             {t("agentConfig.availableAgents")}
           </p>
-          <div className="glass-card divide-y divide-[var(--glass-border)] overflow-hidden rounded-xl">
-            {availableAgents.map((agent, index) => {
+          <div className="grid auto-grid-cols items-stretch gap-4">
+            {availableAgents.map((agent) => {
               const displayName = resolveAgentDisplayName(
                 agent,
                 i18n.language,
@@ -231,17 +229,16 @@ export function AgentSection() {
               return (
                 <div
                   key={agent.id}
-                  className="flex items-center gap-3.5 px-4 py-3.5 transition-colors duration-150 hover:bg-[var(--glass-bg-hover)]"
-                  style={{ animationDelay: `${index * 30}ms` }}
+                  className="scb flex flex-col items-start gap-3 p-4"
                 >
-                  <div className="flex size-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--glass-bg-subtle)] text-theme-text-secondary ring-1 ring-[var(--glass-border)]">
+                  <div className="scb__icon-ring shrink-0">
                     <AgentIcon icon={agent.icon || "Bot"} size={20} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="truncate text-14 font-medium font-sans text-theme-text tracking-tight">
                       {displayName}
                     </h4>
-                    <p className="mt-0.5 hidden truncate text-12 text-theme-text-secondary sm:block">
+                    <p className="mt-1 line-clamp-2 text-[0.78125rem] text-theme-text-secondary">
                       {displayDescription}
                     </p>
                   </div>

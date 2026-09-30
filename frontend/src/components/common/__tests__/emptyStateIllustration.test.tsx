@@ -14,7 +14,7 @@ test("empty states show the selected local illustration without duplicating acce
 });
 
 test("an unavailable illustration falls back to the static brand avatar", () => {
-  const { container } = render(<EmptyState title="No results" />);
+  const { container } = render(<EmptyState illustration="welcome" title="No results" />);
   const image = container.querySelector("img");
   expect(image).not.toBeNull();
   fireEvent.error(image!);

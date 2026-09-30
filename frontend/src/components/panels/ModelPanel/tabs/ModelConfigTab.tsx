@@ -1,3 +1,4 @@
+import { StatusBadge } from "../../../common/StatusBadge";
 import { Pagination } from "../../../common/Pagination";
 import { useClientPagination } from "../../../../hooks/useClientPagination";
 import React, { useState, useRef, useCallback } from "react";
@@ -39,9 +40,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="provider"
-        className={`glass-tag glass-tag--provider ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--provider ${compact ? "text-10" : "text-12"
+          }`}
       >
         {model.provider}
       </span>,
@@ -51,9 +51,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="key"
-        className={`glass-tag glass-tag--key ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--key ${compact ? "text-10" : "text-12"
+          }`}
       >
         Key
       </span>,
@@ -63,9 +62,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="api"
-        className={`glass-tag glass-tag--api ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--api ${compact ? "text-10" : "text-12"
+          }`}
       >
         API
       </span>,
@@ -75,9 +73,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="temp"
-        className={`glass-tag glass-tag--accent ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--accent ${compact ? "text-10" : "text-12"
+          }`}
       >
         temp:{model.temperature}
       </span>,
@@ -87,9 +84,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="max"
-        className={`glass-tag glass-tag--accent ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--accent ${compact ? "text-10" : "text-12"
+          }`}
       >
         max:{model.max_tokens}
       </span>,
@@ -99,9 +95,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="ctx"
-        className={`glass-tag glass-tag--accent ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--accent ${compact ? "text-10" : "text-12"
+          }`}
       >
         ctx:{model.profile.max_input_tokens}
       </span>,
@@ -111,9 +106,8 @@ function renderModelTags(model: ModelConfig, compact: boolean) {
     tags.push(
       <span
         key="image-url-base64"
-        className={`glass-tag glass-tag--accent ${
-          compact ? "text-10" : "text-12"
-        }`}
+        className={`glass-tag glass-tag--accent ${compact ? "text-10" : "text-12"
+          }`}
       >
         img:b64
       </span>,
@@ -202,15 +196,14 @@ const ModelCard = React.memo(function ModelCard({
       onDragOver={(e) => onDragOver(index, e)}
       onDragLeave={handleDragLeave}
       onDragEnd={onDragEnd}
-      className={`group glass-card rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing ${
-        isDragging
+      className={`panel-model-row group transition-colors duration-150 cursor-grab active:cursor-grabbing ${isDragging
           ? "!border-blue-300/60 !bg-blue-50/40 dark:!border-blue-700/50 dark:!bg-blue-900/20 scale-[1.01] animate-glass-drag"
           : isDragOver
             ? "!border-blue-200/50 !bg-blue-50/20 dark:!border-blue-800/30 dark:!bg-blue-900/10"
             : !model.enabled
               ? "opacity-60"
               : ""
-      }`}
+        }`}
     >
       {/* Mobile layout: stacked */}
       <div className="block sm:hidden p-3.5">
@@ -218,7 +211,7 @@ const ModelCard = React.memo(function ModelCard({
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <GripVertical
               size={16}
-              className="text-stone-300 dark:text-stone-600 flex-shrink-0"
+              className="text-theme-text-tertiary flex-shrink-0"
             />
             <ModelIconImg
               model={model.value}
@@ -226,7 +219,7 @@ const ModelCard = React.memo(function ModelCard({
               icon={model.icon}
               size={22}
             />
-            <h4 className="text-14 font-semibold font-sans text-stone-900 dark:text-stone-100 truncate">
+            <h4 className="text-14 font-semibold font-sans text-theme-text truncate">
               {model.label}
             </h4>
             {!model.enabled && (
@@ -243,13 +236,13 @@ const ModelCard = React.memo(function ModelCard({
             }
           />
         </div>
-        <div className="text-12 font-mono text-stone-400 dark:text-stone-500 truncate mb-2">
+        <div className="text-12 font-mono text-theme-text-tertiary truncate mb-2">
           {model.value}
         </div>
         {isExpanded && hasDetails && (
           <div className="glass-card-subtle rounded-lg px-3 py-2.5 mb-2.5">
             {model.description && (
-              <p className="text-12 text-stone-500 dark:text-stone-400 mb-2">
+              <p className="text-12 text-theme-text-secondary mb-2">
                 {model.description}
               </p>
             )}
@@ -268,9 +261,8 @@ const ModelCard = React.memo(function ModelCard({
             >
               <ChevronDown
                 size={16}
-                className={`transition-transform duration-200 ${
-                  isExpanded ? "rotate-180" : ""
-                }`}
+                className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                  }`}
               />
             </button>
           )}
@@ -294,11 +286,11 @@ const ModelCard = React.memo(function ModelCard({
 
       {/* Desktop layout: horizontal */}
       <div className="hidden sm:block">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
             <GripVertical
               size={16}
-              className="text-stone-300 dark:text-stone-600 flex-shrink-0"
+              className="text-theme-text-tertiary flex-shrink-0"
             />
             <ModelIconImg
               model={model.value}
@@ -308,24 +300,22 @@ const ModelCard = React.memo(function ModelCard({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2.5">
-                <h4 className="text-14 font-semibold font-sans text-stone-900 dark:text-stone-100 truncate tracking-tight">
+                <h4 className="text-13 font-medium leading-4 text-theme-text truncate">
                   {model.label}
                 </h4>
                 {!model.enabled && (
-                  <span className="glass-pill glass-pill--disabled">
-                    {t("agentConfig.disabled")}
-                  </span>
+                  <StatusBadge color="stone" label={t("agentConfig.disabled")} />
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-12 font-mono text-stone-400 dark:text-stone-500 truncate">
+              <div className="flex items-center gap-2 mt-0.5 leading-4">
+                <span className="text-12 font-mono text-theme-text-tertiary truncate">
                   {model.value}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="panel-row-actions flex items-center gap-1.5 flex-shrink-0">
             {hasDetails && (
               <button
                 onClick={handleExpand}
@@ -333,9 +323,8 @@ const ModelCard = React.memo(function ModelCard({
               >
                 <ChevronDown
                   size={16}
-                  className={`transition-transform duration-200 ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
+                  className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                    }`}
                 />
               </button>
             )}
@@ -371,7 +360,7 @@ const ModelCard = React.memo(function ModelCard({
           <div className="px-4 pb-4 pt-0">
             <div className="glass-card-subtle rounded-lg px-3 py-2.5">
               {model.description && (
-                <p className="text-12 text-stone-500 dark:text-stone-400 mb-2">
+                <p className="text-12 text-theme-text-secondary mb-2">
                   {model.description}
                 </p>
               )}
@@ -543,16 +532,16 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 h-full">
-        <div className="flex items-center justify-between gap-3 font-sans">
-          <p className="text-14 text-stone-500 dark:text-stone-400 hidden sm:block">
+      <div className="flex min-h-0 flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 font-sans">
+          <p className="text-14 text-theme-text-secondary hidden sm:block">
             {t("agentConfig.modelConfigDescription")}
           </p>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleExportModels}
               disabled={models.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-stone-700 dark:text-stone-300 hover:bg-[var(--glass-bg-subtle)] transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-theme-text-secondary hover:bg-[var(--glass-bg-subtle)] transition-colors disabled:opacity-40"
             >
               <Download size={16} />
               <span className="hidden sm:inline">
@@ -564,7 +553,7 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
                 setBatchInitialTab("jsonImport");
                 setShowBatchModal(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-stone-700 dark:text-stone-300 hover:bg-[var(--glass-bg-subtle)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-theme-text-secondary hover:bg-[var(--glass-bg-subtle)] transition-colors"
             >
               <FileJson size={16} />
               <span className="hidden sm:inline">
@@ -576,7 +565,7 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
                 setBatchInitialTab("addOneByOne");
                 setShowBatchModal(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-stone-700 dark:text-stone-300 hover:bg-[var(--glass-bg-subtle)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-theme-text-secondary hover:bg-[var(--glass-bg-subtle)] transition-colors"
             >
               <Layers size={16} />
               <span className="hidden sm:inline">
@@ -606,14 +595,14 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
                 } catch (err) {
                   toast.error(
                     (err as Error).message ||
-                      t("agentConfig.pricingSyncFailed", "同步价格失败"),
+                    t("agentConfig.pricingSyncFailed", "同步价格失败"),
                   );
                 } finally {
                   setIsSyncingPrices(false);
                 }
               }}
               disabled={isSyncingPrices}
-              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-stone-700 dark:text-stone-300 hover:bg-[var(--glass-bg-subtle)] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-theme-text-secondary hover:bg-[var(--glass-bg-subtle)] transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 size={16}
@@ -636,25 +625,25 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
                   toast.success(
                     result.still_unpriced > 0
                       ? `${base} · ${t("agentConfig.pricingBackfillUnpriced", {
-                          defaultValue: "{{count}} 条未计价",
-                          count: result.still_unpriced,
-                        })}`
+                        defaultValue: "{{count}} 条未计价",
+                        count: result.still_unpriced,
+                      })}`
                       : base,
                   );
                 } catch (err) {
                   toast.error(
                     (err as Error).message ||
-                      t(
-                        "agentConfig.pricingBackfillFailed",
-                        "补算历史费用失败",
-                      ),
+                    t(
+                      "agentConfig.pricingBackfillFailed",
+                      "补算历史费用失败",
+                    ),
                   );
                 } finally {
                   setIsBackfillingCosts(false);
                 }
               }}
               disabled={isBackfillingCosts}
-              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-stone-700 dark:text-stone-300 hover:bg-[var(--glass-bg-subtle)] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 text-14 rounded-lg border border-[var(--glass-border)] text-theme-text-secondary hover:bg-[var(--glass-bg-subtle)] transition-colors disabled:opacity-50"
             >
               <History
                 size={16}
@@ -677,62 +666,64 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
           </div>
         </div>
 
-        {models.length === 0 ? (
-          <EmptyState
-            className="flex-1 animate-glass-enter"
-            illustration="reading"
-            title={t("agentConfig.noModelsConfigured")}
-            description={t("agentConfig.noModelsConfiguredHint")}
-            action={
-              <button
-                onClick={() => setIsCreating(true)}
-                className="skill-empty-state__action"
-              >
-                <Plus size={14} />
-                {t("agentConfig.addFirstModel")}
-              </button>
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {slice(models).map((model, localIndex) => {
-              const index = (page - 1) * pageSize + localIndex;
-              return (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  index={index}
-                  isDragging={dragIndex === index}
-                  isDragOver={
-                    overIndex === index &&
-                    dragIndex !== null &&
-                    dragIndex !== index
-                  }
-                  isDeleting={isDeleting === model.id}
-                  isExpanded={expandedModelId === model.id}
-                  onToggleExpand={handleToggleExpand}
-                  onToggle={handleToggle}
-                  onEdit={setEditingModel}
-                  onDelete={handleDelete}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDragEnd={handleDragEnd}
-                  t={t}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
+        <div className="panel-content-card">
+          {models.length === 0 ? (
+            <EmptyState
+              className="flex-1 animate-glass-enter"
+              illustration="reading"
+              title={t("agentConfig.noModelsConfigured")}
+              description={t("agentConfig.noModelsConfiguredHint")}
+              action={
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="skill-empty-state__action"
+                >
+                  <Plus size={14} />
+                  {t("agentConfig.addFirstModel")}
+                </button>
+              }
+            />
+          ) : (
+            <div className="panel-list">
+              {slice(models).map((model, localIndex) => {
+                const index = (page - 1) * pageSize + localIndex;
+                return (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    index={index}
+                    isDragging={dragIndex === index}
+                    isDragOver={
+                      overIndex === index &&
+                      dragIndex !== null &&
+                      dragIndex !== index
+                    }
+                    isDeleting={isDeleting === model.id}
+                    isExpanded={expandedModelId === model.id}
+                    onToggleExpand={handleToggleExpand}
+                    onToggle={handleToggle}
+                    onEdit={setEditingModel}
+                    onDelete={handleDelete}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDragEnd={handleDragEnd}
+                    t={t}
+                  />
+                );
+              })}
+            </div>
+          )}
 
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={models.length}
-          onChange={setPage}
-        />
+          <div className="panel-pagination empty:hidden">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={models.length}
+              onChange={setPage}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Create / Edit Modal — isolated component, form state lives here */}

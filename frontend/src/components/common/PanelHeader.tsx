@@ -20,9 +20,10 @@ import { PanelSearchInput } from "./PanelSearchInput";
 interface PanelHeaderProps {
   /** 面板标题 */
   title: string;
+  count?: number;
   /** 副标题/描述 */
   subtitle?: string;
-  /** 标题图标 */
+  /** 兼容旧调用；页头使用文字与计数表达页面身份。 */
   icon?: ReactNode;
   /** 右侧操作按钮区域 */
   actions?: ReactNode;
@@ -57,8 +58,8 @@ function flattenActionNodes(node: ReactNode): ReactNode[] {
 
 export function PanelHeader({
   title,
+  count,
   subtitle,
-  icon,
   actions,
   searchValue,
   onSearchChange,
@@ -132,17 +133,19 @@ export function PanelHeader({
       {!searchOnly && (
         <div className="panel-header__top flex flex-wrap items-center justify-between gap-3 lg:gap-4">
           <div className="panel-header__identity flex min-w-0 items-center gap-3 lg:gap-4">
-            {icon && (
-              <div className="panel-header__icon [&>svg]:size-5 flex size-10 flex-shrink-0 items-center justify-center rounded-lg bg-theme-bg-subtle text-theme-text-secondary ring-1 ring-[var(--theme-border)] lg:size-11">
-                {icon}
-              </div>
-            )}
             <div className="min-w-0">
-              <h1 className="panel-header__title truncate text-16 font-semibold text-theme-text font-sans">
-                {title}
-              </h1>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="panel-header__title truncate text-16 font-semibold text-theme-text font-sans">
+                  {title}
+                </h1>
+                {count !== undefined && (
+                  <span className="panel-header__count rounded-full bg-theme-bg-subtle px-2 py-0.5 text-11 tabular-nums text-theme-text-tertiary">
+                    {count}
+                  </span>
+                )}
+              </div>
               {subtitle && (
-                <p className="panel-header__subtitle mt-0.5 truncate text-14 leading-snug text-theme-text-secondary lg:text-[0.85rem]">
+                <p className="panel-header__subtitle mt-0.5 truncate text-13 leading-snug text-theme-text-secondary">
                   {subtitle}
                 </p>
               )}
@@ -193,7 +196,7 @@ export function PanelHeader({
 
       {/* 搜索框 */}
       {onSearchChange !== undefined && (
-        <div className="panel-header__search-row mt-2 flex items-center gap-2 sm:mt-3 lg:mt-4">
+        <div className="panel-header__search-row mt-3 flex items-center gap-2">
           <div className="panel-header__search-box relative min-w-0 flex-1">
             <Search
               size={18}

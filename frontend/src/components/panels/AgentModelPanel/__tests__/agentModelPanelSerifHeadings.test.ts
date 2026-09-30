@@ -40,7 +40,7 @@ test("section and tab switchers use font-sans like other panel tabs", () => {
 });
 
 test("agent list item names use font-sans", () => {
-  expect(globalAgentTabSource).toMatch(/gap-3 font-sans px-4 py-3\.5/);
+  expect(globalAgentTabSource).toMatch(/gap-3 font-sans/);
   expect(agentSectionSource).toMatch(
     /<h4 className="truncate text-14 font-medium font-sans/,
   );

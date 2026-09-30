@@ -375,9 +375,8 @@ function RoleFormModal({
             {t("roles.uploadLimitsTitle")}
             <ChevronDown
               size={14}
-              className={`ml-auto transition-transform ${
-                showUploadLimits ? "rotate-180" : ""
-              }`}
+              className={`ml-auto transition-transform ${showUploadLimits ? "rotate-180" : ""
+                }`}
             />
           </button>
           {showUploadLimits && (
@@ -641,7 +640,7 @@ export function RolesPanel() {
       {/* 头部 */}
       <PanelHeader
         title={t("roles.title")}
-        subtitle={t("roles.subtitle")}
+        count={total}
         icon={<Shield size={24} className="text-theme-text-secondary" />}
         searchValue={searchQuery}
         onSearchChange={handleSearchQueryChange}
@@ -668,114 +667,123 @@ export function RolesPanel() {
       )}
 
       {/* 角色列表 */}
-      <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
-        {filteredRoles.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <SceneIllustration scene="welcome" className="mb-4" />
-            <p className="text-theme-text-secondary">
-              {searchQuery ? t("roles.noMatchingRoles") : t("roles.noRoles")}
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-3 auto-grid-cols">
-            {paginatedRoles.map((role) => (
-              <div
-                key={role.id}
-                className="glass-card group relative flex flex-col rounded-xl p-4 cursor-pointer transition-all duration-200 animate-glass-enter"
-                onClick={() => setSelectedRole(role)}
-              >
-                {/* Header badges */}
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-11 font-medium ${
-                      role.is_system
-                        ? "bg-[var(--theme-primary)]/10 text-[var(--theme-primary)]"
-                        : "bg-[var(--glass-bg-subtle)] text-[var(--theme-text-secondary)]"
-                    }`}
-                  >
-                    <ShieldCheck size={11} />
-                    {role.is_system
-                      ? t("roles.systemRole")
-                      : t("roles.customRole")}
-                  </span>
-                  <span className="text-11 text-[var(--theme-text-secondary)]">
-                    {t("roles.permissionCount", {
-                      count: role.permissions.length,
-                    })}
-                  </span>
-                </div>
-
-                {/* Title & description */}
-                <h4 className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)]">
-                  {role.name}
-                </h4>
-                {role.description && (
-                  <p className="mt-1 text-14 leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2">
-                    {role.description}
-                  </p>
-                )}
-
-                {/* Permissions preview */}
-                <div className="mt-3 mb-2 flex flex-wrap gap-1.5">
-                  {role.permissions.slice(0, 3).map((perm) => (
+      <div className="panel-content-card panel-content-card--list">
+        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+          {filteredRoles.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <SceneIllustration scene="welcome" className="mb-4" />
+              <p className="text-theme-text-secondary">
+                {searchQuery ? t("roles.noMatchingRoles") : t("roles.noRoles")}
+              </p>
+            </div>
+          ) : (
+            <div className="panel-list">
+              {paginatedRoles.map((role) => (
+                <div
+                  key={role.id}
+                  className="panel-list-row panel-role-row group relative cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      setSelectedRole(role);
+                    }
+                  }}
+                  onClick={() => setSelectedRole(role)}
+                >
+                  {/* Header badges */}
+                  <div className="panel-role-row__kind flex flex-wrap items-center gap-2">
                     <span
-                      key={perm}
-                      className="inline-flex items-center rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-11 text-[var(--theme-text-secondary)]"
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-11 font-medium ${role.is_system
+                          ? "bg-[var(--color-background-purple)] text-[var(--color-text-purple)]"
+                          : "bg-[var(--color-background-gray)] text-[var(--color-text-gray)]"
+                        }`}
                     >
-                      {permissionLabels[perm] || perm}
+                      <ShieldCheck size={11} />
+                      {role.is_system
+                        ? t("roles.systemRole")
+                        : t("roles.customRole")}
                     </span>
-                  ))}
-                  {role.permissions.length > 3 && (
-                    <span className="inline-flex items-center rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-11 text-[var(--theme-text-secondary)]">
-                      +{role.permissions.length - 3}
+                    <span className="text-11 text-[var(--theme-text-secondary)]">
+                      {t("roles.permissionCount", {
+                        count: role.permissions.length,
+                      })}
                     </span>
-                  )}
-                </div>
+                  </div>
 
-                {/* Footer actions */}
-                {canManage && (
-                  <div className="mt-auto flex items-center gap-2 border-t border-[var(--glass-border)] pt-3 mt-3.5">
-                    <div className="ml-auto" />
-                    <IconButton
-                      aria-label={t("common.edit")}
-                      icon={<Pencil size={14} />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditModal(role);
-                      }}
-                      size="sm"
-                      className="h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
-                      title={t("common.edit")}
-                    />
-                    {!role.is_system && (
-                      <IconButton
-                        aria-label={t("common.delete")}
-                        icon={<Trash2 size={14} />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteRole(role);
-                        }}
-                        size="sm"
-                        className="h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                        title={t("common.delete")}
-                      />
+                  {/* Title & description */}
+                  <h4 className="panel-role-row__name truncate text-13 font-medium text-theme-text">
+                    {role.name}
+                  </h4>
+                  {role.description && (
+                    <p className="panel-role-row__description text-12 text-theme-text-tertiary line-clamp-1">
+                      {role.description}
+                    </p>
+                  )}
+
+                  {/* Permissions preview */}
+                  <div className="panel-role-row__permissions flex flex-wrap gap-1.5">
+                    {role.permissions.slice(0, 3).map((perm) => (
+                      <span
+                        key={perm}
+                        className="inline-flex items-center rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-11 text-[var(--theme-text-secondary)]"
+                      >
+                        {permissionLabels[perm] || perm}
+                      </span>
+                    ))}
+                    {role.permissions.length > 3 && (
+                      <span className="inline-flex items-center rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-11 text-[var(--theme-text-secondary)]">
+                        +{role.permissions.length - 3}
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Pagination */}
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onChange={setPage}
-        />
+                  {/* Footer actions */}
+                  {canManage && (
+                    <div className="panel-row-actions flex items-center justify-end gap-2">
+                      <div className="ml-auto" />
+                      <IconButton
+                        aria-label={t("common.edit")}
+                        icon={<Pencil size={14} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(role);
+                        }}
+                        size="sm"
+                        className="h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                        title={t("common.edit")}
+                      />
+                      {!role.is_system && (
+                        <IconButton
+                          aria-label={t("common.delete")}
+                          icon={<Trash2 size={14} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteRole(role);
+                          }}
+                          size="sm"
+                          className="h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                          title={t("common.delete")}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
       </div>
 
       {/* 模态框 */}

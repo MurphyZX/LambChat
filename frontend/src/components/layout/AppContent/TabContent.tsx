@@ -134,7 +134,7 @@ export function TabContent({ activeTab }: { activeTab: TabType }) {
       data-panel={activeTab}
       className="min-w-0 min-h-0 flex-1 overflow-hidden bg-[var(--theme-bg)]"
     >
-      <div className="mx-auto w-full h-full flex flex-col overflow-hidden lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem] sm:px-4">
+      <div className="mx-auto w-full h-full flex flex-col overflow-hidden lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem] px-4 lg:px-6">
         <Suspense fallback={skeletonMap[activeTab] ?? <PanelLoadingState />}>
           <Panel />
         </Suspense>

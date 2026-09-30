@@ -295,16 +295,14 @@ export function ChannelPanel({
             </div>
             <button
               onClick={() => updateFormField(field.name, !value)}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
-                value
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${value
                   ? "bg-amber-500 shadow-sm shadow-amber-500/25"
                   : "bg-stone-200 dark:bg-stone-700"
-              }`}
+                }`}
             >
               <span
-                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                  value ? "translate-x-[18px]" : "translate-x-[3px]"
-                }`}
+                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${value ? "translate-x-[18px]" : "translate-x-[3px]"
+                  }`}
               />
             </button>
           </div>
@@ -421,11 +419,10 @@ export function ChannelPanel({
               )}
               <div>
                 <span
-                  className={`text-14 font-semibold ${
-                    status.connected
+                  className={`text-14 font-semibold ${status.connected
                       ? "text-green-600 dark:text-green-400"
                       : "text-red-600 dark:text-red-400"
-                  }`}
+                    }`}
                 >
                   {status.connected
                     ? t("channel.connected", "Connected")
@@ -508,16 +505,14 @@ export function ChannelPanel({
             </div>
             <button
               onClick={() => setEnabled(!enabled)}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
-                enabled
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${enabled
                   ? "bg-amber-500 shadow-sm shadow-amber-500/25"
                   : "bg-stone-200 dark:bg-stone-700"
-              }`}
+                }`}
             >
               <span
-                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                  enabled ? "translate-x-[18px]" : "translate-x-[3px]"
-                }`}
+                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${enabled ? "translate-x-[18px]" : "translate-x-[3px]"
+                  }`}
               />
             </button>
           </div>
@@ -638,7 +633,7 @@ export function ChannelPanel({
             </Button>
           }
         />
-        <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
+        <div className="panel-content-card min-h-0 flex-1 overflow-y-auto p-4">
           {formContent}
         </div>
         <div className="border-t border-[var(--theme-border)] px-3 py-3 sm:px-4">

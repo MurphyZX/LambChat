@@ -40,11 +40,9 @@ export function Pagination({
     });
   };
 
-  if (totalPages <= 1) return null;
+  if (total === 0) return null;
 
   const pages = getPageNumbers(currentPage, totalPages);
-  const startItem = (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, total);
 
   return (
     <nav
@@ -53,55 +51,56 @@ export function Pagination({
       aria-label={t("common.pagination")}
     >
       <p className="pagination-summary" aria-live="polite">
-        <span className="pagination-range">{`${startItem}–${endItem} / ${total}${itemLabel ? ` ${itemLabel}` : ""}`}</span>
+        <span className="pagination-range">{t("common.paginationSummary", { total, pageSize })}{itemLabel ? ` ${itemLabel}` : ""}</span>
         <span className="pagination-position">
           {currentPage} / {totalPages}
         </span>
       </p>
 
       {/* Page controls */}
-      <div className="pagination-controls">
-        <button
-          type="button"
-          onClick={() => changePage(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="pagination-btn"
-          aria-label={t("common.previous")}
-        >
-          <ChevronLeft size={16} />
-        </button>
+      {totalPages > 1 && (
+        <div className="pagination-controls">
+          <button
+            type="button"
+            onClick={() => changePage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="pagination-btn"
+            aria-label={t("common.previous")}
+          >
+            <ChevronLeft size={16} />
+          </button>
 
-        {pages.map((p, idx) =>
-          p === "..." ? (
-            <span key={`ellipsis-${idx}`} className="pagination-ellipsis">
-              <MoreHorizontal size={14} />
-            </span>
-          ) : (
-            <button
-              type="button"
-              key={p}
-              aria-label={t("common.page", { page: p })}
-              aria-current={p === currentPage ? "page" : undefined}
-              onClick={() => changePage(p as number)}
-              className={`pagination-page ${
-                p === currentPage ? "pagination-page-active" : ""
-              }`}
-            >
-              {p}
-            </button>
-          ),
-        )}
+          {pages.map((p, idx) =>
+            p === "..." ? (
+              <span key={`ellipsis-${idx}`} className="pagination-ellipsis">
+                <MoreHorizontal size={14} />
+              </span>
+            ) : (
+              <button
+                type="button"
+                key={p}
+                aria-label={t("common.page", { page: p })}
+                aria-current={p === currentPage ? "page" : undefined}
+                onClick={() => changePage(p as number)}
+                className={`pagination-page ${p === currentPage ? "pagination-page-active" : ""
+                  }`}
+              >
+                {p}
+              </button>
+            ),
+          )}
 
-        <button
-          type="button"
-          onClick={() => changePage(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="pagination-btn"
-          aria-label={t("common.next")}
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => changePage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="pagination-btn"
+            aria-label={t("common.next")}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

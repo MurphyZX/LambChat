@@ -348,11 +348,10 @@ export function MCPPanel() {
       });
 
       if (result) {
-        const message = `${result.message}${
-          result.errors.length > 0
+        const message = `${result.message}${result.errors.length > 0
             ? `\nErrors: ${result.errors.join(", ")}`
             : ""
-        }`;
+          }`;
         setImportResult({ success: true, message });
 
         if (result.errors.length === 0) {
@@ -395,7 +394,7 @@ export function MCPPanel() {
       {/* Header */}
       <PanelHeader
         title={t("mcp.title")}
-        subtitle={t("mcp.subtitle")}
+        count={total}
         icon={<Server size={20} className="text-theme-text-secondary" />}
         searchValue={searchQuery}
         onSearchChange={handleSearchQueryChange}
@@ -443,47 +442,49 @@ export function MCPPanel() {
       )}
 
       {/* Servers Grid */}
-      <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
-        {filteredServers.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-theme-text-secondary">
-            <SceneIllustration scene="files" className="mx-auto mb-4" />
-            <p className="text-center text-14">
-              {searchQuery ? t("mcp.noMatchingServers") : t("mcp.noServers")}
-            </p>
-            {!searchQuery && canWrite && (
-              <Button
-                variant="ghost"
-                onClick={handleCreate}
-                className="mt-3 text-14 font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] transition-colors"
-              >
-                {t("mcp.addFirst")}
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="grid auto-grid-cols gap-3">
-            {paginatedServers.map((server) => (
-              <MCPServerCard
-                key={server.name}
-                server={server}
-                onToggle={handleToggle}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onClick={() => setToolsSidebarServer(server)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <div className="panel-content-card panel-content-card--grid">
+        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+          {filteredServers.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-theme-text-secondary">
+              <SceneIllustration scene="files" className="mx-auto mb-4" />
+              <p className="text-center text-14">
+                {searchQuery ? t("mcp.noMatchingServers") : t("mcp.noServers")}
+              </p>
+              {!searchQuery && canWrite && (
+                <Button
+                  variant="ghost"
+                  onClick={handleCreate}
+                  className="mt-3 text-14 font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] transition-colors"
+                >
+                  {t("mcp.addFirst")}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid auto-grid-cols items-stretch gap-4">
+              {paginatedServers.map((server) => (
+                <MCPServerCard
+                  key={server.name}
+                  server={server}
+                  onToggle={handleToggle}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onClick={() => setToolsSidebarServer(server)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Pagination */}
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onChange={setPage}
-        />
+        {/* Pagination */}
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
       </div>
 
       {/* Form Sidebar */}
@@ -596,11 +597,10 @@ export function MCPPanel() {
 
           {importResult && (
             <div
-              className={`flex items-center gap-2.5 rounded-lg border p-3 ${
-                importResult.success
+              className={`flex items-center gap-2.5 rounded-lg border p-3 ${importResult.success
                   ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800/40 dark:text-emerald-400"
                   : "bg-red-50 border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-800/40 dark:text-red-400"
-              }`}
+                }`}
             >
               {importResult.success ? (
                 <Check size={20} className="flex-shrink-0" />

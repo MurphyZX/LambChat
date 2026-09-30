@@ -138,7 +138,7 @@ export function ModelSection() {
   if (!canManageModels) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <p className="text-stone-500 dark:text-stone-400">
+        <p className="text-theme-text-secondary">
           {t("agentConfig.noPermission")}
         </p>
       </div>
@@ -146,27 +146,25 @@ export function ModelSection() {
   }
 
   return (
-    <div className="animate-glass-enter px-4 py-5 sm:px-6 lg:px-7">
+    <div className="panel-section">
       {error && <ConfigPanelErrorCallout message={error} className="mb-4" />}
 
       <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-sans">
         <button
           onClick={() => setActiveTab("roles")}
-          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
-            activeTab === "roles"
-              ? "bg-white text-stone-950 shadow-sm ring-1 ring-[var(--glass-border)] dark:bg-stone-800 dark:text-stone-50"
-              : "text-stone-500 hover:bg-white/60 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
-          }`}
+          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${activeTab === "roles"
+              ? "bg-theme-bg-card text-theme-text shadow-sm"
+              : "text-theme-text-secondary hover:bg-theme-bg-subtle"
+            }`}
         >
           {t("agentConfig.modelsTab")}
         </button>
         <button
           onClick={() => setActiveTab("model-config")}
-          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
-            activeTab === "model-config"
-              ? "bg-white text-stone-950 shadow-sm ring-1 ring-[var(--glass-border)] dark:bg-stone-800 dark:text-stone-50"
-              : "text-stone-500 hover:bg-white/60 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
-          }`}
+          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${activeTab === "model-config"
+              ? "bg-theme-bg-card text-theme-text shadow-sm"
+              : "text-theme-text-secondary hover:bg-theme-bg-subtle"
+            }`}
         >
           {t("agentConfig.modelConfigTab")}
         </button>

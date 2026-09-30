@@ -132,7 +132,7 @@ export function ScheduledTaskPanel({
         setAgents(res.agents);
         setApiDefaultAgentId(res.default_agent || "");
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [providedAgents]);
 
   useEffect(() => {
@@ -327,9 +327,8 @@ export function ScheduledTaskPanel({
     }
     if (task.trigger_type === "date") {
       const cfg = task.trigger_config as { run_date?: string };
-      return `${t("scheduledTask.date")}: ${
-        cfg.run_date ? formatDateTimeShort(cfg.run_date) : "-"
-      }`;
+      return `${t("scheduledTask.date")}: ${cfg.run_date ? formatDateTimeShort(cfg.run_date) : "-"
+        }`;
     }
     const cfg = task.trigger_config as {
       hour?: string;
@@ -388,8 +387,9 @@ export function ScheduledTaskPanel({
         <>
           <PanelHeader
             title={t("scheduledTask.title")}
+            count={total}
             icon={
-              <Clock size={20} className="text-stone-600 dark:text-stone-400" />
+              <Clock size={20} className="text-theme-text-secondary" />
             }
             actions={
               <PanelHeaderActions>
@@ -410,162 +410,172 @@ export function ScheduledTaskPanel({
           />
 
           {/* Task List */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
-            {tasks.length === 0 ? (
-              <div className="scheduled-task-empty-state">
-                <SceneIllustration scene="message" className="mx-auto mb-4" />
-                <p className="scheduled-task-empty-state__title font-sans">
-                  {t("scheduledTask.noTasks")}
-                </p>
-                <p className="scheduled-task-empty-state__body">
-                  {t("scheduledTask.noTasksDesc")}
-                </p>
-              </div>
-            ) : (
-              <div className="grid auto-grid-cols gap-3">
-                {tasks.map((task) => {
-                  const agent = agents.find((a) => a.id === task.agent_id);
-                  const modelName = formatTaskModel(task);
-                  const contextName = formatTaskContext(task);
+          <div className="panel-content-card panel-content-card--list">
+            <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+              {tasks.length === 0 ? (
+                <div className="scheduled-task-empty-state">
+                  <SceneIllustration scene="message" className="mx-auto mb-4" />
+                  <p className="scheduled-task-empty-state__title font-sans">
+                    {t("scheduledTask.noTasks")}
+                  </p>
+                  <p className="scheduled-task-empty-state__body">
+                    {t("scheduledTask.noTasksDesc")}
+                  </p>
+                </div>
+              ) : (
+                <div className="panel-list">
+                  {tasks.map((task) => {
+                    const agent = agents.find((a) => a.id === task.agent_id);
+                    const modelName = formatTaskModel(task);
+                    const contextName = formatTaskContext(task);
 
-                  return (
-                    <div
-                      key={task.id}
-                      className="glass-card group relative flex flex-col rounded-xl p-4 cursor-pointer transition-all duration-200 animate-glass-enter"
-                      onClick={() => {
-                        navigate(`/scheduled-tasks/${task.id}`);
-                      }}
-                    >
-                      {/* Title row */}
-                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <h4 className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)]">
-                          {task.name}
-                        </h4>
-                        <StatusBadge status={task.status} />
-                      </div>
+                    return (
+                      <div
+                        key={task.id}
+                        className="panel-list-row panel-task-row group relative cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                            e.preventDefault();
+                            navigate(`/scheduled-tasks/${task.id}`);
+                          }
+                        }}
+                        onClick={() => {
+                          navigate(`/scheduled-tasks/${task.id}`);
+                        }}
+                      >
+                        {/* Title row */}
+                        <div className="panel-task-row__title flex flex-wrap items-center gap-2">
+                          <h4 className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)]">
+                            {task.name}
+                          </h4>
+                          <StatusBadge status={task.status} />
+                        </div>
 
-                      {/* Description */}
-                      {task.description && (
-                        <p className="text-14 leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2">
-                          {task.description}
-                        </p>
-                      )}
-
-                      {/* Meta tags */}
-                      <div className="my-3 flex flex-wrap gap-1.5">
-                        <span className="glass-tag">
-                          <Timer size={12} />
-                          {formatTriggerInfo(task)}
-                        </span>
-                        <span className="glass-tag">
-                          <Bot size={12} />
-                          {agent
-                            ? resolveAgentDisplayName(agent, i18n.language, t)
-                            : task.agent_id}
-                        </span>
-                        {modelName && (
-                          <span className="glass-tag">
-                            <Cpu size={12} />
-                            {modelName}
-                          </span>
+                        {/* Description */}
+                        {task.description && (
+                          <p className="panel-task-row__description text-12 text-theme-text-secondary line-clamp-1">
+                            {task.description}
+                          </p>
                         )}
-                        {contextName && (
+
+                        {/* Meta tags */}
+                        <div className="panel-task-row__meta flex flex-wrap gap-x-3 gap-y-1">
+                          <span className="glass-tag">
+                            <Timer size={12} />
+                            {formatTriggerInfo(task)}
+                          </span>
                           <span className="glass-tag">
                             <Bot size={12} />
-                            {contextName}
+                            {agent
+                              ? resolveAgentDisplayName(agent, i18n.language, t)
+                              : task.agent_id}
                           </span>
-                        )}
-                        {task.total_runs > 0 && (
-                          <span className="glass-tag">
-                            <History size={12} />
-                            {t("scheduledTask.totalRuns")}: {task.total_runs}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Last run / never run */}
-                      {task.last_run_at && (
-                        <div className="flex flex-wrap items-center gap-2 text-11 text-[var(--theme-text-secondary)] mb-2">
-                          <span>{t("scheduledTask.lastRun")}:</span>
-                          <span>{formatDateTimeShort(task.last_run_at)}</span>
-                          {task.last_run_status && (
-                            <RunStatusBadge status={task.last_run_status} />
+                          {modelName && (
+                            <span className="glass-tag">
+                              <Cpu size={12} />
+                              {modelName}
+                            </span>
+                          )}
+                          {contextName && (
+                            <span className="glass-tag">
+                              <Bot size={12} />
+                              {contextName}
+                            </span>
+                          )}
+                          {task.total_runs > 0 && (
+                            <span className="glass-tag">
+                              <History size={12} />
+                              {t("scheduledTask.totalRuns")}: {task.total_runs}
+                            </span>
                           )}
                         </div>
-                      )}
-                      {!task.last_run_at && (
-                        <p className="text-11 text-[var(--theme-text-secondary)]">
-                          {t("scheduledTask.neverRun")}
-                        </p>
-                      )}
 
-                      {/* Footer actions */}
-                      <div
-                        className="mt-auto flex items-center gap-2 border-t border-[var(--glass-border)] pt-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="ml-auto" />
-                        {canWrite && task.status === "active" && (
-                          <button
-                            onClick={() => handlePause(task)}
-                            className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 transition-colors"
-                            title={t("scheduledTask.pause")}
-                          >
-                            <Pause size={14} />
-                          </button>
+                        {/* Last run / never run */}
+                        {task.last_run_at && (
+                          <div className="flex flex-wrap items-center gap-2 text-11 text-[var(--theme-text-secondary)] mb-2">
+                            <span>{t("scheduledTask.lastRun")}:</span>
+                            <span>{formatDateTimeShort(task.last_run_at)}</span>
+                            {task.last_run_status && (
+                              <RunStatusBadge status={task.last_run_status} />
+                            )}
+                          </div>
                         )}
-                        {canWrite && task.status === "paused" && (
-                          <button
-                            onClick={() => handleResume(task)}
-                            className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors"
-                            title={t("scheduledTask.resume")}
-                          >
-                            <Play size={14} />
-                          </button>
+                        {!task.last_run_at && (
+                          <p className="text-11 text-[var(--theme-text-secondary)]">
+                            {t("scheduledTask.neverRun")}
+                          </p>
                         )}
-                        {canWrite && (
-                          <button
-                            onClick={() => handleRunNow(task)}
-                            className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
-                            title={t("scheduledTask.runNow")}
-                          >
-                            <RotateCcw size={14} />
-                          </button>
-                        )}
-                        {canWrite && (
-                          <button
-                            onClick={() => setEditingTask(task)}
-                            className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
-                            title={t("scheduledTask.edit")}
-                          >
-                            <Pencil size={14} />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => setDeleteTarget(task)}
-                            className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
-                            title={t("scheduledTask.delete")}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+
+                        {/* Footer actions */}
+                        <div
+                          className="panel-row-actions flex items-center justify-end gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="ml-auto" />
+                          {canWrite && task.status === "active" && (
+                            <button
+                              onClick={() => handlePause(task)}
+                              className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 transition-colors"
+                              title={t("scheduledTask.pause")}
+                            >
+                              <Pause size={14} />
+                            </button>
+                          )}
+                          {canWrite && task.status === "paused" && (
+                            <button
+                              onClick={() => handleResume(task)}
+                              className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors"
+                              title={t("scheduledTask.resume")}
+                            >
+                              <Play size={14} />
+                            </button>
+                          )}
+                          {canWrite && (
+                            <button
+                              onClick={() => handleRunNow(task)}
+                              className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
+                              title={t("scheduledTask.runNow")}
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+                          {canWrite && (
+                            <button
+                              onClick={() => setEditingTask(task)}
+                              className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
+                              title={t("scheduledTask.edit")}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteTarget(task)}
+                              className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                              title={t("scheduledTask.delete")}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-          {/* Pagination */}
-          <div className="panel-pagination empty:hidden">
-            <Pagination
-              page={Math.floor(skip / limit) + 1}
-              pageSize={limit}
-              total={total}
-              onChange={(page) => setSkip((page - 1) * limit)}
-            />
+            {/* Pagination */}
+            <div className="panel-pagination empty:hidden">
+              <Pagination
+                page={Math.floor(skip / limit) + 1}
+                pageSize={limit}
+                total={total}
+                onChange={(page) => setSkip((page - 1) * limit)}
+              />
+            </div>
           </div>
 
           {/* Create Modal */}

@@ -43,7 +43,7 @@ test("panel headers use static mobile density instead of scroll compression", ()
     /@media \(max-width:\s*639px\) \{[\s\S]*?\.panel-header \.panel-header__subtitle\s*\{[\s\S]*?display:\s*none;/,
   );
   expect(panelHeader).toMatch(/panel-header--has-search/);
-  expect(componentsCss).toMatch(
+  expect(componentsCss).not.toMatch(
     /@media \(max-width:\s*639px\) \{[\s\S]*?\.panel-header\.panel-header--has-search \.panel-header__top\s*\{[\s\S]*?display:\s*none;/,
   );
 });
@@ -207,7 +207,7 @@ test("notification panel header aligns with shared panel spacing", () => {
     /inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2\.5/,
   );
   expect(notificationPanel).toMatch(
-    /className="flex-1 overflow-y-auto px-4 py-2 sm:p-6 lg:px-8"/,
+    /className="panel-scroll min-h-0 flex-1 overflow-y-auto/,
   );
   expect(notificationPanel).toMatch(
     /className="panel-pagination empty:hidden"/,

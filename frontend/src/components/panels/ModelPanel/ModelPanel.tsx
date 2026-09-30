@@ -159,7 +159,7 @@ export function ModelPanel() {
   if (!canManageModels) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-stone-500 dark:text-stone-400">
+        <p className="text-theme-text-secondary">
           {t("agentConfig.noPermission")}
         </p>
       </div>
@@ -171,8 +171,9 @@ export function ModelPanel() {
       {/* 头部 */}
       <PanelHeader
         title={t("agentConfig.modelTitle")}
+        count={dbModels.length}
         subtitle={t("agentConfig.modelConfigDescription")}
-        icon={<Cpu size={24} className="text-stone-600 dark:text-stone-400" />}
+        icon={<Cpu size={24} className="text-theme-text-secondary" />}
         actions={
           <Button
             onClick={handleRefresh}
@@ -198,28 +199,26 @@ export function ModelPanel() {
       <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3">
         <button
           onClick={() => setActiveTab("roles")}
-          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
-            activeTab === "roles"
+          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${activeTab === "roles"
               ? "bg-white text-stone-950 shadow-sm ring-1 ring-[var(--glass-border)] dark:bg-stone-800 dark:text-stone-50"
               : "text-stone-500 hover:bg-white/60 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
-          }`}
+            }`}
         >
           {t("agentConfig.modelsTab")}
         </button>
         <button
           onClick={() => setActiveTab("model-config")}
-          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
-            activeTab === "model-config"
+          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${activeTab === "model-config"
               ? "bg-white text-stone-950 shadow-sm ring-1 ring-[var(--glass-border)] dark:bg-stone-800 dark:text-stone-50"
               : "text-stone-500 hover:bg-white/60 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
-          }`}
+            }`}
         >
           {t("agentConfig.modelConfigTab")}
         </button>
       </div>
 
       {/* 内容 */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-4">
         {activeTab === "model-config" ? (
           <ModelConfigTab models={dbModels} onReload={loadData} />
         ) : (

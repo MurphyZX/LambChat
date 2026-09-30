@@ -25,3 +25,17 @@ test("marketplace covers keep one title and icon with status outside the cover",
   expect(container.querySelectorAll("h3")).toHaveLength(1);
   expect(cover?.textContent).not.toContain("Published");
 });
+
+test("card selection supports the keyboard without hijacking nested actions", async () => {
+  const { fireEvent } = await import("@testing-library/react");
+  const { vi } = await import("vitest");
+  const onSelect = vi.fn();
+  const { container } = render(
+    <SkillBaseCard title="Keyboard card" selectionMode onSelect={onSelect} bannerOverlay={<button>Inspect</button>} />,
+  );
+  const card = container.querySelector(".scb")!;
+  fireEvent.keyDown(card, { key: "Enter" });
+  expect(onSelect).toHaveBeenCalledTimes(1);
+  fireEvent.keyDown(screen.getByRole("button", { name: "Inspect" }), { key: "Enter" });
+  expect(onSelect).toHaveBeenCalledTimes(1);
+});

@@ -1,3 +1,4 @@
+import { StatusBadge } from "../common/StatusBadge";
 /**
  * Channels Page - Lists all available channels and their instances
  */
@@ -183,6 +184,7 @@ export function ChannelsPage() {
       <div className="flex h-full flex-col">
         <PanelHeader
           title={t("channel.title", "Channels")}
+          count={channelTypes.length}
           subtitle={t(
             "channel.description",
             `Connect your favorite chat platforms to ${APP_NAME}`,
@@ -191,7 +193,7 @@ export function ChannelsPage() {
             <Radio size={24} className="text-[var(--theme-text-secondary)]" />
           }
         />
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
           <div className="mx-auto max-w-full">
             {channelTypes.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
@@ -207,7 +209,7 @@ export function ChannelsPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid auto-grid-cols gap-4 p-3 sm:p-4">
+              <div className="grid auto-grid-cols items-stretch gap-4">
                 {channelTypes.map((ct) => {
                   const channelInstances = instances[ct.channel_type] || [];
                   const instanceCount = channelInstances.length;
@@ -229,13 +231,9 @@ export function ChannelsPage() {
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {instanceCount > 0 &&
                             (hasAnyConnected ? (
-                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-12 font-medium text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                                {t("channel.connected", "Connected")}
-                              </span>
+                              <StatusBadge color="green" label={t("channel.connected")} />
                             ) : (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-12 font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                                {t("channel.disconnected", "Disconnected")}
-                              </span>
+                              <StatusBadge color="amber" label={t("channel.disconnected")} />
                             ))}
                           {ct.capabilities.includes("websocket") && (
                             <span className="rounded-full bg-[var(--theme-primary-light)] px-2 py-0.5 text-12 font-medium text-[var(--theme-text-secondary)]">
@@ -243,7 +241,7 @@ export function ChannelsPage() {
                             </span>
                           )}
                           {ct.capabilities.includes("webhook") && (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-12 font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                            <span className="rounded-full bg-[var(--color-background-purple)] px-2 py-0.5 text-12 font-medium text-[var(--color-text-purple)]">
                               {t("channel.webhookShort", "Hook")}
                             </span>
                           )}
@@ -261,18 +259,6 @@ export function ChannelsPage() {
                             )}
                           </span>
                         ) : undefined
-                      }
-                      bannerOverlay={
-                        instanceCount > 0 &&
-                        (hasAnyConnected ? (
-                          <span className="rounded-full bg-green-400/30 px-2 py-0.5 text-12 font-medium text-green-50 dark:bg-green-400/20 dark:text-green-100">
-                            {t("channel.connected", "Connected")}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-amber-400/30 px-2 py-0.5 text-12 font-medium text-amber-50 dark:bg-amber-400/20 dark:text-amber-100">
-                            {t("channel.disconnected", "Disconnected")}
-                          </span>
-                        ))
                       }
                       onClick={() => navigate(`/channels/${ct.channel_type}`)}
                       className="cursor-pointer"
@@ -298,6 +284,7 @@ export function ChannelsPage() {
       <div className="flex h-full flex-col">
         <PanelHeader
           title={metadata?.display_name || selectedChannel!}
+          count={channelInstances.length}
           subtitle={metadata?.description || ""}
           icon={getChannelIcon(
             metadata?.icon || selectedChannel!,
@@ -316,7 +303,7 @@ export function ChannelsPage() {
           }
         />
 
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
           {channelInstances.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-14 text-[var(--theme-text-secondary)]">
@@ -335,7 +322,7 @@ export function ChannelsPage() {
               )}
             </div>
           ) : (
-            <div className="mx-auto max-w-full space-y-3 p-3 sm:p-4">
+            <div className="panel-content-card panel-list">
               {channelInstances.map((instance) => {
                 const status =
                   statuses[`${selectedChannel}:${instance.instance_id}`];
@@ -348,7 +335,7 @@ export function ChannelsPage() {
                         `/channels/${selectedChannel}/${instance.instance_id}`,
                       )
                     }
-                    className="panel-card cursor-pointer"
+                    className="panel-list-row group cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -358,18 +345,12 @@ export function ChannelsPage() {
                           </h4>
                           {status?.enabled &&
                             (status.connected ? (
-                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-12 font-medium text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                                {t("channel.connected", "Connected")}
-                              </span>
+                              <StatusBadge color="green" label={t("channel.connected")} />
                             ) : (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-12 font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                                {t("channel.disconnected", "Disconnected")}
-                              </span>
+                              <StatusBadge color="amber" label={t("channel.disconnected")} />
                             ))}
                           {!status?.enabled && (
-                            <span className="rounded-full bg-[var(--theme-primary-light)] px-2 py-0.5 text-12 text-[var(--theme-text-secondary)]">
-                              {t("channel.disabled", "Disabled")}
-                            </span>
+                            <StatusBadge color="stone" label={t("channel.disabled")} />
                           )}
                         </div>
                         <p className="mt-1 text-14 text-[var(--theme-text-secondary)]">
@@ -386,7 +367,7 @@ export function ChannelsPage() {
                             `/channels/${selectedChannel}/${instance.instance_id}`,
                           );
                         }}
-                        className="flex-shrink-0 rounded p-1 hover:bg-stone-200/60 dark:hover:bg-stone-700/60 transition-colors"
+                        className="panel-row-actions flex-shrink-0 rounded p-1 hover:bg-stone-200/60 dark:hover:bg-stone-700/60 transition-colors"
                         title={t("channel.moreOptions", "View details")}
                       >
                         <MoreVertical

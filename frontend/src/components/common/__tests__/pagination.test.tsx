@@ -33,5 +33,6 @@ test("returns to a valid page when the last item on the last page is removed", (
   const onChange = vi.fn();
   render(<Pagination page={2} pageSize={20} total={20} onChange={onChange} />);
   expect(onChange).toHaveBeenCalledWith(1);
-  expect(screen.queryByRole("navigation")).toBeNull();
+  expect(screen.getByRole("navigation")).toBeTruthy();
+  expect(screen.queryByRole("button")).toBeNull();
 });

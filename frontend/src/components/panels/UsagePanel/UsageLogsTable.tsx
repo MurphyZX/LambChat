@@ -20,18 +20,18 @@ const _STATUS_PILL_STYLES: Record<
   { pill: string; dot: string; labelKey: string }
 > = {
   ok: {
-    pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    dot: "bg-emerald-500 animate-[status-ok-pulse_2s_ease-in-out_infinite]",
+    pill: "text-theme-text-secondary",
+    dot: "bg-theme-success",
     labelKey: "usage.statusOk",
   },
   cancelled: {
-    pill: "bg-theme-warning/10 text-theme-warning",
+    pill: "text-theme-text-secondary",
     dot: "bg-theme-warning",
     labelKey: "usage.statusCancelled",
   },
   error: {
-    pill: "bg-red-500/10 text-red-500 dark:text-red-400",
-    dot: "bg-red-500",
+    pill: "text-theme-text-secondary",
+    dot: "bg-theme-error",
     labelKey: "usage.statusError",
   },
 };
@@ -42,9 +42,9 @@ function StatusPill({ status, title }: { status: string; title?: string }) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-10 font-medium tabular-nums ${style.pill}`}
+      className={`inline-flex items-center gap-1.5 text-12 tabular-nums ${style.pill}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+      <span className={`size-2 shrink-0 rounded-full ${style.dot}`} />
       {t(style.labelKey)}
     </span>
   );
@@ -285,11 +285,10 @@ function TabletRow({
           </p>
           {log.status !== "completed" && log.error_message && (
             <p
-              className={`mt-1 truncate text-10 ${
-                usageStatusKind(log.status) === "cancelled"
+              className={`mt-1 truncate text-10 ${usageStatusKind(log.status) === "cancelled"
                   ? "text-amber-600 dark:text-amber-400"
                   : "text-red-500 dark:text-red-400"
-              }`}
+                }`}
               title={log.error_message}
             >
               {log.error_message}
@@ -327,11 +326,10 @@ function TabletRow({
               {label}
             </span>
             <span
-              className={`mt-0.5 block truncate text-12 font-semibold tabular-nums ${
-                strong
+              className={`mt-0.5 block truncate text-12 font-semibold tabular-nums ${strong
                   ? "text-[var(--theme-primary)]"
                   : "text-theme-text-secondary"
-              }`}
+                }`}
             >
               {value}
             </span>
@@ -368,13 +366,12 @@ function MobileCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                statusKind === "ok"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${statusKind === "ok"
                   ? "bg-emerald-500/[0.08] text-emerald-600 dark:text-emerald-400"
                   : statusKind === "cancelled"
                     ? "bg-amber-500/[0.08] text-amber-600 dark:text-amber-400"
                     : "bg-red-500/[0.08] text-red-500 dark:text-red-400"
-              }`}
+                }`}
             >
               <Bot size={16} strokeWidth={2} />
             </div>
@@ -397,11 +394,10 @@ function MobileCard({
               </div>
               {log.status !== "completed" && log.error_message && (
                 <p
-                  className={`mt-2 truncate text-10 ${
-                    statusKind === "cancelled"
+                  className={`mt-2 truncate text-10 ${statusKind === "cancelled"
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-red-500 dark:text-red-400"
-                  }`}
+                    }`}
                   title={log.error_message}
                 >
                   {log.error_message}
@@ -427,19 +423,17 @@ function MobileCard({
           ].map(([label, value, strong], i) => (
             <div
               key={String(label)}
-              className={`flex flex-col items-center py-2.5 ${
-                i > 0 ? "border-l border-[var(--usage-border)]" : ""
-              }`}
+              className={`flex flex-col items-center py-2.5 ${i > 0 ? "border-l border-[var(--usage-border)]" : ""
+                }`}
             >
               <span className="text-8 font-semibold uppercase tracking-widest text-theme-text-tertiary">
                 {label}
               </span>
               <span
-                className={`mt-1 text-14 tabular-nums ${
-                  strong
+                className={`mt-1 text-14 tabular-nums ${strong
                     ? "font-bold text-[var(--theme-primary)]"
                     : "font-semibold text-theme-text"
-                }`}
+                  }`}
               >
                 {value}
               </span>

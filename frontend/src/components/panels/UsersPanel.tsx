@@ -1,3 +1,4 @@
+import { StatusBadge } from "../common/StatusBadge";
 /**
  * 用户管理页面组件
  */
@@ -10,9 +11,7 @@ import {
   Plus,
   Edit,
   Trash2,
-  X,
   AlertCircle,
-  Check,
   Save,
   User,
   Mail,
@@ -46,11 +45,11 @@ interface UserAvatarProps {
 }
 
 function UserAvatar({ user, size = "sm" }: UserAvatarProps) {
-  const sizeClasses = size === "sm" ? "h-8 w-8 text-14" : "h-10 w-10 text-16";
+  const sizeClasses = size === "sm" ? "h-6 w-6 text-12" : "h-7 w-7 text-13";
   const initial = user.username.charAt(0).toUpperCase();
   const fallback = (
     <div
-      className={`flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-medium ${sizeClasses}`}
+      className={`flex items-center justify-center rounded-full bg-[var(--color-background-blue)] text-[var(--color-text-blue)] font-medium ${sizeClasses}`}
     >
       {initial}
     </div>
@@ -433,7 +432,7 @@ export function UsersPanel() {
       {/* 头部 */}
       <PanelHeader
         title={t("users.title")}
-        subtitle={t("users.subtitle")}
+        count={total}
         icon={<Users size={24} className="text-theme-text-secondary" />}
         searchValue={searchQuery}
         onSearchChange={handleSearchQueryChange}
@@ -460,209 +459,199 @@ export function UsersPanel() {
       )}
 
       {/* 用户列表 */}
-      <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
-        {users.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <SceneIllustration scene="welcome" className="mb-4" />
-            <p className="text-theme-text-secondary">
-              {debouncedSearch
-                ? t("users.noMatchingUsers")
-                : t("users.noUsers")}
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop table view */}
-            <div className="hidden overflow-x-auto glass-card rounded-xl sm:block">
-              <table className="min-w-full divide-y divide-[var(--glass-border)]">
-                <thead className="bg-[var(--glass-bg-subtle)]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
-                      {t("users.user")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
-                      {t("users.email")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
-                      {t("users.roles")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
-                      {t("users.status")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
-                      {t("users.createdAt")}
-                    </th>
-                    {(canEdit || canDelete) && (
-                      <th className="px-6 py-3 text-right text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
-                        {t("users.actions")}
+      <div className="panel-content-card panel-content-card--list">
+        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+          {users.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <SceneIllustration scene="welcome" className="mb-4" />
+              <p className="text-theme-text-secondary">
+                {debouncedSearch
+                  ? t("users.noMatchingUsers")
+                  : t("users.noUsers")}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop table view */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="panel-table w-full">
+                  <thead >
+                    <tr>
+                      <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+                        {t("users.user")}
                       </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--glass-border)]">
-                  {users.map((user) => (
-                    <tr
-                      key={user.id}
-                      className="hover:bg-[var(--glass-bg-subtle)]"
-                    >
-                      <td className="whitespace-nowrap px-6 py-3">
-                        <div className="flex items-center gap-3">
-                          <UserAvatar user={user} />
-                          <span className="font-medium font-sans text-theme-text">
-                            {user.username}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-14 text-theme-text-secondary">
-                        {user.email}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {user.roles.map((roleName: string) => {
-                            const role = roles.find((r) => r.name === roleName);
-                            return (
-                              <span
-                                key={roleName}
-                                className="tag tag-default font-sans"
-                              >
-                                {role ? role.name : roleName}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-3">
-                        {user.is_active ? (
-                          <span className="tag tag-success">
-                            <Check size={12} />
-                            {t("users.enabled")}
-                          </span>
-                        ) : (
-                          <span className="tag tag-error">
-                            <X size={12} />
-                            {t("users.disabled")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-14 text-theme-text-secondary">
-                        {formatDate(user.created_at)}
-                      </td>
+                      <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+                        {t("users.email")}
+                      </th>
+                      <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+                        {t("users.roles")}
+                      </th>
+                      <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+                        {t("users.status")}
+                      </th>
+                      <th className="px-6 py-3 text-left text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+                        {t("users.createdAt")}
+                      </th>
                       {(canEdit || canDelete) && (
-                        <td className="whitespace-nowrap px-6 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {canEdit && (
-                              <IconButton
-                                aria-label={t("users.edit")}
-                                icon={<Edit size={18} />}
-                                onClick={() => openEditModal(user)}
-                                title={t("users.edit")}
-                              />
-                            )}
-                            {canDelete && (
-                              <IconButton
-                                aria-label={t("common.delete")}
-                                icon={<Trash2 size={18} />}
-                                onClick={() => setDeleteUser(user)}
-                                className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                                title={t("common.delete")}
-                              />
-                            )}
-                          </div>
-                        </td>
+                        <th className="px-6 py-3 text-right text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+                          {t("users.actions")}
+                        </th>
                       )}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile card view */}
-            <div className="space-y-3 sm:hidden">
-              {users.map((user) => (
-                <div key={user.id} className="panel-card">
-                  {/* User info: avatar, username, email */}
-                  <div className="flex items-start gap-3">
-                    <UserAvatar user={user} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium font-sans text-theme-text">
-                        {user.username}
-                      </p>
-                      <p className="truncate text-14 text-theme-text-secondary">
-                        {user.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Roles tags */}
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {user.roles.map((roleName: string) => (
-                      <span
-                        key={roleName}
-                        className="tag tag-default font-sans"
+                  </thead>
+                  <tbody >
+                    {users.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="hover:bg-[var(--glass-bg-subtle)]"
                       >
-                        {roles.find((r) => r.name === roleName)?.name ||
-                          roleName}
-                      </span>
+                        <td className="whitespace-nowrap px-6 py-3">
+                          <div className="flex items-center gap-3">
+                            <UserAvatar user={user} />
+                            <span className="font-medium font-sans text-theme-text">
+                              {user.username}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-3 text-14 text-theme-text-secondary">
+                          {user.email}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {user.roles.map((roleName: string) => {
+                              const role = roles.find((r) => r.name === roleName);
+                              return (
+                                <span
+                                  key={roleName}
+                                  className="tag tag-default font-sans"
+                                >
+                                  {role ? role.name : roleName}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-3">
+                          {user.is_active ? (
+                            <StatusBadge color="green" label={t("users.enabled")} />
+                          ) : (
+                            <StatusBadge color="stone" label={t("users.disabled")} />
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-3 text-14 text-theme-text-secondary">
+                          {formatDate(user.created_at)}
+                        </td>
+                        {(canEdit || canDelete) && (
+                          <td className="whitespace-nowrap px-6 py-3 text-right">
+                            <div className="panel-row-actions flex items-center justify-end gap-2">
+                              {canEdit && (
+                                <IconButton
+                                  aria-label={t("users.edit")}
+                                  icon={<Edit size={18} />}
+                                  onClick={() => openEditModal(user)}
+                                  title={t("users.edit")}
+                                />
+                              )}
+                              {canDelete && (
+                                <IconButton
+                                  aria-label={t("common.delete")}
+                                  icon={<Trash2 size={18} />}
+                                  onClick={() => setDeleteUser(user)}
+                                  className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                                  title={t("common.delete")}
+                                />
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
                     ))}
-                  </div>
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* Status and date */}
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {user.is_active ? (
-                        <span className="tag tag-success">
-                          <Check size={12} />
-                          {t("users.enabled")}
-                        </span>
-                      ) : (
-                        <span className="tag tag-error">
-                          <X size={12} />
-                          {t("users.disabled")}
-                        </span>
-                      )}
-                      <span className="text-12 text-theme-text-secondary opacity-60">
-                        {formatDate(user.created_at)}
-                      </span>
+              {/* Mobile card view */}
+              <div className="space-y-3 sm:hidden">
+                {users.map((user) => (
+                  <div key={user.id} className="panel-card">
+                    {/* User info: avatar, username, email */}
+                    <div className="flex items-start gap-3">
+                      <UserAvatar user={user} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium font-sans text-theme-text">
+                          {user.username}
+                        </p>
+                        <p className="truncate text-14 text-theme-text-secondary">
+                          {user.email}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Edit/Delete buttons */}
-                    {(canEdit || canDelete) && (
-                      <div className="flex items-center gap-1">
-                        {canEdit && (
-                          <IconButton
-                            aria-label={t("users.edit")}
-                            icon={<Edit size={18} />}
-                            onClick={() => openEditModal(user)}
-                            title={t("users.edit")}
-                          />
-                        )}
-                        {canDelete && (
-                          <IconButton
-                            aria-label={t("common.delete")}
-                            icon={<Trash2 size={18} />}
-                            onClick={() => setDeleteUser(user)}
-                            className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                            title={t("common.delete")}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+                    {/* Roles tags */}
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {user.roles.map((roleName: string) => (
+                        <span
+                          key={roleName}
+                          className="tag tag-default font-sans"
+                        >
+                          {roles.find((r) => r.name === roleName)?.name ||
+                            roleName}
+                        </span>
+                      ))}
+                    </div>
 
-      {/* Pagination */}
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onChange={setPage}
-        />
+                    {/* Status and date */}
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {user.is_active ? (
+                          <StatusBadge color="green" label={t("users.enabled")} />
+                        ) : (
+                          <StatusBadge color="stone" label={t("users.disabled")} />
+                        )}
+                        <span className="text-12 text-theme-text-secondary opacity-60">
+                          {formatDate(user.created_at)}
+                        </span>
+                      </div>
+
+                      {/* Edit/Delete buttons */}
+                      {(canEdit || canDelete) && (
+                        <div className="flex items-center gap-1">
+                          {canEdit && (
+                            <IconButton
+                              aria-label={t("users.edit")}
+                              icon={<Edit size={18} />}
+                              onClick={() => openEditModal(user)}
+                              title={t("users.edit")}
+                            />
+                          )}
+                          {canDelete && (
+                            <IconButton
+                              aria-label={t("common.delete")}
+                              icon={<Trash2 size={18} />}
+                              onClick={() => setDeleteUser(user)}
+                              className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                              title={t("common.delete")}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Pagination */}
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
       </div>
 
       {/* 模态框 */}

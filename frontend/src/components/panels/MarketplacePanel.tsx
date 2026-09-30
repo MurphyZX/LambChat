@@ -25,10 +25,10 @@ const ACTIVE_FILTER_OPTIONS: Array<{
   value: ActiveFilter;
   labelKey: string;
 }> = [
-  { value: "all", labelKey: "marketplace.filterAll" },
-  { value: "active", labelKey: "marketplace.filterActive" },
-  { value: "inactive", labelKey: "marketplace.filterInactive" },
-];
+    { value: "all", labelKey: "marketplace.filterAll" },
+    { value: "active", labelKey: "marketplace.filterActive" },
+    { value: "inactive", labelKey: "marketplace.filterInactive" },
+  ];
 
 interface MarketplacePanelProps {
   embedded?: boolean;
@@ -276,9 +276,9 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
       options={
         canManageFilters
           ? ACTIVE_FILTER_OPTIONS.map((opt) => ({
-              value: opt.value,
-              label: t(opt.labelKey),
-            }))
+            value: opt.value,
+            label: t(opt.labelKey),
+          }))
           : undefined
       }
       value={activeFilter}
@@ -328,23 +328,23 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
         <PanelHeader
           className="skill-panel-header"
           title={t("marketplace.title")}
-          searchOnly
+          count={filteredSkills.length}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder={t("marketplace.searchPlaceholder")}
           searchAccessory={filterMenu}
-          searchActions={headerActions}
+          actions={headerActions}
         />
       )}
       {!embedded && (
         <PanelHeader
           className="skill-panel-header"
           title={t("marketplace.title")}
-          subtitle={t("marketplace.subtitle")}
+          count={filteredSkills.length}
           icon={
             <ShoppingBag
               size={20}
-              className="text-stone-600 dark:text-stone-400"
+              className="text-theme-text-secondary"
             />
           }
           searchValue={searchQuery}
@@ -369,63 +369,65 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
       )}
 
       {/* Skills List */}
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
-        {filteredSkills.length === 0 ? (
-          <EmptyState
-            illustration="reading"
-            title={
-              hasActiveFilters
-                ? t("marketplace.noMatchingSkills")
-                : t("marketplace.noSkills")
-            }
-            description={
-              hasActiveFilters
-                ? t("marketplace.subtitle")
-                : t("marketplace.createHint")
-            }
-            action={
-              hasActiveFilters ? (
-                <Button variant="secondary" onClick={clearFilters}>
-                  {t("marketplace.clearFilters")}
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <div className="grid auto-grid-cols gap-5">
-            {slice(filteredSkills).map((skill, index) => (
-              <SkillCard
-                key={skill.skill_name}
-                skill={skill}
-                index={index}
-                isInstalled={installedMarketplaceNames.has(skill.skill_name)}
-                isOwner={skill.is_owner}
-                canManage={skill.is_owner || canAdmin}
-                canWrite={canWrite}
-                installingSkill={installingSkill}
-                userSkillsLoading={userSkillsLoading}
-                selectedTags={selectedTags}
-                openMenuName={openMenuName}
-                onInstallClick={handleInstallClick}
-                onPreview={() => openPreview(skill)}
-                onToggleTag={toggleTag}
-                onOpenMenu={setOpenMenuName}
-                onEdit={handleEdit}
-                onActivate={handleActivate}
-                onDelete={handleAdminDelete}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <div className="panel-content-card panel-content-card--grid">
+        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+          {filteredSkills.length === 0 ? (
+            <EmptyState
+              illustration="reading"
+              title={
+                hasActiveFilters
+                  ? t("marketplace.noMatchingSkills")
+                  : t("marketplace.noSkills")
+              }
+              description={
+                hasActiveFilters
+                  ? t("marketplace.subtitle")
+                  : t("marketplace.createHint")
+              }
+              action={
+                hasActiveFilters ? (
+                  <Button variant="secondary" onClick={clearFilters}>
+                    {t("marketplace.clearFilters")}
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="grid auto-grid-cols items-stretch gap-4">
+              {slice(filteredSkills).map((skill, index) => (
+                <SkillCard
+                  key={skill.skill_name}
+                  skill={skill}
+                  index={index}
+                  isInstalled={installedMarketplaceNames.has(skill.skill_name)}
+                  isOwner={skill.is_owner}
+                  canManage={skill.is_owner || canAdmin}
+                  canWrite={canWrite}
+                  installingSkill={installingSkill}
+                  userSkillsLoading={userSkillsLoading}
+                  selectedTags={selectedTags}
+                  openMenuName={openMenuName}
+                  onInstallClick={handleInstallClick}
+                  onPreview={() => openPreview(skill)}
+                  onToggleTag={toggleTag}
+                  onOpenMenu={setOpenMenuName}
+                  onEdit={handleEdit}
+                  onActivate={handleActivate}
+                  onDelete={handleAdminDelete}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      <div className="panel-pagination empty:hidden">
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={filteredSkills.length}
-          onChange={setPage}
-        />
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={filteredSkills.length}
+            onChange={setPage}
+          />
+        </div>
       </div>
 
       {/* Install/Update Confirmation Dialog */}
@@ -434,11 +436,11 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
         title={
           installConfirm?.action === "install"
             ? t("marketplace.confirmInstall", {
-                name: installConfirm?.skillName,
-              })
+              name: installConfirm?.skillName,
+            })
             : t("marketplace.confirmUpdate", {
-                name: installConfirm?.skillName,
-              })
+              name: installConfirm?.skillName,
+            })
         }
         message={
           installConfirm?.action === "install"
