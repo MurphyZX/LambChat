@@ -173,7 +173,7 @@
 /* Gray – inactive / disconnected */
 .scb__status-pill--inactive {
   background: rgba(255, 255, 255, 0.65);
-  color: #78716c;
+  color: var(--theme-text-secondary);
 }
 
 .dark .scb__status-pill--inactive {
@@ -206,7 +206,7 @@
 /* Gray – disabled (soft) */
 .scb__status-pill--disabled {
   background: rgba(255, 255, 255, 0.7);
-  color: #78716c;
+  color: var(--theme-text-secondary);
 }
 
 .dark .scb__status-pill--disabled {
@@ -307,8 +307,9 @@
     color-mix(in srgb, var(--theme-primary) 24%, transparent);
 }
 
-.dark .scb__action-btn--primary {
-  color: #1c1917;
+.scb__action-btn--primary:focus-visible {
+  outline: 2px solid var(--theme-ring);
+  outline-offset: 2px;
 }
 
 .scb__action-btn--ghost {
@@ -522,7 +523,7 @@
 
 .mp-card__status-pill--inactive {
   background: rgba(255, 255, 255, 0.65);
-  color: #78716c;
+  color: var(--theme-text-secondary);
 }
 
 .dark .mp-card__status-pill--inactive {
@@ -618,8 +619,9 @@
     color-mix(in srgb, var(--theme-primary) 24%, transparent);
 }
 
-.dark .mp-card__action-btn--primary {
-  color: #1c1917;
+.mp-card__action-btn--primary:focus-visible {
+  outline: 2px solid var(--theme-ring);
+  outline-offset: 2px;
 }
 
 .mp-card__action-btn--update {

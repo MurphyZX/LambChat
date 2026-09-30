@@ -76,7 +76,7 @@ export function SkillsHubPanel() {
     <div className="skill-theme-shell flex h-full min-h-0 flex-col">
       {showTabSwitcher && (
         <div
-          className="skills-hub-tabs font-serif"
+          className="skills-hub-tabs font-sans"
           role="tablist"
           aria-label={t("skillsHub.title")}
         >

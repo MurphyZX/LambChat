@@ -988,13 +988,8 @@
 }
 
 .tag-warning {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.dark .tag-warning {
-  background-color: rgb(146 64 14 / 0.3);
-  color: #fcd34d;
+  background-color: color-mix(in srgb, var(--theme-warning) 10%, transparent);
+  color: var(--theme-warning);
 }
 
 .tag-error {

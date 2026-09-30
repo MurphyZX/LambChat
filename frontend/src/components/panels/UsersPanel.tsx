@@ -505,25 +505,25 @@ export function UsersPanel() {
                       key={user.id}
                       className="hover:bg-[var(--glass-bg-subtle)]"
                     >
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="whitespace-nowrap px-6 py-3">
                         <div className="flex items-center gap-3">
                           <UserAvatar user={user} />
-                          <span className="font-medium font-serif text-theme-text">
+                          <span className="font-medium font-sans text-theme-text">
                             {user.username}
                           </span>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-14 text-theme-text-secondary">
+                      <td className="whitespace-nowrap px-6 py-3 text-14 text-theme-text-secondary">
                         {user.email}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="whitespace-nowrap px-6 py-3">
                         <div className="flex flex-wrap gap-1">
                           {user.roles.map((roleName: string) => {
                             const role = roles.find((r) => r.name === roleName);
                             return (
                               <span
                                 key={roleName}
-                                className="tag tag-default font-serif"
+                                className="tag tag-default font-sans"
                               >
                                 {role ? role.name : roleName}
                               </span>
@@ -531,7 +531,7 @@ export function UsersPanel() {
                           })}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="whitespace-nowrap px-6 py-3">
                         {user.is_active ? (
                           <span className="tag tag-success">
                             <Check size={12} />
@@ -544,11 +544,11 @@ export function UsersPanel() {
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-14 text-theme-text-secondary">
+                      <td className="whitespace-nowrap px-6 py-3 text-14 text-theme-text-secondary">
                         {formatDate(user.created_at)}
                       </td>
                       {(canEdit || canDelete) && (
-                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                        <td className="whitespace-nowrap px-6 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {canEdit && (
                               <IconButton
@@ -584,7 +584,7 @@ export function UsersPanel() {
                   <div className="flex items-start gap-3">
                     <UserAvatar user={user} size="md" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium font-serif text-theme-text">
+                      <p className="truncate font-medium font-sans text-theme-text">
                         {user.username}
                       </p>
                       <p className="truncate text-14 text-theme-text-secondary">
@@ -598,7 +598,7 @@ export function UsersPanel() {
                     {user.roles.map((roleName: string) => (
                       <span
                         key={roleName}
-                        className="tag tag-default font-serif"
+                        className="tag tag-default font-sans"
                       >
                         {roles.find((r) => r.name === roleName)?.name ||
                           roleName}

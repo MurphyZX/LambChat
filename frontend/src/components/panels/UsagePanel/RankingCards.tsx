@@ -53,7 +53,7 @@ export function RankingList({
   const fxRates = useFxRates();
   const maxTokens = Math.max(...items.map((i) => i.tokens), 1);
   return (
-    <div className="usage-surface rounded-xl p-4 transition-colors duration-200 hover:border-[var(--usage-border-hover)] sm:p-5">
+    <div className="usage-surface rounded-xl p-4 transition-colors duration-200 hover:border-[var(--usage-border-hover)]">
       {/* Header */}
       <div className="mb-4 flex items-center gap-2">
         <Icon
@@ -144,7 +144,7 @@ export function DistributionList({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="usage-surface rounded-xl p-4 transition-colors duration-200 hover:border-[var(--usage-border-hover)] sm:p-5">
+    <div className="usage-surface rounded-xl p-4 transition-colors duration-200 hover:border-[var(--usage-border-hover)]">
       <div className="mb-4 flex items-center gap-2">
         <Icon
           size={14}

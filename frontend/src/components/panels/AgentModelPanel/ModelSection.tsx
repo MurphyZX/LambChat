@@ -149,7 +149,7 @@ export function ModelSection() {
     <div className="animate-glass-enter px-4 py-5 sm:px-6 lg:px-7">
       {error && <ConfigPanelErrorCallout message={error} className="mb-4" />}
 
-      <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-serif">
+      <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-sans">
         <button
           onClick={() => setActiveTab("roles")}
           className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${

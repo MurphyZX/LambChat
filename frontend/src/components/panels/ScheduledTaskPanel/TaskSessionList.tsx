@@ -85,7 +85,7 @@ export function TaskSessionList({
         actions={
           <button
             onClick={() => navigate("/scheduled-tasks", { replace: true })}
-            className="scheduled-task-button scheduled-task-button--secondary font-serif"
+            className="scheduled-task-button scheduled-task-button--secondary font-sans"
           >
             <ArrowLeft size={16} />
             {t("scheduledTask.backToTasks")}
@@ -98,7 +98,7 @@ export function TaskSessionList({
         {sessions.length === 0 ? (
           <div className="scheduled-task-empty-state">
             <SceneIllustration scene="message" className="mx-auto mb-4" />
-            <p className="scheduled-task-empty-state__title font-serif">
+            <p className="scheduled-task-empty-state__title font-sans">
               {t("scheduledTask.noSessions")}
             </p>
             <p className="scheduled-task-empty-state__body">
@@ -132,7 +132,7 @@ export function TaskSessionList({
 
                   {/* Body */}
                   <div className="scheduled-task-session-card__body">
-                    <p className="scheduled-task-session-card__title font-serif">
+                    <p className="scheduled-task-session-card__title font-sans">
                       {session.name || t("scheduledTask.untitledSession")}
                     </p>
                     <div className="scheduled-task-session-card__meta">

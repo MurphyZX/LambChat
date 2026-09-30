@@ -141,7 +141,7 @@ export function RolesModelTab({
         <>
           <div className="agent-config-list overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] divide-y divide-[var(--glass-border)]">
             {/* Header row */}
-            <div className="flex items-center justify-between gap-3 font-serif bg-[var(--glass-bg-subtle)] px-3.5 py-2.5 sm:px-4">
+            <div className="flex items-center justify-between gap-3 font-sans bg-[var(--glass-bg-subtle)] px-3.5 py-2.5 sm:px-4">
               <h4 className="min-w-0 truncate text-12 font-medium uppercase tracking-wider text-stone-500 dark:text-stone-400">
                 {t("agentConfig.selectModelsForRole", {
                   roleName: selectedRoleData?.name,
@@ -204,7 +204,7 @@ export function RolesModelTab({
                         size={20}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-14 font-medium font-serif text-stone-950 dark:text-stone-100">
+                        <div className="truncate text-14 font-medium font-sans text-stone-950 dark:text-stone-100">
                           {model.label}
                         </div>
                         <div className="text-12 font-mono text-stone-400 dark:text-stone-500 truncate sm:hidden mt-0.5">

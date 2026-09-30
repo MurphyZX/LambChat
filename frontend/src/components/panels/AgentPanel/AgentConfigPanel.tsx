@@ -297,7 +297,7 @@ export function AgentConfigPanel() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-14 font-semibold text-stone-900 dark:text-stone-100 truncate tracking-tight font-serif">
+                      <h4 className="text-14 font-semibold text-stone-900 dark:text-stone-100 truncate tracking-tight font-sans">
                         {displayName}
                       </h4>
                       <p className="text-12 text-stone-500 dark:text-stone-400 truncate mt-0.5 hidden sm:block">

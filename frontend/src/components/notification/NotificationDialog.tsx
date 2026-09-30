@@ -35,12 +35,12 @@ const TYPE_CONFIG: Record<
   warning: {
     icon: AlertTriangle,
     labelKey: "notification.typeWarning",
-    dotClass: "bg-amber-500",
+    dotClass: "bg-theme-warning",
   },
   maintenance: {
     icon: Wrench,
     labelKey: "notification.typeMaintenance",
-    dotClass: "bg-orange-500",
+    dotClass: "bg-theme-warning",
   },
 };
 

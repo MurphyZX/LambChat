@@ -221,9 +221,7 @@ function NotificationFormModal({
                         ? "border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/30 dark:text-blue-300"
                         : nt === "success"
                           ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-300"
-                          : nt === "warning"
-                            ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-500 dark:bg-amber-900/30 dark:text-amber-300"
-                            : "border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-500 dark:bg-orange-900/30 dark:text-orange-300"
+                          : "border-theme-warning/30 bg-theme-warning/10 text-theme-warning"
                       : "border-stone-200 bg-stone-50 text-stone-500 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400 dark:hover:border-stone-600"
                   }`}
                 >
@@ -401,7 +399,7 @@ export function NotificationPanel() {
     return (
       <div className="glass-shell flex h-full flex-col items-center justify-center gap-4 p-8">
         <SceneIllustration scene="message" className="mx-auto mb-4" />
-        <p className="text-18 font-medium font-serif text-stone-700 dark:text-stone-300">
+        <p className="text-18 font-medium font-sans text-stone-700 dark:text-stone-300">
           {t("common.accessDenied")}
         </p>
         <p className="text-14 text-stone-500 dark:text-stone-400">
@@ -435,7 +433,7 @@ export function NotificationPanel() {
         ) : !isLoading && notifications.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <SceneIllustration scene="message" className="mx-auto mb-4" />
-            <p className="text-18 font-medium font-serif text-stone-700 dark:text-stone-300">
+            <p className="text-18 font-medium font-sans text-stone-700 dark:text-stone-300">
               {t("notification.noNotifications")}
             </p>
           </div>
@@ -454,7 +452,7 @@ export function NotificationPanel() {
                   className="glass-card overflow-hidden rounded-xl transition-colors hover:border-stone-300 dark:hover:border-stone-600"
                 >
                   <div className="flex flex-col">
-                    <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-3 p-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-nowrap items-center gap-2 sm:gap-3">
                           <span
@@ -463,9 +461,7 @@ export function NotificationPanel() {
                                 ? "bg-blue-500/15 text-blue-600 dark:text-blue-300"
                                 : notification.type === "success"
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
-                                  : notification.type === "warning"
-                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
-                                    : "bg-orange-500/15 text-orange-600 dark:text-orange-300"
+                                  : "bg-theme-warning/10 text-theme-warning"
                             }`}
                           >
                             {t(

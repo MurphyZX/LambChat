@@ -114,7 +114,7 @@ export function BookmarksPanel() {
           <div className="flex min-h-64 flex-col items-center justify-center gap-4 p-8 text-center">
             <SceneIllustration scene="reading" className="mb-4" />
             <div>
-              <p className="font-serif text-16 font-semibold text-[var(--theme-text)]">
+              <p className="font-sans text-16 font-semibold text-[var(--theme-text)]">
                 {t("bookmarks.empty")}
               </p>
               <p className="mx-auto mt-1 max-w-88 text-14 leading-relaxed text-[var(--theme-text-secondary)]">
@@ -138,10 +138,10 @@ export function BookmarksPanel() {
                     handleJump(bookmark);
                   }
                 }}
-                className="glass-card group relative flex flex-col rounded-xl p-4 sm:p-5 cursor-pointer transition-all duration-200 animate-glass-enter"
+                className="glass-card group relative flex flex-col rounded-xl p-4 cursor-pointer transition-all duration-200 animate-glass-enter"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="line-clamp-2 min-w-0 flex-1 text-left font-serif text-14 font-semibold leading-relaxed text-[var(--theme-text)] sm:text-16">
+                  <p className="line-clamp-2 min-w-0 flex-1 text-left font-sans text-14 font-semibold leading-relaxed text-[var(--theme-text)] sm:text-16">
                     {bookmark.label?.trim() || t("bookmarks.untitled")}
                   </p>
                   <button

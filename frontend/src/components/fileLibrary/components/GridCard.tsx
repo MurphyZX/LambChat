@@ -49,7 +49,7 @@ export function GridCard({
           </div>
           <div className="flex-1 min-w-0">
             <p
-              className="text-13 text-theme-text truncate leading-tight font-serif"
+              className="text-13 text-theme-text truncate leading-tight font-sans"
               title={file.file_name}
             >
               {file.file_name}
@@ -73,7 +73,7 @@ export function GridCard({
 
         {/* Meta footer */}
         <div className="px-2.5 py-2">
-          <p className="text-11 text-theme-text-tertiary truncate font-serif">
+          <p className="text-11 text-theme-text-tertiary truncate font-sans">
             {meta}
           </p>
         </div>

@@ -836,7 +836,7 @@ export const BatchCreateModal = ({
                 </div>
               )}
               {importParse?.kind === "ok" && importParse.maskedKeyCount > 0 && (
-                <div className="rounded-xl p-3 text-12 flex items-start gap-2 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <div className="rounded-xl p-3 text-12 flex items-start gap-2 bg-theme-warning/10 text-theme-warning border border-theme-warning/30">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   {t("agentConfig.batchMaskedKeyWarning", {
                     count: importParse.maskedKeyCount,
@@ -844,7 +844,7 @@ export const BatchCreateModal = ({
                 </div>
               )}
               {importParse?.kind === "ok" && importParse.skippedCount > 0 && (
-                <div className="rounded-xl p-3 text-12 flex items-start gap-2 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <div className="rounded-xl p-3 text-12 flex items-start gap-2 bg-theme-warning/10 text-theme-warning border border-theme-warning/30">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   {t("agentConfig.batchSkippedWarning", {
                     count: importParse.skippedCount,

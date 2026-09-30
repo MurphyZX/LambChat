@@ -77,7 +77,7 @@ export function RoleSquare({
       <div className="team-pane-header">
         <div>
           <p className="team-pane-eyebrow">{t("team.select")}</p>
-          <h2 className="team-pane-title font-serif">
+          <h2 className="team-pane-title font-sans">
             {t("team.roleLibrary")}
             <span className="team-pane-count">{filtered.length}</span>
           </h2>
@@ -116,7 +116,7 @@ export function RoleSquare({
             >
               {renderAvatar(preset)}
               <div className="team-role-card__body">
-                <span className="team-role-card__name font-serif">
+                <span className="team-role-card__name font-sans">
                   {preset.name}
                 </span>
                 {preset.description && (

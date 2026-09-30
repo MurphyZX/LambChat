@@ -58,9 +58,9 @@ const COLOR_MAP: Record<
     dot: "bg-red-500",
   },
   amber: {
-    bg: "bg-amber-100 dark:bg-amber-900/30",
-    text: "text-amber-700 dark:text-amber-400",
-    dot: "bg-amber-500",
+    bg: "bg-theme-warning/10",
+    text: "text-theme-warning",
+    dot: "bg-theme-warning",
   },
 };
 

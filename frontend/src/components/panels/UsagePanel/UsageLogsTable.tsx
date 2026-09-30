@@ -25,8 +25,8 @@ const _STATUS_PILL_STYLES: Record<
     labelKey: "usage.statusOk",
   },
   cancelled: {
-    pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    dot: "bg-amber-500",
+    pill: "bg-theme-warning/10 text-theme-warning",
+    dot: "bg-theme-warning",
     labelKey: "usage.statusCancelled",
   },
   error: {
@@ -67,12 +67,12 @@ function SectionHeader({
   const end = Math.min(start + shown - 1, total);
 
   return (
-    <div className="usage-section-header mb-4 flex items-center justify-between gap-4 sm:mb-5">
+    <div className="usage-section-header mb-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 sm:gap-3.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--usage-icon-bg)] text-[var(--theme-primary)] sm:h-9 sm:w-9">
           <FileText size={15} strokeWidth={2} />
         </div>
-        <h2 className="truncate text-13 font-bold tracking-tight text-theme-text sm:text-14">
+        <h2 className="truncate text-13 font-medium tracking-tight text-theme-text">
           {title}
         </h2>
       </div>
@@ -270,7 +270,7 @@ function TabletRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <code
-              className="min-w-0 truncate font-serif text-12 font-semibold text-theme-text tabular-nums"
+              className="min-w-0 truncate font-sans text-12 font-semibold text-theme-text tabular-nums"
               title={log.model}
             >
               {modelDisplayName(modelLabels, log.model) || "-"}
@@ -380,7 +380,7 @@ function MobileCard({
             </div>
             <div className="min-w-0 flex-1">
               <code
-                className="block truncate font-serif text-13 font-bold text-theme-text tabular-nums"
+                className="block truncate font-sans text-13 font-bold text-theme-text tabular-nums"
                 title={log.model}
               >
                 {modelDisplayName(modelLabels, log.model) || "-"}

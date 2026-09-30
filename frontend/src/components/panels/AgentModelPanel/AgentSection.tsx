@@ -170,7 +170,7 @@ export function AgentSection() {
       {error && <ConfigPanelErrorCallout message={error} className="mb-4" />}
 
       {canManageAgents && (
-        <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-serif">
+        <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-sans">
           <button
             onClick={() => setActiveTab("global")}
             className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-all duration-150 ${
@@ -238,7 +238,7 @@ export function AgentSection() {
                     <AgentIcon icon={agent.icon || "Bot"} size={20} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="truncate text-14 font-medium font-serif text-theme-text tracking-tight">
+                    <h4 className="truncate text-14 font-medium font-sans text-theme-text tracking-tight">
                       {displayName}
                     </h4>
                     <p className="mt-0.5 hidden truncate text-12 text-theme-text-secondary sm:block">

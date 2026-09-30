@@ -60,7 +60,7 @@ export function ChannelAgentSelect({
           value: agent.id,
           label: (
             <>
-              <span className="font-serif">
+              <span className="font-sans">
                 {resolveAgentDisplayName(agent, i18n.language, t)}
               </span>
               <span className="opacity-60">

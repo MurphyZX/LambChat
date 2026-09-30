@@ -46,7 +46,7 @@ export function ListCard({
           <p className="text-13 font-medium text-theme-text truncate leading-snug">
             {file.file_name}
           </p>
-          <p className="mt-0.5 text-11 text-theme-text-tertiary truncate font-serif">
+          <p className="mt-0.5 text-11 text-theme-text-tertiary truncate font-sans">
             {meta}
           </p>
         </div>

@@ -336,7 +336,7 @@ export function MemoryPanel() {
         {!isLoading && memories.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <SceneIllustration scene="reading" className="mx-auto mb-4" />
-            <p className="text-18 font-medium font-serif text-[var(--theme-text)]">
+            <p className="text-18 font-medium font-sans text-[var(--theme-text)]">
               {searchQuery || filterType
                 ? t("memory.noResults")
                 : t("memory.empty")}
@@ -350,7 +350,7 @@ export function MemoryPanel() {
               return (
                 <div
                   key={memory.memory_id}
-                  className={`glass-card group relative flex flex-col rounded-xl p-4 sm:p-5 cursor-pointer transition-all duration-200 animate-glass-enter ${
+                  className={`glass-card group relative flex flex-col rounded-xl p-4 cursor-pointer transition-all duration-200 animate-glass-enter ${
                     checked ? "ring-2 ring-[var(--theme-primary)]" : ""
                   }`}
                   onClick={() => !selectionMode && setSelected(memory)}
@@ -396,7 +396,7 @@ export function MemoryPanel() {
                       </span>
                     </div>
 
-                    <h4 className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] pr-8">
+                    <h4 className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)] pr-8">
                       {memory.title}
                     </h4>
 

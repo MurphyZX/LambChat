@@ -718,7 +718,7 @@ export function SettingsPanel() {
                 {groupedSettings.map((group) => (
                   <div key={group.subcategory} className="space-y-3">
                     {group.label && (
-                      <h3 className="text-12 font-semibold font-serif uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                      <h3 className="text-13 font-medium font-sans text-stone-500 dark:text-stone-400">
                         {group.label}
                       </h3>
                     )}

@@ -33,7 +33,7 @@ export function NewProjectModal({
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-theme-bg-card dark:bg-stone-800 rounded-xl shadow-2xl p-5 w-[90vw] max-w-md space-y-3">
-        <h3 className="text-14 font-semibold font-serif text-stone-800 dark:text-stone-100">
+        <h3 className="text-14 font-semibold font-sans text-stone-800 dark:text-stone-100">
           {t("sidebar.newProject")}
         </h3>
         <p className="text-12 text-stone-400 dark:text-stone-500">
@@ -88,7 +88,7 @@ export function NewProjectModal({
               onClose();
             }}
             disabled={!name.trim()}
-            className="px-4 py-2 text-14 font-medium bg-stone-700 dark:bg-stone-200 text-white dark:text-stone-900 rounded-lg hover:bg-stone-800 dark:hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("common.create")}
           </button>

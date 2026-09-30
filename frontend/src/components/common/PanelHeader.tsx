@@ -138,7 +138,7 @@ export function PanelHeader({
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="panel-header__title truncate text-16 font-semibold text-theme-text lg:text-18 font-serif">
+              <h1 className="panel-header__title truncate text-16 font-semibold text-theme-text font-sans">
                 {title}
               </h1>
               {subtitle && (

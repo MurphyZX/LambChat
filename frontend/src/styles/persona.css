@@ -1095,7 +1095,7 @@
 }
 
 .ppe-btn-primary:hover {
-  opacity: 0.9;
+  background: var(--theme-primary-hover);
 }
 
 .ppe-btn-primary:disabled {
@@ -1103,8 +1103,9 @@
   cursor: not-allowed;
 }
 
-.dark .ppe-btn-primary {
-  color: #1c1917;
+.ppe-btn-primary:focus-visible {
+  outline: 2px solid var(--theme-ring);
+  outline-offset: 2px;
 }
 
 /* ===== Stagger animation ===== */

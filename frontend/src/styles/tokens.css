@@ -12,10 +12,10 @@
   text-rendering: optimizeLegibility;
   line-height: 1.6;
   font-weight: 400;
-  --theme-primary: #78716c;
-  --theme-primary-hover: #57534e;
-  --theme-primary-light: #f5f5f4;
-  --theme-ring: #78716c;
+  --theme-primary: #5e6ad2;
+  --theme-primary-hover: #4e58b8;
+  --theme-primary-light: #eef0fa;
+  --theme-ring: #5e6ad2;
 
   /* ── Semantic Colors ── */
   --theme-success: #10b981;
@@ -24,24 +24,24 @@
   --theme-info: #3b82f6;
 
   /* ── Backgrounds ── */
-  --theme-bg: #f5f5f4;
+  --theme-bg: #fafafa;
   --theme-bg-card: #ffffff;
-  --theme-bg-sidebar: #f5f5f4;
+  --theme-bg-sidebar: #fafafa;
   --theme-bg-elevated: #ffffff;
-  --theme-bg-subtle: #f5f5f4;
+  --theme-bg-subtle: #f4f4f5;
   --theme-bg-code: #ffffff;
   --theme-bg-code-gutter: #fafafa;
 
   /* ── Borders ── */
-  --theme-border: #e7e5e4;
-  --theme-border-hover: #d6d3d1;
-  --theme-border-subtle: #f5f5f4;
-  --theme-border-faint: rgba(0, 0, 0, 0.06);
+  --theme-border: #e4e4e7;
+  --theme-border-hover: #d4d4d8;
+  --theme-border-subtle: #f0f0f1;
+  --theme-border-faint: rgba(0, 0, 0, 0.05);
 
   /* ── Text ── */
-  --theme-text: #1c1917;
-  --theme-text-secondary: #78716c;
-  --theme-text-tertiary: #a8a29e;
+  --theme-text: #18181b;
+  --theme-text-secondary: #52525b;
+  --theme-text-tertiary: #8e8e96;
 
   /* ── Overlays ── */
   --theme-overlay: rgba(0, 0, 0, 0.4);
@@ -166,16 +166,16 @@
   --color-text-pink: #9d174d;
 
   /* Gray (categorical neutral) */
-  --color-background-gray: #e7e5e4;
-  --color-border-gray: #d6d3d1;
-  --color-icon-gray: #57534e;
-  --color-text-gray: #292524;
+  --color-background-gray: #e4e4e7;
+  --color-border-gray: #d4d4d8;
+  --color-icon-gray: #52525b;
+  --color-text-gray: #27272a;
 
-  /* ── Accent (toggle switch) ── */
-  --theme-accent: linear-gradient(to bottom right, #fbbf24, #f97316);
-  --theme-accent-hover: linear-gradient(to bottom right, #f59e0b, #ea580c);
-  --theme-accent-light: #fffbeb;
-  --theme-accent-glow: rgba(251, 191, 36, 0.2);
+  /* ── Accent ── */
+  --theme-accent: linear-gradient(to bottom, #6b76ce, #5e6ad2);
+  --theme-accent-hover: linear-gradient(to bottom, #5e69c6, #515cbf);
+  --theme-accent-light: #eef0fa;
+  --theme-accent-glow: rgba(94, 106, 210, 0.18);
   /* 开关旋钮：彩色轨道上的滑块，三主题恒白（dark/sepia 不覆盖） */
   --theme-toggle-knob: #ffffff;
 
@@ -229,10 +229,10 @@
 
 .dark {
   /* ── Primary ── */
-  --theme-primary: #d6d3d1;
-  --theme-primary-hover: #e7e5e4;
-  --theme-primary-light: #292524;
-  --theme-ring: #d6d3d1;
+  --theme-primary: #e4e4e7;
+  --theme-primary-hover: #f4f4f5;
+  --theme-primary-light: #262932;
+  --theme-ring: #8d97d9;
 
   /* ── Semantic Colors ── */
   --theme-success: #34d399;
@@ -241,24 +241,24 @@
   --theme-info: #60a5fa;
 
   /* ── Backgrounds ── */
-  --theme-bg: #121010;
-  --theme-bg-card: #1e1b18;
-  --theme-bg-sidebar: #151210;
-  --theme-bg-elevated: #292524;
-  --theme-bg-subtle: #252220;
+  --theme-bg: #0e0f12;
+  --theme-bg-card: #16181d;
+  --theme-bg-sidebar: #101216;
+  --theme-bg-elevated: #1d2025;
+  --theme-bg-subtle: #1a1c21;
   --theme-bg-code: #282c34;
   --theme-bg-code-gutter: #282c34;
 
   /* ── Borders ── */
-  --theme-border: #3d3835;
-  --theme-border-hover: #57534e;
-  --theme-border-subtle: #292524;
-  --theme-border-faint: rgba(255, 255, 255, 0.04);
+  --theme-border: #26282d;
+  --theme-border-hover: #33363d;
+  --theme-border-subtle: #1e2025;
+  --theme-border-faint: rgba(255, 255, 255, 0.06);
 
   /* ── Text ── */
-  --theme-text: #ffffff;
-  --theme-text-secondary: #d6d3d1;
-  --theme-text-tertiary: #a8a29e;
+  --theme-text: #f4f4f5;
+  --theme-text-secondary: #a1a1aa;
+  --theme-text-tertiary: #6e6e78;
 
   /* ── Overlays ── */
   --theme-overlay: rgba(0, 0, 0, 0.6);
@@ -271,10 +271,10 @@
   --theme-shadow-lg: rgba(0, 0, 0, 0.5);
 
   /* ── Accent (toggle switch) ── */
-  --theme-accent: linear-gradient(to bottom right, #fbbf24, #f97316);
-  --theme-accent-hover: linear-gradient(to bottom right, #f59e0b, #ea580c);
-  --theme-accent-light: #451a03;
-  --theme-accent-glow: rgba(251, 191, 36, 0.15);
+  --theme-accent: linear-gradient(to bottom, #7b85dd, #6b76ce);
+  --theme-accent-hover: linear-gradient(to bottom, #6e79d6, #5e69c6);
+  --theme-accent-light: #232742;
+  --theme-accent-glow: rgba(124, 135, 221, 0.2);
 
   /* ── Composed Shadows ── */
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2);
@@ -306,7 +306,7 @@
   --color-background-blue: rgb(191 219 254 / 0.24);
   --color-background-purple: rgb(233 213 255 / 0.24);
   --color-background-pink: rgb(251 207 232 / 0.24);
-  --color-background-gray: rgb(168 162 158 / 0.15);
+  --color-background-gray: rgb(161 161 170 / 0.15);
 
   /* border / icon / text — light pastels for dark mode */
   --color-border-red: #fca5a5;
@@ -345,13 +345,13 @@
   --color-icon-pink: #f472b6;
   --color-text-pink: #fbcfe8;
 
-  --color-border-gray: #a8a29e;
-  --color-icon-gray: #a8a29e;
-  --color-text-gray: #d6d3d1;
+  --color-border-gray: #71717a;
+  --color-icon-gray: #a1a1aa;
+  --color-text-gray: #d4d4d8;
 
   /* ── Inset State Rings (dark-friendly: lower opacity, subtle tint) ── */
-  --shadow-inset-hover: inset 0 0 0 2px rgba(214, 211, 209, 0.12);
-  --shadow-inset-selected: inset 0 0 0 2px rgba(214, 211, 209, 0.25);
+  --shadow-inset-hover: inset 0 0 0 2px rgba(165, 172, 224, 0.14);
+  --shadow-inset-selected: inset 0 0 0 2px rgba(165, 172, 224, 0.28);
   --shadow-inset-success: inset 0 0 0 2px rgba(52, 211, 153, 0.2);
   --shadow-inset-error: inset 0 0 0 2px rgba(245, 101, 101, 0.2);
   --shadow-inset-warning: inset 0 0 0 2px rgba(245, 158, 11, 0.2);

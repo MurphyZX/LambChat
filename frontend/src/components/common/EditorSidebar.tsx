@@ -157,7 +157,7 @@ export function EditorSidebar({
               <div className="min-w-0">
                 <div
                   id={titleId}
-                  className="editor-sidebar-header-title font-serif"
+                  className="editor-sidebar-header-title font-sans"
                 >
                   {title}
                 </div>

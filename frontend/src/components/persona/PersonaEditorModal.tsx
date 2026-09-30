@@ -433,7 +433,7 @@ export function PersonaEditorModal({
               onOpenChange={setSkillDropdownOpen}
             />
             {!bindingsLoading && missingSkills.length > 0 && (
-              <p className="mt-1.5 flex items-start gap-1 text-11 leading-relaxed text-amber-600/90 dark:text-amber-400/90">
+              <p className="mt-1.5 flex items-start gap-1 text-11 leading-relaxed text-theme-warning">
                 <TriangleAlert
                   size={11}
                   className="mt-0.5 shrink-0 opacity-80"
@@ -469,7 +469,7 @@ export function PersonaEditorModal({
               loading={bindingsLoading}
             />
             {!bindingsLoading && missingMcpServers.length > 0 && (
-              <p className="mt-1.5 flex items-start gap-1 text-11 leading-relaxed text-amber-600/90 dark:text-amber-400/90">
+              <p className="mt-1.5 flex items-start gap-1 text-11 leading-relaxed text-theme-warning">
                 <TriangleAlert
                   size={11}
                   className="mt-0.5 shrink-0 opacity-80"

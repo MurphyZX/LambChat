@@ -681,7 +681,7 @@ export function RolesPanel() {
             {paginatedRoles.map((role) => (
               <div
                 key={role.id}
-                className="glass-card group relative flex flex-col rounded-xl p-4 sm:p-5 cursor-pointer transition-all duration-200 animate-glass-enter"
+                className="glass-card group relative flex flex-col rounded-xl p-4 cursor-pointer transition-all duration-200 animate-glass-enter"
                 onClick={() => setSelectedRole(role)}
               >
                 {/* Header badges */}
@@ -706,7 +706,7 @@ export function RolesPanel() {
                 </div>
 
                 {/* Title & description */}
-                <h4 className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)]">
+                <h4 className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)]">
                   {role.name}
                 </h4>
                 {role.description && (

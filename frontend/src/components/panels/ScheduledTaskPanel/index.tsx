@@ -414,7 +414,7 @@ export function ScheduledTaskPanel({
             {tasks.length === 0 ? (
               <div className="scheduled-task-empty-state">
                 <SceneIllustration scene="message" className="mx-auto mb-4" />
-                <p className="scheduled-task-empty-state__title font-serif">
+                <p className="scheduled-task-empty-state__title font-sans">
                   {t("scheduledTask.noTasks")}
                 </p>
                 <p className="scheduled-task-empty-state__body">
@@ -431,14 +431,14 @@ export function ScheduledTaskPanel({
                   return (
                     <div
                       key={task.id}
-                      className="glass-card group relative flex flex-col rounded-xl p-4 sm:p-5 cursor-pointer transition-all duration-200 animate-glass-enter"
+                      className="glass-card group relative flex flex-col rounded-xl p-4 cursor-pointer transition-all duration-200 animate-glass-enter"
                       onClick={() => {
                         navigate(`/scheduled-tasks/${task.id}`);
                       }}
                     >
                       {/* Title row */}
                       <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <h4 className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)]">
+                        <h4 className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)]">
                           {task.name}
                         </h4>
                         <StatusBadge status={task.status} />

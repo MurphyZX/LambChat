@@ -226,7 +226,7 @@ const ModelCard = React.memo(function ModelCard({
               icon={model.icon}
               size={22}
             />
-            <h4 className="text-14 font-semibold font-serif text-stone-900 dark:text-stone-100 truncate">
+            <h4 className="text-14 font-semibold font-sans text-stone-900 dark:text-stone-100 truncate">
               {model.label}
             </h4>
             {!model.enabled && (
@@ -308,7 +308,7 @@ const ModelCard = React.memo(function ModelCard({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2.5">
-                <h4 className="text-14 font-semibold font-serif text-stone-900 dark:text-stone-100 truncate tracking-tight">
+                <h4 className="text-14 font-semibold font-sans text-stone-900 dark:text-stone-100 truncate tracking-tight">
                   {model.label}
                 </h4>
                 {!model.enabled && (
@@ -544,7 +544,7 @@ export function ModelConfigTab({ models, onReload }: ModelConfigTabProps) {
   return (
     <>
       <div className="flex flex-col gap-4 h-full">
-        <div className="flex items-center justify-between gap-3 font-serif">
+        <div className="flex items-center justify-between gap-3 font-sans">
           <p className="text-14 text-stone-500 dark:text-stone-400 hidden sm:block">
             {t("agentConfig.modelConfigDescription")}
           </p>

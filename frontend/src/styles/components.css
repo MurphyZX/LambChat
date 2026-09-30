@@ -108,6 +108,8 @@
 
 /* Panel header - sticky, blends with background */
 .panel-header {
+  margin-bottom: 1rem;
+  min-width: 0;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -407,8 +409,7 @@
 .panel-header-dropdown
   :is(button, [role="menuitem"], .skill-tag-chip):focus-visible,
 .panel-header__mobile-menu :is(button, a):focus-visible {
-  outline: 2px solid
-    color-mix(in srgb, var(--theme-text-secondary) 50%, transparent);
+  outline: 2px solid var(--theme-ring);
   outline-offset: 2px;
 }
 
@@ -1002,11 +1003,6 @@
   background-color: var(--theme-primary-hover);
 }
 
-.dark .ui-button--primary,
-.dark .btn-primary {
-  color: #1c1917;
-}
-
 .ui-button--secondary,
 .btn-secondary {
   border-color: var(--theme-border);
@@ -1064,8 +1060,7 @@
 .ui-button:focus-visible,
 .btn-primary:focus-visible,
 .btn-secondary:focus-visible {
-  outline: 2px solid
-    color-mix(in srgb, var(--theme-text-secondary) 50%, transparent);
+  outline: 2px solid var(--theme-ring);
   outline-offset: 2px;
 }
 .btn-danger:focus-visible {
@@ -1108,7 +1103,7 @@
   justify-content: center;
   border-radius: 0.5rem;
   padding: 0.375rem;
-  color: #78716c;
+  color: var(--theme-text-secondary);
   transition:
     background-color 0.2s,
     color 0.2s;
@@ -1215,6 +1210,8 @@
   }
 }
 .panel-pagination {
+  margin-top: 1rem;
+  min-width: 0;
   flex-shrink: 0;
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--theme-border);
@@ -2219,27 +2216,17 @@
   box-shadow: 0 0 0 0 #4ade80;
 }
 
-.es-callout--danger {
-  border-color: color-mix(in srgb, #fde68a 60%, transparent);
-  background: color-mix(in srgb, #fffbeb 25%, var(--theme-bg));
+.es-callout--danger,
+.dark .es-callout--danger {
+  border-color: color-mix(in srgb, var(--theme-warning) 30%, transparent);
+  background: color-mix(in srgb, var(--theme-warning) 10%, var(--theme-bg));
 }
 .es-callout--danger .es-callout-icon {
-  background: color-mix(in srgb, #f59e0b 12%, transparent);
-  color: #d97706;
+  background: color-mix(in srgb, var(--theme-warning) 10%, transparent);
+  color: var(--theme-warning);
 }
 .es-callout--danger .es-status-dot {
-  background: #f59e0b;
-}
-.dark .es-callout--danger {
-  border-color: color-mix(in srgb, #78350f 60%, transparent);
-  background: color-mix(in srgb, #451a03 20%, var(--theme-bg));
-}
-.dark .es-callout--danger .es-callout-icon {
-  background: color-mix(in srgb, #fbbf24 12%, transparent);
-  color: #fbbf24;
-}
-.dark .es-callout--danger .es-status-dot {
-  background: #fbbf24;
+  background: var(--theme-warning);
 }
 
 @keyframes callout-pulse {

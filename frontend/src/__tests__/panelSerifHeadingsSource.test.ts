@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 /**
  * 各 panel 的标题级文字（卡片标题、弹窗标题、pane 标题、错误页大标题）
- * 必须与其他 panel 一致使用 font-serif。
+ * 管理面板使用 font-sans；阅读区保留原字体。
  */
 function readComponent(...segments: string[]): string {
   return readFileSync(
@@ -12,10 +12,10 @@ function readComponent(...segments: string[]): string {
   );
 }
 
-test("channel panel configuration card heading uses font-serif", () => {
+test("channel panel configuration card heading uses font-sans", () => {
   const source = readComponent("panels/ChannelPanel.tsx");
   expect(source).toMatch(
-    /<h3 className="mb-4 text-14 font-semibold font-serif/,
+    /<h3 className="mb-4 text-13 font-medium font-sans/,
   );
 });
 
@@ -25,17 +25,17 @@ test("profile preferences dropdown title uses font-serif", () => {
   expect(source).toMatch(/<h4 className="text-14 font-semibold font-serif/);
 });
 
-test("team pane titles use font-serif like team member names", () => {
+test("team pane titles use font-sans like team member names", () => {
   const roster = readComponent("team/TeamRoster.tsx");
   const square = readComponent("team/RoleSquare.tsx");
-  expect(roster.match(/team-pane-title font-serif/g)?.length).toBe(2);
-  expect(square).toMatch(/team-pane-title font-serif/);
+  expect(roster.match(/team-pane-title font-sans/g)?.length).toBe(2);
+  expect(square).toMatch(/team-pane-title font-sans/);
 });
 
-test("shared dialog titles use font-serif", () => {
+test("shared dialog titles use font-sans", () => {
   const confirm = readComponent("common/ConfirmDialog.tsx");
   const contact = readComponent("common/ContactAdminDialog.tsx");
-  expect(confirm).toMatch(/text-16 font-semibold font-serif/);
+  expect(confirm).toMatch(/text-16 font-semibold font-sans/);
   expect(contact).toMatch(/text-16 font-semibold font-serif tracking-tight/);
 });
 
@@ -54,7 +54,7 @@ test("cad preview phase heading uses font-serif like its idle heading", () => {
   expect(source.match(/text-16 font-medium font-serif/g)?.length).toBe(2);
 });
 
-test("skill preview modal files heading uses font-serif", () => {
+test("skill preview modal files heading uses font-sans", () => {
   const source = readComponent("panels/MarketplacePanel/SkillPreviewModal.tsx");
-  expect(source).toMatch(/text-14 font-semibold font-serif/);
+  expect(source).toMatch(/text-13 font-medium font-sans/);
 });
