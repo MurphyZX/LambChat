@@ -436,6 +436,7 @@ async def test_cloud_endpoints_reject_foreign_session(monkeypatch):
 @pytest.mark.parametrize("operation", ["list", "read"])
 async def test_cloud_files_preserve_backend_errors(monkeypatch, operation):
     from deepagents.backends.protocol import LsResult, ReadResult
+
     from src.infra.sandbox import idle_pause
 
     async def touch(_user_id):
