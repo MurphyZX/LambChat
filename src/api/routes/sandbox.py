@@ -830,10 +830,10 @@ async def sandbox_fs_cloud_list(
     schedule_browse_reaper(user.sub)
     rel = _cloud_rel(_sanitize_fs_path(path))
     result = await backend.als(rel)
-    if result.get("error"):
-        return {"error": result["error"]}
+    if result.error:
+        return {"error": result.error}
     entries = []
-    for entry in result.get("entries") or []:
+    for entry in result.entries or []:
         entry_path = entry.get("path")
         if not entry_path:
             continue
@@ -866,14 +866,14 @@ async def sandbox_fs_cloud_read(
     await touch_browse_lease(user.sub)
     schedule_browse_reaper(user.sub)
     result = await backend.aread(_cloud_rel(_sanitize_fs_path(path)), offset, limit)
-    if result.get("error"):
-        return {"error": result["error"]}
-    file_data = result.get("file_data") or {}
+    if result.error:
+        return {"error": result.error}
+    file_data = result.file_data or {}
     return {
         "encoding": file_data.get("encoding"),
         "content": file_data.get("content"),
-        "total_lines": result.get("total_lines"),
-        "start_line": result.get("start_line"),
-        "end_line": result.get("end_line"),
-        "next_offset": result.get("next_offset"),
+        "total_lines": result.total_lines,
+        "start_line": result.start_line,
+        "end_line": result.end_line,
+        "next_offset": result.next_offset,
     }

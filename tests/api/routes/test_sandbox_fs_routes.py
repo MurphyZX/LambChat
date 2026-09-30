@@ -301,14 +301,16 @@ def _cloud_app(monkeypatch, session, manager, als_result=None, aread_result=None
 
     calls: dict = {"get_or_create": [], "cloud_status": []}
 
+    from deepagents.backends.protocol import LsResult, ReadResult
+
     class _FakeScopedBackend:
         async def als(self, path):
             calls.setdefault("als", []).append(path)
             return (
                 als_result
                 if als_result is not None
-                else {
-                    "entries": [
+                else LsResult(
+                    entries=[
                         {
                             "path": f"/home/user/sessions/sess-1/{path.rstrip('/').lstrip('./') or '.'}/sub",
                             "is_dir": True,
@@ -317,7 +319,7 @@ def _cloud_app(monkeypatch, session, manager, als_result=None, aread_result=None
                             "path": f"/home/user/sessions/sess-1/{path.rstrip('/').lstrip('./') or '.'}/hello.txt"
                         },
                     ]
-                }
+                )
             )
 
         async def aread(self, path, offset=0, limit=500):
@@ -325,13 +327,12 @@ def _cloud_app(monkeypatch, session, manager, als_result=None, aread_result=None
             return (
                 aread_result
                 if aread_result is not None
-                else {
-                    "file_data": {"content": "cloud text", "encoding": "utf-8"},
-                    "total_lines": 1,
-                    "start_line": 1,
-                    "end_line": 1,
-                    "next_offset": None,
-                }
+                else ReadResult(
+                    file_data={"content": "cloud text", "encoding": "utf-8"},
+                    total_lines=1,
+                    start_line=1,
+                    end_line=1,
+                )
             )
 
     class _FakeManager:
@@ -430,3 +431,29 @@ async def test_cloud_endpoints_reject_foreign_session(monkeypatch):
     async with client as c:
         resp = await c.get("/api/sandbox/fs/cloud/list", params={"session_id": "sess-1"})
     assert resp.status_code == 403
+
+
+@pytest.mark.parametrize("operation", ["list", "read"])
+async def test_cloud_files_preserve_backend_errors(monkeypatch, operation):
+    from deepagents.backends.protocol import LsResult, ReadResult
+    from src.infra.sandbox import idle_pause
+
+    async def touch(_user_id):
+        pass
+
+    monkeypatch.setattr(idle_pause, "touch_browse_lease", touch)
+    monkeypatch.setattr(idle_pause, "schedule_browse_reaper", lambda _uid: None)
+    client, _ = _cloud_app(
+        monkeypatch,
+        _fake_session(),
+        None,
+        als_result=LsResult(error="path_not_found"),
+        aread_result=ReadResult(error="path_not_found"),
+    )
+    async with client as c:
+        response = await c.get(
+            f"/api/sandbox/fs/cloud/{operation}",
+            params={"session_id": "sess-1", "path": "missing.txt"},
+        )
+    assert response.status_code == 200
+    assert response.json() == {"error": "path_not_found"}
