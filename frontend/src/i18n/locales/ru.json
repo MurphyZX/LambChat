@@ -1929,7 +1929,6 @@
     "contentLabel": "Содержание",
     "contentPlaceholder": "Введите содержание (минимум 5 символов)...",
     "contentRequired": "Содержание должно содержать не менее 5 символов",
-    "contextFilterPlaceholder": "Область, напр. project_constraint",
     "createBtn": "Добавить",
     "createSuccess": "Воспоминание создано",
     "createTitle": "Новое воспоминание",
@@ -1954,7 +1953,7 @@
     "searchMode": {
       "hybrid": "Гибридный"
     },
-    "searchPlaceholder": "Поиск воспоминаний...",
+    "searchPlaceholder": "Поиск по заголовкам, описаниям, тегам или контексту…",
     "selectAll": "Выделить все",
     "selectHint": "Выберите воспоминание для просмотра",
     "source": {

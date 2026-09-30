@@ -87,36 +87,38 @@ export function SkillsHubPanel() {
         illustration={
           visibleTab === "skills" ? "panel-skills" : "panel-marketplace"
         }
-        className="panel-header--desktop-identity"
+        className="panel-header--section-switch"
+        actions={
+          showTabSwitcher && (
+            <div
+              className="skills-hub-tabs font-serif"
+              role="tablist"
+              aria-label={t("skillsHub.title")}
+            >
+              <div className="skills-hub-tabs__group">
+                {hubTabs.map(({ key, label, icon: Icon, path }) => {
+                  const isActive = visibleTab === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => navigate(path)}
+                      className={`skills-hub-tabs__item ${
+                        isActive ? "skills-hub-tabs__item--active" : ""
+                      }`}
+                    >
+                      <Icon size={16} />
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        }
       />
-      {showTabSwitcher && (
-        <div
-          className="skills-hub-tabs font-serif"
-          role="tablist"
-          aria-label={t("skillsHub.title")}
-        >
-          <div className="skills-hub-tabs__group">
-            {hubTabs.map(({ key, label, icon: Icon, path }) => {
-              const isActive = visibleTab === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => navigate(path)}
-                  className={`skills-hub-tabs__item ${
-                    isActive ? "skills-hub-tabs__item--active" : ""
-                  }`}
-                >
-                  <Icon size={16} />
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="min-h-0 flex-1 overflow-hidden">
         {visibleTab === "skills" ? (

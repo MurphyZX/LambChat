@@ -1929,7 +1929,6 @@
     "contentLabel": "内容",
     "contentPlaceholder": "输入记忆内容（至少5个字符）...",
     "contentRequired": "记忆内容至少需要5个字符",
-    "contextFilterPlaceholder": "作用域，如 project_constraint",
     "createBtn": "添加记忆",
     "createSuccess": "记忆创建成功",
     "createTitle": "新建记忆",
@@ -1954,7 +1953,7 @@
     "searchMode": {
       "hybrid": "混合"
     },
-    "searchPlaceholder": "搜索记忆...",
+    "searchPlaceholder": "搜索标题、摘要、标签或分类…",
     "selectAll": "全选",
     "selectHint": "选择一条记忆查看详情",
     "source": {

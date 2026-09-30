@@ -35,6 +35,7 @@ export function AgentModelPanel() {
           <button
             key={section.id}
             type="button"
+            aria-pressed={isActive}
             onClick={() => setActiveSection(section.id)}
             className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-14 font-medium transition-colors duration-150 ${
               isActive
@@ -58,6 +59,7 @@ export function AgentModelPanel() {
         illustration={
           activeSection === "agents" ? "panel-agents" : "panel-models"
         }
+        className="panel-header--section-switch"
         actions={sectionSwitcher}
       />
 

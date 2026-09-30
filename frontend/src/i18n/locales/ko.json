@@ -1929,7 +1929,6 @@
     "contentLabel": "내용",
     "contentPlaceholder": "메모리 내용을 입력하세요 (5자 이상)...",
     "contentRequired": "메모리 내용은 5자 이상이어야 합니다",
-    "contextFilterPlaceholder": "스코프 (예: project_constraint)",
     "createBtn": "메모리 추가",
     "createSuccess": "메모리가 생성되었습니다",
     "createTitle": "새 메모리",
@@ -1954,7 +1953,7 @@
     "searchMode": {
       "hybrid": "하이브리드"
     },
-    "searchPlaceholder": "메모리 검색...",
+    "searchPlaceholder": "제목, 요약, 태그 또는 분류 검색…",
     "selectAll": "모두 선택",
     "selectHint": "메모리를 선택하여 상세 보기",
     "source": {
