@@ -27,10 +27,6 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: var(--panel-gap);
 }
-[data-panel] .skills-hub-tabs {
-  padding-inline: var(--panel-inset);
-  border-bottom: 0;
-}
 [data-panel] .panel-pagination {
   padding-inline: var(--panel-inset);
   border-top: 0;
@@ -166,8 +162,7 @@
 }
 
 /* The scroll lane belongs to the content, so reserve its measured width in chrome. */
-[data-panel]
-  :is(.panel-header, .panel-pagination, .panel-inset, .skills-hub-tabs) {
+[data-panel] :is(.panel-header, .panel-pagination, .panel-inset) {
   padding-inline-end: calc(var(--panel-inset) + var(--panel-scrollbar, 0px));
 }
 [data-panel] :is(.panel-notice, .panel-summary) {
@@ -187,4 +182,82 @@
 }
 .editor-sidebar-body {
   --panel-scrollbar: 0px;
+}
+
+/* Search yields to filters on compact screens. */
+.file-library-toolbar__search-group {
+  flex: 1 1 0;
+  justify-content: flex-end;
+}
+.file-library-toolbar__search {
+  width: min(100%, 17.5rem);
+  min-width: 6rem;
+}
+@container panel (max-width: 639px) {
+  .file-library-toolbar button {
+    min-width: 2.75rem;
+  }
+  .file-library-toolbar__search {
+    height: 2.75rem;
+  }
+}
+
+.file-library-compact-view,
+.file-library-view-label {
+  display: none;
+}
+@container panel (max-width: 639px) {
+  .file-library-compact-view {
+    display: block;
+    border-top: 1px solid var(--theme-border);
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+  }
+  .file-library-compact-view .file-library-view-switch {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    border: 0;
+    background: transparent;
+  }
+  .file-library-compact-view .file-library-view-switch button {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+  }
+  .file-library-compact-view .file-library-view-label {
+    display: inline;
+    position: relative;
+    z-index: 10;
+  }
+}
+
+.panel-header--section-switch .feedback-filter-tabs button {
+  min-height: 2.75rem;
+}
+@container panel (max-width: 639px) {
+  .feedback-filter-tabs button {
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
+  }
+  .feedback-filter-tabs {
+    max-width: calc(100cqw - 6rem);
+  }
+  .feedback-filter-tabs button {
+    min-width: 0;
+  }
+  .feedback-filter-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .feedback-filter-tabs button > span:not(.feedback-filter-label) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feedback-filter-tabs button {
+    transition: none;
+  }
 }

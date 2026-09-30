@@ -1929,7 +1929,6 @@
     "contentLabel": "内容",
     "contentPlaceholder": "記憶の内容を入力（5文字以上）...",
     "contentRequired": "記憶の内容は5文字以上必要です",
-    "contextFilterPlaceholder": "スコープ（例: project_constraint）",
     "createBtn": "記憶を追加",
     "createSuccess": "記憶を作成しました",
     "createTitle": "新規記憶",
@@ -1954,7 +1953,7 @@
     "searchMode": {
       "hybrid": "ハイブリッド"
     },
-    "searchPlaceholder": "記憶を検索...",
+    "searchPlaceholder": "タイトル・概要・タグ・分類を検索…",
     "selectAll": "すべて選択",
     "selectHint": "記憶を選択して詳細を表示",
     "source": {

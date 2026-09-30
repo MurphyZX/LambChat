@@ -154,12 +154,14 @@ function FilterTabs({
   ];
 
   return (
-    <div className="panel-inset flex items-center gap-1 px-4 sm:px-6 pb-3">
+    <div className="feedback-filter-tabs flex items-center gap-1">
       {tabs.map((tab) => {
         const isActive = active === tab.key;
         return (
           <button
             key={tab.key}
+            type="button"
+            aria-pressed={isActive}
             onClick={() => onChange(tab.key)}
             className={`relative flex items-center gap-1.5 px-3.5 py-[7px] rounded-lg text-13 font-medium whitespace-nowrap transition-all duration-200 ${
               isActive
@@ -167,7 +169,7 @@ function FilterTabs({
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/5"
             }`}
           >
-            {tab.label}
+            <span className="feedback-filter-label">{tab.label}</span>
             <span
               className={`min-w-[20px] text-center px-1 py-0.5 rounded-full text-10 font-semibold tabular-nums ${
                 isActive
@@ -600,19 +602,20 @@ export function FeedbackPanel() {
         title={t("feedback.title")}
         subtitle={t("feedback.subtitle")}
         illustration="panel-feedback"
+        className="panel-header--section-switch"
+        actions={
+          stats && (
+            <FilterTabs
+              active={activeFilter}
+              stats={stats}
+              onChange={handleFilterChange}
+            />
+          )
+        }
       />
 
       {/* Rating summary */}
       {stats && <RatingSummary stats={stats} />}
-
-      {/* Filter tabs */}
-      {stats && (
-        <FilterTabs
-          active={activeFilter}
-          stats={stats}
-          onChange={handleFilterChange}
-        />
-      )}
 
       {/* Feedback list */}
       <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">

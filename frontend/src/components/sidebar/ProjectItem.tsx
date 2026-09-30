@@ -389,50 +389,55 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
             <ProjectWorkspaceDetails value={project.workspace} />
           )}
 
-          {!isEditing && unreadCount > 0 && (
-            <MarkAllReadBadge
-              count={unreadCount}
-              badgeId={`project-${project.id}`}
-              markingReadId={markingReadId ?? null}
-              onMarkAllRead={() => onMarkAllRead?.({ projectId: project.id })}
-              tooltip={t("sidebar.markAllRead")}
-            />
-          )}
-
-          {!isFavorites && !isEditing && onNewSessionInProject && (
-            <Tooltip
-              content={t("sidebar.newChatInProject", { project: project.name })}
-            >
-              <button
-                type="button"
-                onClick={() => onNewSessionInProject(project.id)}
-                aria-label={t("sidebar.newChatInProject", {
-                  project: project.name,
-                })}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/60 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-700/60 dark:hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)] max-sm:h-9 max-sm:w-9"
-              >
-                <Plus size={16} aria-hidden="true" />
-              </button>
-            </Tooltip>
-          )}
-
-          {/* Menu button - only for custom projects */}
-          {!isFavorites && !isEditing && (
-            <Tooltip content={t("sidebar.moreOptions")}>
-              <button
-                ref={menuButtonRef}
-                onClick={handleMenuClick}
-                aria-label={t("sidebar.moreOptions")}
-                className="flex-shrink-0 rounded p-0.5 hover:bg-stone-200/60 dark:hover:bg-stone-700/60 transition-all opacity-0 group-hover:opacity-100 [&:not(:placeholder-shown)]:opacity-100 max-sm:opacity-100"
-                style={isTouched ? { opacity: 1 } : undefined}
-              >
-                <MoreHorizontal
-                  size={14}
-                  className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+          {/* Project actions */}
+          <div className="flex shrink-0 items-center gap-1">
+            {!isEditing && unreadCount > 0 && (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center max-sm:h-9 max-sm:w-9">
+                <MarkAllReadBadge
+                  count={unreadCount}
+                  badgeId={`project-${project.id}`}
+                  markingReadId={markingReadId ?? null}
+                  onMarkAllRead={() => onMarkAllRead?.({ projectId: project.id })}
+                  tooltip={t("sidebar.markAllRead")}
                 />
-              </button>
-            </Tooltip>
-          )}
+              </div>
+            )}
+
+            {!isFavorites && !isEditing && onNewSessionInProject && (
+              <Tooltip
+                content={t("sidebar.newChatInProject", { project: project.name })}
+              >
+                <button
+                  type="button"
+                  onClick={() => onNewSessionInProject(project.id)}
+                  aria-label={t("sidebar.newChatInProject", {
+                    project: project.name,
+                  })}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/60 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-700/60 dark:hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)] max-sm:h-9 max-sm:w-9"
+                >
+                  <Plus size={16} aria-hidden="true" />
+                </button>
+              </Tooltip>
+            )}
+
+            {/* Menu button - only for custom projects */}
+            {!isFavorites && !isEditing && (
+              <Tooltip content={t("sidebar.moreOptions")}>
+                <button
+                  ref={menuButtonRef}
+                  onClick={handleMenuClick}
+                  aria-label={t("sidebar.moreOptions")}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center max-sm:h-9 max-sm:w-9 rounded p-0.5 hover:bg-stone-200/60 dark:hover:bg-stone-700/60 transition-all opacity-0 group-hover:opacity-100 [&:not(:placeholder-shown)]:opacity-100 max-sm:opacity-100"
+                  style={isTouched ? { opacity: 1 } : undefined}
+                >
+                  <MoreHorizontal
+                    size={14}
+                    className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                  />
+                </button>
+              </Tooltip>
+            )}
+          </div>
         </div>
 
         {/* Expandable content - sessions list with independent pagination */}

@@ -1929,7 +1929,6 @@
     "contentLabel": "Content",
     "contentPlaceholder": "Enter memory content (at least 5 characters)...",
     "contentRequired": "Memory content must be at least 5 characters",
-    "contextFilterPlaceholder": "Scope, e.g. project_constraint",
     "createBtn": "Add Memory",
     "createSuccess": "Memory created successfully",
     "createTitle": "New Memory",
@@ -1954,7 +1953,7 @@
     "searchMode": {
       "hybrid": "Hybrid"
     },
-    "searchPlaceholder": "Search memories...",
+    "searchPlaceholder": "Search titles, summaries, tags or context…",
     "selectAll": "Select all",
     "selectHint": "Select a memory to view details",
     "source": {
