@@ -80,7 +80,7 @@ export function Dialog({
           <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
             <div className="flex min-w-0 items-center gap-2">
               {icon}
-              <h3 className="truncate text-16 font-semibold font-serif text-stone-900 dark:text-stone-100">
+              <h3 className="truncate text-16 font-semibold font-sans text-stone-900 dark:text-stone-100">
                 {title}
               </h3>
             </div>

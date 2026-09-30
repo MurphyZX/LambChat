@@ -99,9 +99,7 @@ export function PersonaPlazaPanel() {
         className="skill-panel-header"
         title={t("personaPresets.title", "角色广场")}
         subtitle={t("personaPresets.subtitle", "选择一个角色开始对话")}
-        icon={
-          <UserRound size={18} className="text-stone-600 dark:text-stone-400" />
-        }
+        illustration="panel-persona"
         searchValue={query}
         onSearchChange={setQuery}
         searchPlaceholder={t("personaPresets.search", "搜索角色名称、描述...")}
@@ -232,7 +230,7 @@ export function PersonaPlazaPanel() {
         }
       />
 
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
+      <div className="panel-body skill-content-area flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <EmptyState
             icon={<UserRound size={28} />}
@@ -281,16 +279,14 @@ export function PersonaPlazaPanel() {
         )}
       </div>
 
-      {total > pageSize && (
-        <div className="glass-divider px-3 py-3 sm:px-6">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
 
       <PersonaEditorModal
         showModal={showModal}

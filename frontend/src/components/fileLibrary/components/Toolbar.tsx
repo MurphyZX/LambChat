@@ -1,3 +1,4 @@
+import { PanelHeader } from "../../common/PanelHeader";
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -109,9 +110,13 @@ export function Toolbar({
         className="absolute inset-0"
         style={{ backgroundColor: "var(--theme-bg)" }}
       />
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-theme-border/60" />
 
-      <div className="relative px-3 @sm:px-4 @md:px-6 py-2 @md:py-3">
+      <PanelHeader
+        title={t("fileLibrary.title")}
+        illustration="panel-files"
+        className="panel-header--desktop-identity"
+      />
+      <div className="file-library-toolbar panel-inset relative">
         <div className="flex items-center justify-between gap-2 @sm:gap-3 w-full font-serif">
           {/* ─── Left group: Filters ─── */}
           <div className="flex flex-wrap gap-1.5 @sm:gap-2 items-center min-w-0">

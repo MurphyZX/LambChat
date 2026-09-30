@@ -1,8 +1,8 @@
+import type { IllustrationScene } from "../common/SceneIllustration";
 export interface FeatureItem {
-  icon: string;
+  illustration: IllustrationScene;
   titleKey: string;
   descKey: string;
-  gradient: string;
 }
 
 export interface ScreenshotItem {
@@ -12,76 +12,64 @@ export interface ScreenshotItem {
 
 export const FEATURES: FeatureItem[] = [
   {
-    icon: "🤖",
+    illustration: "welcome",
     titleKey: "agentSystem",
     descKey: "agentSystemDesc",
-    gradient: "from-violet-500 to-purple-600",
   },
   {
-    icon: "🧠",
+    illustration: "reading",
     titleKey: "modelManagement",
     descKey: "modelManagementDesc",
-    gradient: "from-cyan-500 to-blue-600",
   },
   {
-    icon: "🔌",
+    illustration: "files",
     titleKey: "mcpIntegration",
     descKey: "mcpIntegrationDesc",
-    gradient: "from-emerald-500 to-teal-600",
   },
   {
-    icon: "🛠️",
+    illustration: "reading",
     titleKey: "skillsSystem",
     descKey: "skillsSystemDesc",
-    gradient: "from-amber-500 to-orange-600",
   },
   {
-    icon: "💬",
+    illustration: "message",
     titleKey: "feedbackSystem",
     descKey: "feedbackSystemDesc",
-    gradient: "from-rose-500 to-pink-600",
   },
   {
-    icon: "📁",
+    illustration: "files",
     titleKey: "documentSupport",
     descKey: "documentSupportDesc",
-    gradient: "from-indigo-500 to-blue-600",
   },
   {
-    icon: "🔄",
+    illustration: "files",
     titleKey: "realtimeStorage",
     descKey: "realtimeStorageDesc",
-    gradient: "from-teal-500 to-cyan-600",
   },
   {
-    icon: "🔐",
+    illustration: "welcome",
     titleKey: "securityAuth",
     descKey: "securityAuthDesc",
-    gradient: "from-red-500 to-rose-600",
   },
   {
-    icon: "⚙️",
+    illustration: "reading",
     titleKey: "taskManagement",
     descKey: "taskManagementDesc",
-    gradient: "from-orange-500 to-amber-600",
   },
   {
-    icon: "🔗",
+    illustration: "message",
     titleKey: "channelsIntegrations",
     descKey: "channelsIntegrationsDesc",
-    gradient: "from-blue-500 to-sky-600",
   },
   {
-    icon: "📊",
+    illustration: "reading",
     titleKey: "observability",
     descKey: "observabilityDesc",
-    gradient: "from-green-500 to-emerald-600",
   },
   {
-    icon: "🎨",
+    illustration: "welcome",
     titleKey: "frontendFeatures",
     descKey: "frontendFeaturesDesc",
-    gradient: "from-fuchsia-500 to-pink-600",
   },
 ];
 

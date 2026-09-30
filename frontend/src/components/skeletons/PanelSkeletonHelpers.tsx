@@ -6,10 +6,10 @@ export const PANEL_ROW_SKELETON_COUNT = 24;
 type PanelPaginationVariant = "default" | "wide" | "compact" | "transparent";
 
 const panelPaginationClasses: Record<PanelPaginationVariant, string> = {
-  default: "glass-divider px-3 py-3 sm:px-4 mt-2",
-  wide: "glass-divider px-3 py-3 sm:px-6 mt-2",
-  compact: "glass-divider px-3 py-3 mt-2",
-  transparent: "glass-divider bg-transparent px-4 py-4 sm:px-6 mt-2",
+  default: "glass-divider px-3 py-3 sm:px-4 mt-4",
+  wide: "glass-divider px-3 py-3 sm:px-6 mt-4",
+  compact: "glass-divider px-3 py-3 mt-4",
+  transparent: "glass-divider bg-transparent px-4 py-4 sm:px-6 mt-4",
 };
 
 export function PanelPaginationSkeleton({
@@ -39,7 +39,7 @@ export function PanelSegmentedTabsSkeleton({
   inactiveWidth: string;
 }) {
   return (
-    <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-serif">
+    <div className="inline-grid grid-cols-2 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-subtle)] p-1 my-3 font-sans">
       <div className={panelSegmentedTabItemClass}>
         <SkeletonLine width={activeWidth} className="!h-4" />
       </div>

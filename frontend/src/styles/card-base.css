@@ -430,9 +430,7 @@
 
 /* --- Footer --- */
 .scb__footer {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid color-mix(in srgb, var(--theme-border) 70%, transparent);
+  margin-top: var(--panel-gap, 1rem);
 }
 
 /* ═══════════════════════════════════════════

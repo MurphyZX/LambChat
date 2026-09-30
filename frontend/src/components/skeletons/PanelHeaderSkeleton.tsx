@@ -2,8 +2,7 @@ import { SkeletonLine } from "./primitives";
 
 /**
  * Matches PanelHeader layout:
- *   - Icon box: size-10/lg:size-11 rounded-lg subtle-bg + ring
- *   - Title (text-16/lg:text-18 font-serif) + optional subtitle
+ *   - Title (text-16 font-sans) + optional subtitle
  *   - Desktop action buttons
  *   - Mobile menu button (when !hasSearch)
  *   - Optional search row with searchAccessory + searchActions
@@ -18,24 +17,10 @@ export function PanelHeaderSkeleton({
   return (
     <div className="panel-header panel-header--has-search">
       <div className="panel-header__top flex flex-wrap items-center justify-between gap-3 lg:gap-4">
-        {/* Identity — icon box + title */}
+        {/* Identity — title and count */}
         <div className="panel-header__identity flex min-w-0 items-center gap-3 lg:gap-4">
-          {/* Icon box — matches real PanelHeader: size-10 lg:size-11 rounded-lg subtle-bg + ring-1 */}
-          <div
-            className="panel-header__icon flex size-10 flex-shrink-0 items-center justify-center rounded-lg ring-1 ring-stone-200 dark:ring-stone-700 lg:size-11"
-            style={{
-              backgroundColor:
-                "var(--theme-bg-subtle, color-mix(in srgb, var(--theme-bg) 80%, white))",
-              borderColor: "var(--theme-border)",
-            }}
-          >
-            <div className="skeleton-line size-5 rounded-md" />
-          </div>
           <div className="min-w-0">
-            <SkeletonLine
-              width="w-28 sm:w-36 xl:w-48"
-              className="!h-4 sm:!h-[18px]"
-            />
+            <SkeletonLine width="w-28 sm:w-36 xl:w-48" className="!h-4" />
             {hasSubtitle && (
               <SkeletonLine
                 width="w-40 sm:w-52 xl:w-64"
@@ -59,7 +44,7 @@ export function PanelHeaderSkeleton({
 
       {/* Search row — matches real search-row with searchAccessory + searchActions */}
       {hasSearch && (
-        <div className="panel-header__search-row mt-2 flex items-center gap-2 sm:mt-3 lg:mt-4">
+        <div className="panel-header__search-row mt-3 flex items-center gap-2">
           <div className="panel-header__search-box relative min-w-0 flex-1">
             <div className="skeleton-line h-10 w-full rounded-lg" />
           </div>

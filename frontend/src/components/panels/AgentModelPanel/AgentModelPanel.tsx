@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { Bot, Cpu, Settings2 } from "lucide-react";
+import { Bot, Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { PanelHeader } from "../../common/PanelHeader";
@@ -55,11 +55,13 @@ export function AgentModelPanel() {
       <PanelHeader
         title={t("agentConfig.combinedTitle")}
         subtitle={t("agentConfig.combinedSubtitle")}
-        icon={<Settings2 size={20} className="text-theme-text-secondary" />}
+        illustration={
+          activeSection === "agents" ? "panel-agents" : "panel-models"
+        }
         actions={sectionSwitcher}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
         {activeSection === "agents" ? <AgentSection /> : <ModelSection />}
       </div>
     </div>

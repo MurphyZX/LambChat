@@ -14,10 +14,13 @@ export default function DocumentPreview(props: DocumentPreviewProps) {
   return (
     <ToolResultPanel
       open={true}
+      title={state.path.split("/").pop() || state.path}
+      icon={<state.Icon size={14} />}
       automatic={state.automatic}
       onClose={state.onClose}
       registryKey={state.registryKey}
-      viewMode={state.isMobile ? "center" : state.viewMode}
+      viewMode={state.viewMode}
+      onViewModeChange={state.setViewMode}
       isFullscreen={state.isFullscreen}
       panelElementRef={state.panelRef}
       mobileFillViewport={state.mobileFillViewport}

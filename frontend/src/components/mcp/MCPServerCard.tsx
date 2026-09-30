@@ -95,7 +95,7 @@ export function MCPServerCard({
           </div>
           <div className="min-w-0 flex-1">
             <h3
-              className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
+              className="line-clamp-2 break-words text-16 font-semibold font-serif text-[var(--theme-text)] leading-tight"
               title={server.name}
             >
               {server.name}
@@ -127,7 +127,7 @@ export function MCPServerCard({
 
         <div className="flex-1" />
 
-        <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--theme-border)] pt-3">
+        <div className="scb__footer flex items-center justify-between gap-2">
           <div className="flex items-center gap-0.5">
             {server.can_edit && !server.is_internal && onEdit && (
               <IconButton
@@ -155,6 +155,11 @@ export function MCPServerCard({
             )}
           </div>
           <button
+            role="switch"
+            aria-checked={server.enabled}
+            aria-label={
+              server.enabled ? t("mcp.card.disable") : t("mcp.card.enable")
+            }
             onClick={(e) => {
               e.stopPropagation();
               onToggle(server.name);

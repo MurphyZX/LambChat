@@ -31,7 +31,6 @@ import { useSessionSidebarEffects } from "../../hooks/useSessionSidebarEffects";
 import {
   PROJECTS_COLLAPSED_STORAGE_KEY,
   CHATS_COLLAPSED_STORAGE_KEY,
-  SCHEDULED_TASKS_COLLAPSED_STORAGE_KEY,
 } from "../../hooks/userMetadataPreferences";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { DeleteProjectDialog } from "../common/DeleteProjectDialog";
@@ -43,6 +42,7 @@ import { SearchDialog } from "./SearchDialog";
 import { ShareDialog } from "../share/ShareDialog";
 import { ShareProjectDialog } from "../share/ShareProjectDialog";
 import { NewProjectModal } from "./NewProjectModal";
+import type { Project } from "../../types";
 import { DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT } from "../layout/DesktopSidebarShell/desktopShellPlatform";
 import {
   SessionListContent,
@@ -50,11 +50,7 @@ import {
   MobileMoreMenuSheet,
   DesktopMoreMenu,
 } from "./SidebarParts";
-import type {
-  SessionActions,
-  ProjectActions,
-  ScheduledTaskActions,
-} from "./SidebarParts";
+import type { SessionActions, ProjectActions } from "./SidebarParts";
 
 // ─── Public interfaces ─────────────────────────────────────────────
 
@@ -72,7 +68,11 @@ interface SessionSidebarProps {
   /** 嵌入形态：default = 独立桌面侧栏（自带宽度与折叠 rail）；desktopShell =
    * 桌面双栏的聊天二级面板（宽度与折叠职责移交 DesktopSidebarShell）。 */
   variant?: "default" | "desktopShell";
-  onSetPendingProjectId?: (projectId: string | null) => void;
+  onSetPendingProjectId?: (
+    projectId: string | null,
+    workspace?: Project["workspace"],
+  ) => void;
+  onProjectsChange?: (projects: Project[]) => void;
   /** Project ID to auto-expand after a new session is created in it */
   autoExpandProjectId?: string | null;
   onConsumeAutoExpandProjectId?: (projectId: string) => void;
@@ -111,6 +111,7 @@ export const SessionSidebar = forwardRef<
     variant = "default",
     onShowProfile,
     onSetPendingProjectId,
+    onProjectsChange,
     autoExpandProjectId,
     onConsumeAutoExpandProjectId,
   },
@@ -130,12 +131,6 @@ export const SessionSidebar = forwardRef<
     const saved = localStorage.getItem(PROJECTS_COLLAPSED_STORAGE_KEY);
     return saved === "true";
   });
-  const [isScheduledTasksCollapsed, setIsScheduledTasksCollapsed] = useState(
-    () => {
-      const saved = localStorage.getItem(SCHEDULED_TASKS_COLLAPSED_STORAGE_KEY);
-      return saved === "true";
-    },
-  );
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [isChatsCollapsed, setIsChatsCollapsed] = useState(() => {
     const saved = localStorage.getItem(CHATS_COLLAPSED_STORAGE_KEY);
@@ -152,16 +147,6 @@ export const SessionSidebar = forwardRef<
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(
     () => new Set(),
   );
-
-  // Sync scheduledTasksCollapsed from other tabs / metadata sync on login
-  useEffect(() => {
-    const handler = (e: Event) => {
-      setIsScheduledTasksCollapsed((e as CustomEvent).detail);
-    };
-    window.addEventListener("scheduled-tasks-collapsed-changed", handler);
-    return () =>
-      window.removeEventListener("scheduled-tasks-collapsed-changed", handler);
-  }, []);
 
   // Sync projectsCollapsed from other tabs / metadata sync on login
   useEffect(() => {
@@ -209,7 +194,7 @@ export const SessionSidebar = forwardRef<
   const inDesktopShell = variant === "desktopShell";
   const isCollapsed = inDesktopShell
     ? false
-    : (externalCollapsed ?? internalCollapsed);
+    : externalCollapsed ?? internalCollapsed;
   const setIsCollapsed = onToggleCollapsed ?? setInternalCollapsed;
 
   // ─── Refs ────────────────────────────────────────────────────────
@@ -238,22 +223,14 @@ export const SessionSidebar = forwardRef<
     [],
   );
 
-  const setScheduledTaskRef = useCallback(
-    (taskId: string, handle: ScheduledTaskItemHandle | null) => {
-      if (handle) {
-        scheduledTaskRefs.current.set(taskId, handle);
-      } else {
-        scheduledTaskRefs.current.delete(taskId);
-      }
-    },
-    [],
-  );
-
   // ─── Data hooks ──────────────────────────────────────────────────
 
   const uncategorizedList = useProjectSessionList("none", scrollEl);
   const projectManager = useProjectManager();
   const { projects } = projectManager;
+  useEffect(() => {
+    onProjectsChange?.(projects);
+  }, [projects, onProjectsChange]);
 
   // ─── Extracted hooks ─────────────────────────────────────────────
 
@@ -374,10 +351,13 @@ export const SessionSidebar = forwardRef<
 
   const handleNewSessionInProject = useCallback(
     (projectId: string) => {
-      onSetPendingProjectId?.(projectId);
       onNewSession();
+      onSetPendingProjectId?.(
+        projectId,
+        projects.find((project) => project.id === projectId)?.workspace,
+      );
     },
-    [onNewSession, onSetPendingProjectId],
+    [onNewSession, onSetPendingProjectId, projects],
   );
 
   // ─── Touch drag ───────────────────────────────────────────────────
@@ -445,18 +425,12 @@ export const SessionSidebar = forwardRef<
         });
       },
       onUpdateIcon: projectManager.handleUpdateIcon,
+      onUpdateWorkspace: projectManager.handleUpdateWorkspace,
       onOpenNewProjectModal: () => projectManager.setShowNewProjectModal(true),
       onNewSessionInProject: handleNewSessionInProject,
       onSetProjectRef: setProjectRef,
     }),
     [projectManager, projects, handleNewSessionInProject, setProjectRef],
-  );
-
-  const scheduledTaskActions: ScheduledTaskActions = useMemo(
-    () => ({
-      onSetScheduledTaskRef: setScheduledTaskRef,
-    }),
-    [setScheduledTaskRef],
   );
 
   // ─── Stable handlers (avoid new refs on every render) ─────────
@@ -473,16 +447,6 @@ export const SessionSidebar = forwardRef<
       localStorage.setItem(PROJECTS_COLLAPSED_STORAGE_KEY, String(next));
       authApi
         .updateMetadata({ projectsCollapsed: String(next) })
-        .catch(() => {});
-      return next;
-    });
-  }, []);
-  const handleToggleScheduledTasksCollapsed = useCallback(() => {
-    setIsScheduledTasksCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(SCHEDULED_TASKS_COLLAPSED_STORAGE_KEY, String(next));
-      authApi
-        .updateMetadata({ scheduledTasksCollapsed: String(next) })
         .catch(() => {});
       return next;
     });
@@ -528,11 +492,8 @@ export const SessionSidebar = forwardRef<
       unreadBySession,
       sessionActions,
       projectActions,
-      scheduledTaskActions,
       isProjectsCollapsed,
       onToggleProjectsCollapsed: handleToggleProjectsCollapsed,
-      isScheduledTasksCollapsed,
-      onToggleScheduledTasksCollapsed: handleToggleScheduledTasksCollapsed,
       isChatsCollapsed,
       onToggleChatsCollapsed: handleToggleChatsCollapsed,
       isNavCollapsed,
@@ -572,11 +533,8 @@ export const SessionSidebar = forwardRef<
       unreadBySession,
       sessionActions,
       projectActions,
-      scheduledTaskActions,
       isProjectsCollapsed,
       handleToggleProjectsCollapsed,
-      isScheduledTasksCollapsed,
-      handleToggleScheduledTasksCollapsed,
       isChatsCollapsed,
       handleToggleChatsCollapsed,
       isNavCollapsed,
@@ -605,20 +563,20 @@ export const SessionSidebar = forwardRef<
         style={{
           top: "var(--app-safe-area-top-active, var(--app-safe-area-top, 0px))",
           height:
-            "calc(var(--app-viewport-height, 100dvh) - var(--app-safe-area-top-active, var(--app-safe-area-top, 0px)) - var(--app-safe-area-bottom-active, var(--app-safe-area-bottom, 0px)))",
+            "calc(var(--app-viewport-height, 100dvh) - var(--app-safe-area-top-active, var(--app-safe-area-top, 0px)) - var(--app-safe-area-bottom-active, var(--app-safe-area-bottom, 0px)) - var(--titlebar-inset, 0px))",
         }}
         onClick={onMobileClose}
       />
 
       {/* Mobile drawer */}
       <div
-        className={`rounded-r-lg fixed left-0 z-[70] w-64 flex flex-col sm:hidden bg-[var(--theme-bg-sidebar)] transition-transform duration-300 ease-in-out ${
+        className={`rounded-r-lg fixed left-0 z-[70] w-64 max-w-full flex flex-col sm:hidden bg-[var(--theme-bg-sidebar)] transition-transform duration-300 ease-in-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
           top: "var(--app-safe-area-top-active, var(--app-safe-area-top, 0px))",
           height:
-            "calc(var(--app-viewport-height, 100dvh) - var(--app-safe-area-top-active, var(--app-safe-area-top, 0px)) - var(--app-safe-area-bottom-active, var(--app-safe-area-bottom, 0px)))",
+            "calc(var(--app-viewport-height, 100dvh) - var(--app-safe-area-top-active, var(--app-safe-area-top, 0px)) - var(--app-safe-area-bottom-active, var(--app-safe-area-bottom, 0px)) - var(--titlebar-inset, 0px))",
           paddingBottom:
             "var(--app-safe-area-bottom-active, var(--app-safe-area-bottom, 0px))",
         }}
@@ -658,7 +616,9 @@ export const SessionSidebar = forwardRef<
       >
         <div
           className={`h-full w-full flex flex-col bg-[var(--theme-bg-sidebar)] ${
-            inDesktopShell ? "" : "border-r border-stone-300/70 dark:border-stone-800/60"
+            inDesktopShell
+              ? ""
+              : "border-r border-stone-300/70 dark:border-stone-800/60"
           } ${isCollapsed ? "hidden" : ""}`}
         >
           {!isMobile ? (
@@ -681,28 +641,30 @@ export const SessionSidebar = forwardRef<
                 : "pointer-events-none opacity-0"
             }`}
           >
-          <SidebarRail
-            user={user}
-            imgError={imgError}
-            onImgError={() => setImgError(true)}
-            onExpand={() => setIsCollapsed(false)}
-            onNewSession={() => {
-              onNewSession();
-              // close recent chats if open (handled by state below)
-            }}
-            onOpenSearch={() => setIsSearchOpen(true)}
-            onOpenRecentChats={() => setIsRecentChatsOpen(true)}
-            onOpenFileLibrary={() => navigate("/files")}
-            onOpenBookmarks={() => navigate("/bookmarks")}
-            onOpenScheduledTasks={() => navigate("/scheduled-tasks")}
-            hasMoreMenuItems={moreMenu.hasMoreMenuItems}
-            onToggleMoreMenu={() => moreMenu.setIsMoreMenuOpen((prev) => !prev)}
-            moreMenuBtnRef={moreMenu.moreMenuBtnRef}
-            recentChatsBtnRef={recentChatsBtnRef}
-            onShowProfile={onShowProfile!}
-            unreadCount={totalUnreadCount}
-          />
-        </div>
+            <SidebarRail
+              user={user}
+              imgError={imgError}
+              onImgError={() => setImgError(true)}
+              onExpand={() => setIsCollapsed(false)}
+              onNewSession={() => {
+                onNewSession();
+                // close recent chats if open (handled by state below)
+              }}
+              onOpenSearch={() => setIsSearchOpen(true)}
+              onOpenRecentChats={() => setIsRecentChatsOpen(true)}
+              onOpenFileLibrary={() => navigate("/files")}
+              onOpenBookmarks={() => navigate("/bookmarks")}
+              onOpenScheduledTasks={() => navigate("/scheduled-tasks")}
+              hasMoreMenuItems={moreMenu.hasMoreMenuItems}
+              onToggleMoreMenu={() =>
+                moreMenu.setIsMoreMenuOpen((prev) => !prev)
+              }
+              moreMenuBtnRef={moreMenu.moreMenuBtnRef}
+              recentChatsBtnRef={recentChatsBtnRef}
+              onShowProfile={onShowProfile!}
+              unreadCount={totalUnreadCount}
+            />
+          </div>
         )}
       </div>
 
@@ -829,10 +791,13 @@ export const SessionSidebar = forwardRef<
           onIconChange={projectManager.setNewProjectIcon}
           onNameChange={projectManager.setNewProjectName}
           onCreate={projectManager.handleCreateProject}
+          workspace={projectManager.newProjectWorkspace}
+          onWorkspaceChange={projectManager.setNewProjectWorkspace}
           onClose={() => {
             projectManager.setShowNewProjectModal(false);
             projectManager.setNewProjectName("");
             projectManager.setNewProjectIcon("📁");
+            projectManager.setNewProjectWorkspace(null);
           }}
         />
       )}

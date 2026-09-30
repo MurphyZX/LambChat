@@ -1,6 +1,6 @@
+import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
-  Settings,
   RotateCcw,
   Save,
   Search,
@@ -33,7 +33,6 @@ import type {
   SettingType,
   Role,
 } from "../../types";
-
 import {
   MODEL_CONFIG_SETTING_KEYS,
   TYPE_COLORS,
@@ -495,12 +494,13 @@ export function SettingsPanel() {
         />
 
         {/* Left Sidebar - Categories (hidden on mobile) */}
-        <div className="hidden w-60 flex-shrink-0 flex-col border-r border-[var(--glass-border)] sm:flex">
+        <div className="settings-sidebar hidden w-60 flex-shrink-0 flex-col border-r border-[var(--glass-border)] sm:flex">
           {/* Sidebar Header */}
           <div className="flex items-center gap-2.5 px-5 py-4">
-            <div className="flex size-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--glass-bg-subtle)] text-stone-600 dark:text-stone-300">
-              <Settings size={18} />
-            </div>
+            <SceneIllustration
+              scene="panel-settings"
+              className="panel-avatar"
+            />
             <div>
               <h2 className="text-14 font-semibold text-stone-900 dark:text-stone-100">
                 {t("settings.title")}
@@ -521,7 +521,7 @@ export function SettingsPanel() {
           />
 
           {/* Bottom actions */}
-          <div className="flex gap-1.5 border-t border-[var(--glass-border)] px-3 py-2.5">
+          <div className="flex gap-1.5 px-3 py-3">
             <Button
               onClick={() => setShowAbout(true)}
               size="sm"
@@ -544,9 +544,18 @@ export function SettingsPanel() {
         </div>
 
         {/* Right Content */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="settings-content flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* Header with Category Dropdown (mobile) and Search */}
-          <div className="flex-shrink-0 border-b border-[var(--glass-border)] p-3 sm:p-4">
+          <div className="settings-toolbar panel-inset flex-shrink-0">
+            <div className="settings-compact-identity mb-3 items-center gap-3">
+              <SceneIllustration
+                scene="panel-settings"
+                className="panel-avatar"
+              />
+              <h2 className="font-serif text-16 font-semibold text-theme-text">
+                {t("settings.title")}
+              </h2>
+            </div>
             <SettingsCategoryNav
               mobile
               categories={visibleCategories}
@@ -607,7 +616,7 @@ export function SettingsPanel() {
 
           {/* Error */}
           {error && (
-            <div className="mx-3 mt-3 flex items-center justify-between rounded-xl bg-red-50 p-3 text-14 text-red-600 dark:bg-red-900/30 dark:text-red-400 sm:mx-4 sm:mt-4">
+            <div className="panel-notice flex items-center justify-between rounded-xl bg-red-50 p-3 text-14 text-red-600 dark:bg-red-900/30 dark:text-red-400">
               <span>{error}</span>
               <button
                 onClick={clearError}
@@ -621,9 +630,9 @@ export function SettingsPanel() {
           {/* Settings List */}
           <div
             ref={contentRef}
-            className="min-h-0 flex-1 overflow-y-auto py-2 sm:py-4 px-4"
+            className="panel-body min-h-0 flex-1 overflow-y-auto"
           >
-            <div className="mb-4 border-b border-[var(--glass-border)] pb-4">
+            <div className="mb-6">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="mb-1 text-12 text-stone-500 dark:text-stone-400">
@@ -714,9 +723,9 @@ export function SettingsPanel() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="panel-sections">
                 {groupedSettings.map((group) => (
-                  <div key={group.subcategory} className="space-y-3">
+                  <div key={group.subcategory} className="panel-stack">
                     {group.label && (
                       <h3 className="text-12 font-semibold font-serif uppercase tracking-wider text-stone-500 dark:text-stone-400">
                         {group.label}
@@ -955,7 +964,7 @@ export function SettingsPanel() {
                           </div>
 
                           {/* Actions and Info */}
-                          <div className="mt-3 flex flex-wrap-nowrap items-center justify-between gap-2">
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             {canManage && (
                               <div className="flex shrink-0 items-center gap-1.5">
                                 <Button
@@ -1018,7 +1027,7 @@ export function SettingsPanel() {
                 ))}
               </div>
             )}
-            <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--glass-border)] pt-3 sm:hidden">
+            <div className="settings-mobile-actions mt-6 flex flex-wrap gap-2 sm:hidden">
               <Button
                 size="sm"
                 onClick={() => setShowAbout(true)}

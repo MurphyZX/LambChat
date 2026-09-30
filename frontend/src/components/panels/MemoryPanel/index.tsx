@@ -246,9 +246,7 @@ export function MemoryPanel() {
       <PanelHeader
         title={t("memory.title")}
         subtitle={t("memory.subtitle", { count: total })}
-        icon={
-          <Brain size={20} className="text-[var(--theme-text-secondary)]" />
-        }
+        illustration="panel-memory"
         searchValue={searchQuery}
         onSearchChange={handleSearchQueryChange}
         searchPlaceholder={t("memory.searchPlaceholder")}
@@ -331,7 +329,7 @@ export function MemoryPanel() {
       />
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6">
+      <div className="panel-body flex-1 overflow-y-auto">
         {!isLoading && memories.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--glass-bg)]">
@@ -423,7 +421,7 @@ export function MemoryPanel() {
                   )}
 
                   {/* Footer */}
-                  <div className="mt-auto flex items-center gap-2 border-t border-[var(--glass-border)] pt-3 mt-3.5">
+                  <div className="mt-auto flex items-center gap-2 pt-4">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--glass-bg)] px-2 py-0.5 text-11 text-[var(--theme-text-secondary)]">
                       <Eye size={12} />
                       {memory.access_count ?? 0} {t("memory.accesses")}
@@ -462,16 +460,14 @@ export function MemoryPanel() {
       </div>
 
       {/* Pagination */}
-      {total > PAGE_SIZE && (
-        <div className="glass-divider bg-transparent px-4 py-4 sm:px-6">
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onChange={setPage}
+        />
+      </div>
 
       {/* Detail modal */}
       {selected && (

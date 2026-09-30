@@ -190,7 +190,10 @@ function DesktopTable({
                     </div>
                   )}
                   <div className={textCellClass}>
-                    <span className="block truncate tabular-nums" title={log.model}>
+                    <span
+                      className="block truncate tabular-nums"
+                      title={log.model}
+                    >
                       {modelDisplayName(modelLabels, log.model) || "-"}
                     </span>
                   </div>
@@ -510,7 +513,7 @@ export function UsageLogsTable({
         <p className="text-14 font-medium text-theme-text-secondary/60">
           {t("usage.noUsage")}
         </p>
-        <p className="mt-1.5 text-12 text-theme-text-tertiary/50">
+        <p className="mt-1.5 text-12 text-theme-text-secondary">
           {t("usage.noUsageHint")}
         </p>
       </div>

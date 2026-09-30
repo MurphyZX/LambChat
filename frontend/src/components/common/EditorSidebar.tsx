@@ -1,4 +1,4 @@
-import { useCallback, useId } from "react";
+import { useCallback, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
@@ -6,7 +6,15 @@ import { X } from "lucide-react";
 import { useSidebarPanel } from "../../hooks/useSidebarPanel";
 import { BackIcon } from "./BackIcon";
 import { ToolbarIconButton } from "./ui/ToolbarIconButton";
-import { useRightPanelEntry, useRightPanelFocus } from "./useRightPanelEntry";
+import {
+  RightPanelOwnerContext,
+  RightPanelActiveContext,
+  useRightPanelEntry,
+  useRightPanelFocus,
+} from "./useRightPanelEntry";
+
+import { observePanelWidths } from "./panelWidths";
+import { RightPanelTabs } from "./RightPanelTabs";
 
 const STORAGE_KEY = "editor-sidebar-width";
 const CSS_VAR = "--editor-sidebar-width";
@@ -44,6 +52,8 @@ export function EditorSidebar({
     open,
     onClose,
     kind: "editor",
+    title,
+    icon,
   });
   const shell = useSidebarPanel({
     open: entry.active,
@@ -69,6 +79,11 @@ export function EditorSidebar({
     if (shell.justResized.current) return;
     onClose();
   }, [onClose, shell.justResized]);
+
+  useEffect(() => {
+    if (open && shell.panelRef.current)
+      return observePanelWidths(shell.panelRef.current);
+  }, [open, shell.panelRef]);
 
   if (!open) return null;
 
@@ -141,6 +156,7 @@ export function EditorSidebar({
           </>
         )}
 
+        {entry.active && <RightPanelTabs />}
         <div className="flex flex-col shrink-0 bg-gradient-to-r from-stone-50 to-white dark:from-stone-800 dark:to-[#292524]">
           <div className="editor-sidebar-header">
             <div className="editor-sidebar-header-left">
@@ -157,7 +173,7 @@ export function EditorSidebar({
               <div className="min-w-0">
                 <div
                   id={titleId}
-                  className="editor-sidebar-header-title font-serif"
+                  className="editor-sidebar-header-title font-sans"
                 >
                   {title}
                 </div>
@@ -179,9 +195,24 @@ export function EditorSidebar({
           </div>
         </div>
 
-        <div className="editor-sidebar-body">{children}</div>
+        <RightPanelOwnerContext value={entry.ownerId}>
+          <RightPanelActiveContext value={entry.active}>
+            <div
+              id={entry.panelId}
+              role="tabpanel"
+              aria-label={title}
+              className="editor-sidebar-body"
+            >
+              {children}
+            </div>
+          </RightPanelActiveContext>
+        </RightPanelOwnerContext>
 
-        {footer && <div className="editor-sidebar-footer">{footer}</div>}
+        <RightPanelOwnerContext value={entry.ownerId}>
+          <RightPanelActiveContext value={entry.active}>
+            {footer && <div className="editor-sidebar-footer">{footer}</div>}
+          </RightPanelActiveContext>
+        </RightPanelOwnerContext>
       </div>
     </>,
     document.body,

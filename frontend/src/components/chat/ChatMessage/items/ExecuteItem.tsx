@@ -117,7 +117,10 @@ function ExecuteDetail({
                 : t("chat.message.toolFailed")}
           </span>
           {parsed.truncated && (
-            <AlertTriangle size={14} className="shrink-0 ml-1 text-amber-500" />
+            <AlertTriangle
+              size={14}
+              className="shrink-0 ml-1 text-theme-warning"
+            />
           )}
         </div>
       )}

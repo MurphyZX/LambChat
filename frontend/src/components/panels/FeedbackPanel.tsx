@@ -15,7 +15,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Trash2,
-  Star,
   Copy,
   Check,
   ChevronRight,
@@ -43,7 +42,7 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
   const upPct = stats.up_percentage;
 
   return (
-    <div className="mx-4 sm:mx-6 mt-4 mb-3 p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-stone-50 dark:from-stone-800 dark:via-stone-800/80 dark:to-stone-900 border border-stone-200/60 dark:border-stone-700/50">
+    <div className="panel-summary mb-4 p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-stone-50 dark:from-stone-800 dark:via-stone-800/80 dark:to-stone-900 border border-stone-200/60 dark:border-stone-700/50">
       <div className="flex items-center gap-5">
         {/* Left: big percentage */}
         <div className="flex flex-col items-center flex-shrink-0">
@@ -119,7 +118,7 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
               {stats.down_count}
             </span>
           </div>
-          <div className="pt-1 border-t border-stone-100 dark:border-stone-700/60">
+          <div className="pt-1">
             <span className="text-11 text-stone-400 dark:text-stone-500">
               {t("feedback.totalCount")}&nbsp;
               <span className="font-semibold text-stone-600 dark:text-stone-300">
@@ -155,7 +154,7 @@ function FilterTabs({
   ];
 
   return (
-    <div className="flex items-center gap-1 px-4 sm:px-6 pb-3">
+    <div className="panel-inset flex items-center gap-1 px-4 sm:px-6 pb-3">
       {tabs.map((tab) => {
         const isActive = active === tab.key;
         return (
@@ -262,7 +261,7 @@ function FeedbackCard({
 
   return (
     <div
-      className="px-4 sm:px-6 py-4 border-b border-stone-100/80 dark:border-stone-800/60 last:border-b-0
+      className="panel-inset px-4 sm:px-6 py-4 border-b border-stone-100/80 dark:border-stone-800/60 last:border-b-0
       hover:bg-stone-50/60 dark:hover:bg-white/[0.02] transition-colors duration-150"
     >
       {/* Header row */}
@@ -600,7 +599,7 @@ export function FeedbackPanel() {
       <PanelHeader
         title={t("feedback.title")}
         subtitle={t("feedback.subtitle")}
-        icon={<Star size={20} className="text-stone-600 dark:text-stone-400" />}
+        illustration="panel-feedback"
       />
 
       {/* Rating summary */}
@@ -616,7 +615,7 @@ export function FeedbackPanel() {
       )}
 
       {/* Feedback list */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
         {isLoading && feedbackList.length === 0 ? (
           <FeedbackPanelSkeleton />
         ) : !isLoading && feedbackList.length === 0 ? (
@@ -649,16 +648,14 @@ export function FeedbackPanel() {
       </div>
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="glass-divider bg-transparent px-4 py-3 sm:px-6">
-          <Pagination
-            page={Math.floor(skip / limit) + 1}
-            pageSize={limit}
-            total={total}
-            onChange={(page) => setSkip((page - 1) * limit)}
-          />
-        </div>
-      )}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={Math.floor(skip / limit) + 1}
+          pageSize={limit}
+          total={total}
+          onChange={(page) => setSkip((page - 1) * limit)}
+        />
+      </div>
 
       {/* Modals */}
       <ConfirmDialog

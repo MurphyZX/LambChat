@@ -1,3 +1,4 @@
+import { PanelHeader } from "../common/PanelHeader";
 import { useEffect } from "react";
 import { Package, PackageX, ShoppingBag } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -76,6 +77,18 @@ export function SkillsHubPanel() {
 
   return (
     <div className="skill-theme-shell flex h-full min-h-0 flex-col">
+      <PanelHeader
+        title={t(
+          visibleTab === "skills" ? "skills.title" : "marketplace.title",
+        )}
+        subtitle={t(
+          visibleTab === "skills" ? "skills.subtitle" : "marketplace.subtitle",
+        )}
+        illustration={
+          visibleTab === "skills" ? "panel-skills" : "panel-marketplace"
+        }
+        className="panel-header--desktop-identity"
+      />
       {showTabSwitcher && (
         <div
           className="skills-hub-tabs font-serif"

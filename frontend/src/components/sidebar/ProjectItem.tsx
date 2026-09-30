@@ -11,7 +11,7 @@ import {
   useImperativeHandle,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import type { BackendSession } from "../../services/api/session";
 import type { Project } from "../../types";
@@ -19,6 +19,7 @@ import { projectApi } from "../../services/api";
 import { useFilteredSessionList } from "../../hooks/useSession";
 import { SessionItem } from "./SessionItem";
 import { ProjectMenu } from "./ProjectMenu";
+import { ProjectWorkspaceDetails } from "./ProjectWorkspaceField";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { Tooltip } from "../common/Tooltip";
 import { DynamicIcon } from "../common/DynamicIcon";
@@ -55,6 +56,10 @@ interface ProjectItemProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onUpdateIcon?: (projectId: string, icon: string) => void;
+  onUpdateWorkspace?: (
+    projectId: string,
+    workspace: Project["workspace"],
+  ) => Promise<void>;
   scrollRoot?: Element | null;
   draggingSessionId?: string | null;
   onNewSessionInProject?: (projectId: string) => void;
@@ -90,6 +95,7 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
       onConsumeAutoExpand,
       unreadBySession = new Map(),
       onUpdateIcon,
+      onUpdateWorkspace,
       scrollRoot,
       favoritesOnly = false,
       onMarkAllRead,
@@ -126,6 +132,7 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
       sessions,
       isLoading,
       isLoadingMore,
+      error,
       hasMore,
       loadMoreRef,
       refresh,
@@ -308,7 +315,6 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
       <div>
         {/* Project header - ChatGPT style drop target */}
         <div
-          onClick={handleToggle}
           onTouchStart={handleHeaderTouchStart}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -369,11 +375,19 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <div className="truncate text-13 font-serif text-stone-600 dark:text-stone-400 group-hover:text-stone-700 dark:group-hover:text-stone-300 transition-colors">
+              <button
+                type="button"
+                onClick={handleToggle}
+                aria-expanded={isExpanded}
+                className="block h-10 w-full rounded text-left truncate text-13 font-serif text-stone-600 dark:text-stone-400 group-hover:text-stone-700 dark:group-hover:text-stone-300 transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)]"
+              >
                 {isFavorites ? t("sidebar.favorites") : project.name}
-              </div>
+              </button>
             )}
           </div>
+          {!isEditing && project.workspace && (
+            <ProjectWorkspaceDetails value={project.workspace} />
+          )}
 
           {!isEditing && unreadCount > 0 && (
             <MarkAllReadBadge
@@ -383,6 +397,23 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
               onMarkAllRead={() => onMarkAllRead?.({ projectId: project.id })}
               tooltip={t("sidebar.markAllRead")}
             />
+          )}
+
+          {!isFavorites && !isEditing && onNewSessionInProject && (
+            <Tooltip
+              content={t("sidebar.newChatInProject", { project: project.name })}
+            >
+              <button
+                type="button"
+                onClick={() => onNewSessionInProject(project.id)}
+                aria-label={t("sidebar.newChatInProject", {
+                  project: project.name,
+                })}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/60 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-700/60 dark:hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)] max-sm:h-9 max-sm:w-9"
+              >
+                <Plus size={16} aria-hidden="true" />
+              </button>
+            </Tooltip>
           )}
 
           {/* Menu button - only for custom projects */}
@@ -461,6 +492,15 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                   </div>
                 )}
               </>
+            ) : !error && !isFavorites && onNewSessionInProject ? (
+              <button
+                type="button"
+                onClick={() => onNewSessionInProject(project.id)}
+                className="flex min-h-10 items-center gap-2 rounded-md px-3 text-left text-13 text-stone-500 hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800/30 dark:hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)]"
+              >
+                <Plus size={14} className="shrink-0" aria-hidden="true" />
+                {t("sidebar.startFirstChat")}
+              </button>
             ) : null}
           </div>
         )}
@@ -482,6 +522,11 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                 : undefined
             }
             anchorEl={menuAnchor}
+            onWorkspaceChange={
+              onUpdateWorkspace
+                ? (workspace) => onUpdateWorkspace(project.id, workspace)
+                : undefined
+            }
           />
         )}
       </div>
