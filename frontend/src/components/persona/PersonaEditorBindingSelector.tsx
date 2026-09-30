@@ -189,7 +189,7 @@ export function PersonaEditorBindingSelector({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-sans text-14 font-medium">
+                      <div className="truncate font-serif text-14 font-medium">
                         {option.name}
                       </div>
                       {option.description && (

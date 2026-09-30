@@ -42,14 +42,29 @@ function attachLevel(
   path: string,
   entries: SandboxFsEntry[],
 ): WorkspaceTreeNode[] {
+  // Preserve loaded descendants when parent refreshes arrive after child refreshes.
+  const reconcile = (previous: WorkspaceTreeNode[]) => {
+    const byPath = new Map(previous.map((node) => [node.path, node]));
+    return entries
+      .slice()
+      .sort(compareEntries)
+      .map((entry) => {
+        const existing = byPath.get(entry.path);
+        return existing?.isDir === entry.is_dir ? existing : toNode(entry);
+      });
+  };
   if (path === "." || path === "") {
-    return entries.slice().sort(compareEntries).map(toNode);
+    return reconcile(nodes);
   }
   const walk = (list: WorkspaceTreeNode[]): WorkspaceTreeNode[] =>
     list.map((node) => {
       if (!node.isDir) return node;
       if (node.path === path) {
-        return { ...node, children: entries.slice().sort(compareEntries).map(toNode), loading: false };
+        return {
+          ...node,
+          children: reconcile(node.children ?? []),
+          loading: false,
+        };
       }
       if (path.startsWith(`${node.path}/`) && node.children) {
         return { ...node, children: walk(node.children) };
@@ -78,7 +93,10 @@ function markLoading(
 }
 
 /** 收集需要重拉的目录路径（根 + 所有已装载子目录）。 */
-function collectLoadedDirs(nodes: WorkspaceTreeNode[], acc: string[] = ["."]): string[] {
+function collectLoadedDirs(
+  nodes: WorkspaceTreeNode[],
+  acc: string[] = ["."],
+): string[] {
   for (const node of nodes) {
     if (node.isDir && node.children) {
       acc.push(node.path);
@@ -89,7 +107,10 @@ function collectLoadedDirs(nodes: WorkspaceTreeNode[], acc: string[] = ["."]): s
 }
 
 /** 按路径找节点（path "." = 根层不存在，返回 null）。 */
-function findNode(nodes: WorkspaceTreeNode[], path: string): WorkspaceTreeNode | null {
+function findNode(
+  nodes: WorkspaceTreeNode[],
+  path: string,
+): WorkspaceTreeNode | null {
   for (const node of nodes) {
     if (node.path === path) return node;
     if (path.startsWith(`${node.path}/`) && node.children) {
@@ -151,8 +172,10 @@ export function useWorkspaceTree(
           setState("error");
         }
       } finally {
-        inFlightRef.current.delete(key);
-        if (!replace) setRoot((prev) => markLoading(prev, path, false));
+        if (generation === generationRef.current) {
+          inFlightRef.current.delete(key);
+          if (!replace) setRoot((prev) => markLoading(prev, path, false));
+        }
       }
     },
     [sessionId, source],

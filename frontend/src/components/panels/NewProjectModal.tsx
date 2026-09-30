@@ -70,7 +70,12 @@ export function NewProjectModal({
             className="flex-1 text-14 bg-transparent text-stone-700 dark:text-stone-200 placeholder-stone-400 focus:outline-none"
           />
         </div>
-        {onWorkspaceChange && <ProjectWorkspaceField value={workspace} onChange={onWorkspaceChange} />}
+        {onWorkspaceChange && (
+          <ProjectWorkspaceField
+            value={workspace}
+            onChange={onWorkspaceChange}
+          />
+        )}
         <div className="flex justify-end gap-2 pt-1">
           <button
             onClick={() => {

@@ -1,15 +1,6 @@
-import { SceneIllustration } from "../common/SceneIllustration";
+import { FolderOpen } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
-import {
-  Plus,
-  X,
-  Download,
-  Upload,
-  Server,
-  Check,
-  Pencil,
-  Wrench,
-} from "lucide-react";
+import { Plus, X, Download, Upload, Check, Pencil, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { PanelHeader } from "../common/PanelHeader";
@@ -348,10 +339,11 @@ export function MCPPanel() {
       });
 
       if (result) {
-        const message = `${result.message}${result.errors.length > 0
+        const message = `${result.message}${
+          result.errors.length > 0
             ? `\nErrors: ${result.errors.join(", ")}`
             : ""
-          }`;
+        }`;
         setImportResult({ success: true, message });
 
         if (result.errors.length === 0) {
@@ -394,8 +386,8 @@ export function MCPPanel() {
       {/* Header */}
       <PanelHeader
         title={t("mcp.title")}
-        count={total}
-        icon={<Server size={20} className="text-theme-text-secondary" />}
+        subtitle={t("mcp.subtitle")}
+        illustration="panel-mcp"
         searchValue={searchQuery}
         onSearchChange={handleSearchQueryChange}
         searchPlaceholder={t("mcp.searchPlaceholder")}
@@ -430,7 +422,7 @@ export function MCPPanel() {
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mt-4 flex items-center justify-between rounded-xl bg-red-50 p-3 text-14 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+        <div className="panel-notice flex items-center justify-between rounded-xl bg-red-50 p-3 text-14 text-red-700 dark:bg-red-900/30 dark:text-red-400">
           <span>{error}</span>
           <IconButton
             aria-label={t("common.close")}
@@ -442,49 +434,52 @@ export function MCPPanel() {
       )}
 
       {/* Servers Grid */}
-      <div className="panel-content-card panel-content-card--grid">
-        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
-          {filteredServers.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center text-theme-text-secondary">
-              <SceneIllustration scene="files" className="mx-auto mb-4" />
-              <p className="text-center text-14">
-                {searchQuery ? t("mcp.noMatchingServers") : t("mcp.noServers")}
-              </p>
-              {!searchQuery && canWrite && (
-                <Button
-                  variant="ghost"
-                  onClick={handleCreate}
-                  className="mt-3 text-14 font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] transition-colors"
-                >
-                  {t("mcp.addFirst")}
-                </Button>
-              )}
+      <div className="panel-body flex-1 overflow-y-auto">
+        {filteredServers.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-theme-text-secondary">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800 mb-4">
+              <FolderOpen
+                size={28}
+                className="text-stone-400 dark:text-stone-500"
+              />
             </div>
-          ) : (
-            <div className="grid auto-grid-cols items-stretch gap-4">
-              {paginatedServers.map((server) => (
-                <MCPServerCard
-                  key={server.name}
-                  server={server}
-                  onToggle={handleToggle}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onClick={() => setToolsSidebarServer(server)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            <p className="text-center text-14">
+              {searchQuery ? t("mcp.noMatchingServers") : t("mcp.noServers")}
+            </p>
+            {!searchQuery && canWrite && (
+              <Button
+                variant="ghost"
+                onClick={handleCreate}
+                className="mt-3 text-14 font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] transition-colors"
+              >
+                {t("mcp.addFirst")}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid auto-grid-cols gap-3">
+            {paginatedServers.map((server) => (
+              <MCPServerCard
+                key={server.name}
+                server={server}
+                onToggle={handleToggle}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onClick={() => setToolsSidebarServer(server)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Pagination */}
-        <div className="panel-pagination empty:hidden">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
+      {/* Pagination */}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={setPage}
+        />
       </div>
 
       {/* Form Sidebar */}
@@ -597,10 +592,11 @@ export function MCPPanel() {
 
           {importResult && (
             <div
-              className={`flex items-center gap-2.5 rounded-lg border p-3 ${importResult.success
+              className={`flex items-center gap-2.5 rounded-lg border p-3 ${
+                importResult.success
                   ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800/40 dark:text-emerald-400"
                   : "bg-red-50 border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-800/40 dark:text-red-400"
-                }`}
+              }`}
             >
               {importResult.success ? (
                 <Check size={20} className="flex-shrink-0" />

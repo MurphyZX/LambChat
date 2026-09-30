@@ -739,7 +739,17 @@ function response(url: URL, scenario: string): unknown {
   if (["/api/auth/me", "/api/auth/profile"].includes(path)) return user;
   if (path === "/api/pricing/rates")
     return { base: "USD", rates: { USD: 1 }, synced_at: now };
-  if (path === "/api/upload/config") return { enabled: false, uploadLimits: { image: 10485760, video: 52428800, audio: 20971520, document: 20971520, maxFiles: 10 } };
+  if (path === "/api/upload/config")
+    return {
+      enabled: false,
+      uploadLimits: {
+        image: 10485760,
+        video: 52428800,
+        audio: 20971520,
+        document: 20971520,
+        maxFiles: 10,
+      },
+    };
   if (path === "/api/settings") return settings;
   if (path === "/api/auth/permissions") {
     const permissions = Object.values(Permission).map((value) => ({
@@ -1079,7 +1089,9 @@ function response(url: URL, scenario: string): unknown {
   return undefined;
 }
 
-const token = `preview.${Buffer.from(JSON.stringify({ sub: user.id, exp: 4102444800 })).toString("base64url")}.fixture`;
+const token = `preview.${Buffer.from(
+  JSON.stringify({ sub: user.id, exp: 4102444800 }),
+).toString("base64url")}.fixture`;
 const server = await createServer({
   root: process.cwd(),
   server: { host: "127.0.0.1", port: 3002, strictPort: true, proxy: {} },
@@ -1094,7 +1106,9 @@ const server = await createServer({
       transformIndexHtml(html) {
         return html.replace(
           "<head>",
-          `<head><script>localStorage.setItem("access_token",${JSON.stringify(token)});const params=new URLSearchParams(location.search);localStorage.setItem("lambchat-theme",params.get("theme")||"light");</script>`,
+          `<head><script>localStorage.setItem("access_token",${JSON.stringify(
+            token,
+          )});const params=new URLSearchParams(location.search);localStorage.setItem("lambchat-theme",params.get("theme")||"light");</script>`,
         );
       },
       configureServer(vite) {

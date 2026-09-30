@@ -2,81 +2,189 @@
    Shared Card Base (scb-*) — used by SkillBaseCard
    ═══════════════════════════════════════════ */
 
-/* --- Shared panel card: content first, with a restrained identity tint. --- */
+/* --- Entrance animation --- */
+@keyframes scb-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* --- Selected card glow pulse --- */
+@keyframes select-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0
+      color-mix(in srgb, var(--theme-primary) 20%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--theme-primary) 12%, transparent),
+      0 0 16px color-mix(in srgb, var(--theme-primary) 8%, transparent);
+  }
+}
+
+/* --- Subtle border glow on hover --- */
+@keyframes border-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* --- Container --- */
 .scb {
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-width: 0;
+  min-width: 320px;
   overflow: hidden;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   background: var(--theme-bg-card);
   border: 1px solid var(--theme-border);
-  box-shadow: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.06),
+    0 1px 2px -1px rgb(0 0 0 / 0.04);
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.35s ease;
 }
-.scb:hover,
-.scb:focus-within {
-  border-color: var(--theme-border-hover);
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-2px);
+
+.dark .scb {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.scb:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--theme-text) 12%, var(--theme-border));
+  box-shadow:
+    0 12px 32px -8px rgb(0 0 0 / 0.1),
+    0 4px 12px -4px rgb(0 0 0 / 0.05),
+    0 0 0 1px color-mix(in srgb, var(--theme-text-secondary) 6%, transparent);
+}
+
+.dark .scb:hover {
+  border-color: color-mix(in srgb, var(--theme-text) 15%, var(--theme-border));
+  box-shadow:
+    0 12px 32px -8px rgb(0 0 0 / 0.4),
+    0 4px 12px -4px rgb(0 0 0 / 0.25),
+    0 0 0 1px color-mix(in srgb, var(--theme-text-secondary) 8%, transparent);
+}
+
+.scb--animated {
+  animation: scb-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .scb--muted {
-  background: var(--theme-bg-subtle);
-}
-.scb--selected {
-  outline: 2px solid var(--theme-primary);
-}
-.scb__toolbar .scb__banner-pill {
-  color: var(--theme-text-secondary);
-  background: var(--theme-bg-subtle);
-  backdrop-filter: none;
+  opacity: 0.8;
+  background: color-mix(in srgb, var(--theme-bg) 92%, var(--theme-bg-card) 8%);
+  box-shadow: none;
 }
 
-/* Marketplace identity: one quiet cover layout, with a fine grid texture. */
-.scb--cover {
-  background: var(--theme-bg-card);
-  border-top-color: var(--theme-border);
+.scb--selected {
+  ring: 2px solid var(--theme-primary);
+  animation: select-glow 2s ease-in-out;
 }
-.scb__cover {
-  display: flex;
-  align-items: center;
-  min-height: 9rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--theme-border);
-  background:
-    linear-gradient(color-mix(in srgb, var(--theme-text) 3%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--theme-text) 3%, transparent) 1px, transparent 1px),
-    linear-gradient(125deg,
-      color-mix(in srgb, var(--theme-primary) 16%, var(--theme-bg-card)),
-      color-mix(in srgb, var(--color-background-purple) 35%, var(--theme-bg-card)));
-  background-size: 24px 24px, 24px 24px, 100% 100%;
+
+/* --- Gradient Banner --- */
+.scb__banner {
+  position: relative;
+  height: 3.25rem;
+  flex-shrink: 0;
+  overflow: hidden;
 }
-.scb__cover > div {
-  align-items: center;
-  width: 100%;
+
+.scb__banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.08) 100%);
+  z-index: 1;
 }
+
+.scb__banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.25) 45%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.scb:hover .scb__banner::after {
+  transform: translateX(120%);
+}
+
+.dark .scb__banner::before {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.dark .scb__banner::after {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.04) 55%,
+    transparent 70%
+  );
+}
+
+/* --- Icon Ring --- */
 .scb__icon-ring {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.5rem;
-  background: var(--color-background-blue);
-  color: var(--color-icon-blue);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg-subtle);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background-color 0.25s ease,
+    transform 0.25s ease;
 }
-.scb__icon-ring > svg { width: 1rem; height: 1rem; }
+
+.scb:hover .scb__icon-ring {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-text-secondary) 18%,
+    var(--theme-border)
+  );
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--theme-text-secondary) 8%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--theme-text-secondary) 6%, transparent);
+  background: var(--theme-bg-subtle);
+  transform: scale(1.04);
+}
 
 /* --- Avatar Ring --- */
 .scb__avatar-ring {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 0.75rem;
   overflow: hidden;
   border: 1px solid var(--theme-border);
@@ -98,27 +206,77 @@
   z-index: 0;
 }
 
-/* Status labels remain readable without depending on color. */
+/* --- Status Pill (banner overlay) --- */
 .scb__status-pill {
-  --status-color: var(--theme-text-tertiary);
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--theme-text-secondary);
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 9999px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 }
-.scb__status-pill::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--status-color);
+
+.dark .scb__status-pill {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
 }
-.scb__status-pill--installed { --status-color: var(--theme-success); }
-.scb__status-pill--published { --status-color: var(--theme-info); }
-.scb__status-pill--danger { --status-color: var(--theme-error); }
+
+/* Green – Using, Internal, System, active states */
+.scb__status-pill--installed {
+  background: rgba(255, 255, 255, 0.9);
+  color: #16a34a;
+}
+
+.dark .scb__status-pill--installed {
+  background: rgba(0, 0, 0, 0.5);
+  color: #4ade80;
+}
+
+/* Gray – inactive / disconnected */
+.scb__status-pill--inactive {
+  background: rgba(255, 255, 255, 0.65);
+  color: #78716c;
+}
+
+.dark .scb__status-pill--inactive {
+  background: rgba(0, 0, 0, 0.35);
+  color: #d6d3d1;
+}
+
+/* Blue – published */
+.scb__status-pill--published {
+  background: rgba(255, 255, 255, 0.85);
+  color: #1d4ed8;
+}
+
+.dark .scb__status-pill--published {
+  background: rgba(0, 0, 0, 0.45);
+  color: #93c5fd;
+}
+
+/* Red – disabled / error */
+.scb__status-pill--danger {
+  background: rgba(255, 255, 255, 0.9);
+  color: #ef4444;
+}
+
+.dark .scb__status-pill--danger {
+  background: rgba(0, 0, 0, 0.5);
+  color: #f87171;
+}
+
+/* Gray – disabled (soft) */
+.scb__status-pill--disabled {
+  background: rgba(255, 255, 255, 0.7);
+  color: #78716c;
+}
+
+.dark .scb__status-pill--disabled {
+  background: rgba(0, 0, 0, 0.35);
+  color: #a8a29e;
+}
 
 /* --- Category Tag --- */
 .scb__category-tag {
@@ -208,14 +366,13 @@
 .scb__action-btn--primary:hover {
   background: var(--theme-primary-hover);
   border-color: var(--theme-primary-hover);
-  transform: none;
+  transform: scale(1.05);
   box-shadow: 0 2px 8px
     color-mix(in srgb, var(--theme-primary) 24%, transparent);
 }
 
-.scb__action-btn--primary:focus-visible {
-  outline: 2px solid var(--theme-ring);
-  outline-offset: 2px;
+.dark .scb__action-btn--primary {
+  color: #1c1917;
 }
 
 .scb__action-btn--ghost {
@@ -233,7 +390,7 @@
     var(--theme-text-secondary) 15%,
     var(--theme-border)
   );
-  transform: none;
+  transform: scale(1.08);
 }
 
 .scb__action-btn--update {
@@ -253,7 +410,7 @@
     var(--theme-primary) 38%,
     var(--theme-border)
   );
-  transform: none;
+  transform: scale(1.05);
 }
 
 .scb__action-btn--disabled {
@@ -273,9 +430,7 @@
 
 /* --- Footer --- */
 .scb__footer {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid color-mix(in srgb, var(--theme-border) 70%, transparent);
+  margin-top: var(--panel-gap, 1rem);
 }
 
 /* ═══════════════════════════════════════════
@@ -297,7 +452,7 @@
     transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.3s ease;
-  animation: none;
+  animation: scb-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .dark .mp-card {
@@ -305,7 +460,7 @@
 }
 
 .mp-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   box-shadow:
     0 12px 32px -8px rgb(0 0 0 / 0.1),
     0 4px 12px -4px rgb(0 0 0 / 0.05);
@@ -355,8 +510,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 0.75rem;
   border: 1px solid var(--theme-border);
   background: var(--theme-bg-subtle);
@@ -380,8 +535,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 0.75rem;
   overflow: hidden;
   border: 1px solid var(--theme-border);
@@ -429,7 +584,7 @@
 
 .mp-card__status-pill--inactive {
   background: rgba(255, 255, 255, 0.65);
-  color: var(--theme-text-secondary);
+  color: #78716c;
 }
 
 .dark .mp-card__status-pill--inactive {
@@ -520,14 +675,13 @@
 .mp-card__action-btn--primary:hover {
   background: var(--theme-primary-hover);
   border-color: var(--theme-primary-hover);
-  transform: none;
+  transform: scale(1.05);
   box-shadow: 0 2px 8px
     color-mix(in srgb, var(--theme-primary) 24%, transparent);
 }
 
-.mp-card__action-btn--primary:focus-visible {
-  outline: 2px solid var(--theme-ring);
-  outline-offset: 2px;
+.dark .mp-card__action-btn--primary {
+  color: #1c1917;
 }
 
 .mp-card__action-btn--update {
@@ -547,7 +701,7 @@
     var(--theme-primary) 38%,
     var(--theme-border)
   );
-  transform: none;
+  transform: scale(1.05);
 }
 
 .mp-card__action-btn--disabled {
@@ -563,52 +717,4 @@
 .mp-card__action-btn--loading {
   opacity: 0.5;
   cursor: wait;
-}
-
-/* Preference controls share the same neutral header in persona and team cards. */
-.scb__banner {
-  position: relative;
-  min-height: 2.75rem;
-  flex-shrink: 0;
-}
-.scb__banner .pps-card__icon-action {
-  color: var(--theme-text-secondary);
-  background: var(--theme-bg-subtle);
-  backdrop-filter: none;
-}
-.scb__banner .pps-card__icon-action--active-pin,
-.scb__banner .pps-card__icon-action--active-fav {
-  color: var(--theme-primary);
-}
-.team-card.scb::before {
-  display: none;
-}
-[data-panel] .glass-card {
-  box-shadow: none;
-}
-[data-panel] .animate-glass-enter {
-  animation: none;
-}
-[data-panel] :is(button, a, [role="button"]):focus-visible {
-  outline: 2px solid var(--theme-primary);
-  outline-offset: 2px;
-}
-@media (pointer: coarse) {
-  [data-panel]
-    :is(.scb__action-btn, .mp-card__action-btn, .pps-card__icon-action) {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-  }
-  [data-panel] .scb__banner {
-    min-height: 3.75rem;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-panel] *,
-  [data-panel] *::before,
-  [data-panel] *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
 }

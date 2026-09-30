@@ -1,17 +1,4 @@
-/**
- * 宽屏侧栏壳（客户端和网页共用；窄屏保留移动抽屉）。
- * 结构对齐 ZCode 桌面端：图标导航栏 + 可拉伸列表栏——
- *
- *   [会话|电脑|文件|更多 rail]              ← 壳唯一的自有 chrome（视图切换）
- *   原版 SessionSidebar 内容      ← 操作行/列表/底部用户区全部复用原版
- *   ───────── 或 电脑面板（工作区文件树）
- *
- *   折叠入口在自绘标题栏（事件桥）；宽度可拖拽调整（右缘手柄），
- *   localStorage 持久化。
- *
- * 折叠状态复用 AppContent 的 sidebarCollapsed（与 web 端同一持久化语义）；
- * 当前视图（chat/files）独立持久化。
- */
+/** 左侧导航壳：会话列表、全局导航和可调整宽度。会话文件由右侧面板承载。 */
 
 import {
   useCallback,
@@ -28,37 +15,26 @@ import clsx from "clsx";
 import { BrandLogo } from "../../common/BrandLogo";
 import { BrandWordmark } from "../../common/BrandWordmark";
 import { APP_NAME } from "../../../constants";
-import { SidebarWorkspaceContext } from "./SidebarWorkspaceContext";
 import { DesktopActivityRail } from "./DesktopActivityRail";
-import { WorkspacePanel } from "../../workspacePanel/WorkspacePanel";
 import {
   DESKTOP_SIDEBAR_TOGGLE_EVENT,
   DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT,
   OPEN_NOTIFICATIONS_EVENT,
   NOTIFICATION_COUNT_EVENT,
   isDesktopShell,
-  type DesktopSidebarView,
 } from "./desktopShellPlatform";
 
-const VIEW_STORAGE_KEY = "lambchat_desktop_sidebar_view";
 const WIDTH_STORAGE_KEY = "lambchat_desktop_sidebar_width";
 const DEFAULT_WIDTH = 264;
 const MIN_WIDTH = 232;
 const MAX_WIDTH_CAP = 480;
 const MAX_WIDTH_RATIO = 0.5;
 
-function readStoredView(): DesktopSidebarView {
-  try {
-    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
-    return saved === "files" ? "files" : "chat";
-  } catch {
-    return "chat";
-  }
-}
-
 function clampWidth(value: number): number {
   const cap = Math.min(
-    typeof window === "undefined" ? MAX_WIDTH_CAP : window.innerWidth * MAX_WIDTH_RATIO,
+    typeof window === "undefined"
+      ? MAX_WIDTH_CAP
+      : window.innerWidth * MAX_WIDTH_RATIO,
     MAX_WIDTH_CAP,
   );
   return Math.round(Math.min(cap, Math.max(MIN_WIDTH, value)));
@@ -67,7 +43,9 @@ function clampWidth(value: number): number {
 function readStoredWidth(): number {
   try {
     const saved = Number(localStorage.getItem(WIDTH_STORAGE_KEY));
-    return Number.isFinite(saved) && saved > 0 ? clampWidth(saved) : DEFAULT_WIDTH;
+    return Number.isFinite(saved) && saved > 0
+      ? clampWidth(saved)
+      : DEFAULT_WIDTH;
   } catch {
     return DEFAULT_WIDTH;
   }
@@ -76,13 +54,6 @@ function readStoredWidth(): number {
 interface DesktopSidebarShellProps {
   collapsed: boolean;
   onToggleCollapsed: (collapsed: boolean) => void;
-  sessionId?: string | null;
-  /** 会话沙箱模式（agent_options.sandbox，"local" | "cloud"）。 */
-  sandboxMode?: string | null;
-  /** 会话 sandbox_machine_id（未显式选机器时空）。 */
-  machineId?: string | null;
-  /** 会话 sandbox_workspace 的原样 JSON（reveal 用）。 */
-  workspaceSelection?: string | null;
   onShowProfile?: () => void;
   mobileOpen?: boolean;
   onToggleMobile?: (open: boolean) => void;
@@ -120,10 +91,6 @@ function useDesktopShellShortcuts(
 export function DesktopSidebarShell({
   collapsed: chatCollapsed,
   onToggleCollapsed: onToggleChatCollapsed,
-  sessionId,
-  sandboxMode,
-  machineId,
-  workspaceSelection,
   children,
   onShowProfile,
   mobileOpen = false,
@@ -132,16 +99,19 @@ export function DesktopSidebarShell({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isChatPage = pathname === "/" || pathname === "/chat" || pathname.startsWith("/chat/");
+  const isChatPage =
+    pathname === "/" || pathname === "/chat" || pathname.startsWith("/chat/");
   const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
   const collapsed = isChatPage ? chatCollapsed : expandedPanel !== pathname;
-  const onToggleCollapsed = useCallback((next: boolean) => {
-    if (isChatPage) onToggleChatCollapsed(next);
-    else setExpandedPanel(next ? null : pathname);
-  }, [isChatPage, onToggleChatCollapsed, pathname]);
+  const onToggleCollapsed = useCallback(
+    (next: boolean) => {
+      if (isChatPage) onToggleChatCollapsed(next);
+      else setExpandedPanel(next ? null : pathname);
+    },
+    [isChatPage, onToggleChatCollapsed, pathname],
+  );
   const [wide, setWide] = useState(() => window.innerWidth >= 640);
   const [notificationCount, setNotificationCount] = useState(0);
-  const [view, setView] = useState<DesktopSidebarView>(readStoredView);
   const [width, setWidth] = useState(readStoredWidth);
   const [resizing, setResizing] = useState(false);
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -149,7 +119,8 @@ export function DesktopSidebarShell({
   const widthRef = useRef(width);
 
   useEffect(() => {
-    const update = (event: Event) => setNotificationCount((event as CustomEvent<number>).detail);
+    const update = (event: Event) =>
+      setNotificationCount((event as CustomEvent<number>).detail);
     window.addEventListener(NOTIFICATION_COUNT_EVENT, update);
     return () => window.removeEventListener(NOTIFICATION_COUNT_EVENT, update);
   }, []);
@@ -176,12 +147,19 @@ export function DesktopSidebarShell({
     };
   }, [resizing]);
 
-  const setNavigationCollapsed = useCallback((next: boolean) => {
-    if (wide) onToggleCollapsed(next);
-    else onToggleMobile?.(!next);
-  }, [wide, onToggleCollapsed, onToggleMobile]);
+  const setNavigationCollapsed = useCallback(
+    (next: boolean) => {
+      if (wide) onToggleCollapsed(next);
+      else onToggleMobile?.(!next);
+    },
+    [wide, onToggleCollapsed, onToggleMobile],
+  );
   const navigationCollapsed = wide ? collapsed : !mobileOpen;
-  useDesktopShellShortcuts(navigationCollapsed, setNavigationCollapsed, navigate);
+  useDesktopShellShortcuts(
+    navigationCollapsed,
+    setNavigationCollapsed,
+    navigate,
+  );
 
   // 标题栏折叠按钮的事件桥（TitleBar 不持有折叠状态）
   useEffect(() => {
@@ -191,20 +169,6 @@ export function DesktopSidebarShell({
       window.removeEventListener(DESKTOP_SIDEBAR_TOGGLE_EVENT, handleToggle);
     };
   }, [navigationCollapsed, setNavigationCollapsed]);
-
-  const switchView = useCallback(
-    (next: DesktopSidebarView) => {
-      setView(next);
-      try {
-        localStorage.setItem(VIEW_STORAGE_KEY, next);
-      } catch {
-        /* 私密模式等场景静默 */
-      }
-      // 从折叠态点视图 = 同时展开侧栏
-      onToggleChatCollapsed(false);
-    },
-    [onToggleChatCollapsed],
-  );
 
   const handleResizeDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (collapsed || e.button !== 0) return;
@@ -238,73 +202,94 @@ export function DesktopSidebarShell({
     }
   };
 
-  const workspace = (
-    <WorkspacePanel sessionId={sessionId ?? null} sandboxMode={sandboxMode}
-      machineId={machineId} workspaceSelection={workspaceSelection} />
-  );
-
   return (
-    <SidebarWorkspaceContext.Provider value={{ view, switchView, workspace }}>
     <div className={wide ? "relative flex h-full shrink-0" : "contents"}>
-      {wide && <DesktopActivityRail view={view} collapsed={collapsed} onSwitchView={switchView} onShowProfile={onShowProfile} />}
+      {wide && (
+        <DesktopActivityRail
+          collapsed={collapsed}
+          onOpenChats={() => onToggleChatCollapsed(false)}
+          onShowProfile={onShowProfile}
+        />
+      )}
       <div
         data-desktop-sidebar={wide ? "" : undefined}
         inert={wide && collapsed}
-        className={wide ? clsx(
-          "relative h-full shrink-0 overflow-hidden bg-[var(--theme-bg-sidebar)]",
-          !collapsed && "border-r border-[var(--theme-border)]",
-          resizing ? "transition-none" : "transition-[width] duration-200 ease-out",
-        ) : "contents"}
+        className={
+          wide
+            ? clsx(
+                "relative h-full shrink-0 overflow-hidden bg-[var(--theme-bg-sidebar)]",
+                !collapsed && "border-r border-[var(--theme-border)]",
+                resizing
+                  ? "transition-none"
+                  : "transition-[width] duration-200 ease-out",
+              )
+            : "contents"
+        }
         style={wide ? { width: collapsed ? 0 : width } : undefined}
       >
         <div className={wide ? "absolute inset-0 flex flex-col" : "contents"}>
-          {wide && <>
-          <div data-sidebar-brand="" className="flex h-12 shrink-0 items-center gap-2 ps-[13px] pe-[7px]">
-            <Link to="/chat" aria-label={APP_NAME} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline focus-visible:outline-2">
-              <BrandLogo alt={APP_NAME} className="-mx-1 size-7 shrink-0" />
-              <BrandWordmark decorative className="h-7 w-auto min-w-0" />
-            </Link>
-            <div className="ml-auto flex shrink-0 items-center">
-              <button type="button" title={t("nav.notifications")} aria-label={t("nav.notifications")}
-                onClick={() => window.dispatchEvent(new Event(OPEN_NOTIFICATIONS_EVENT))}
-                className="relative flex size-8 items-center justify-center rounded-lg text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2">
-                <Bell size={16} />
-                {notificationCount > 0 && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[var(--theme-primary)]" aria-label={String(notificationCount)} />}
-              </button>
-              <button type="button" title={t("sidebar.searchSessions")} aria-label={t("sidebar.searchSessions")}
-                onClick={() => window.dispatchEvent(new Event(DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT))}
-                className="flex size-8 items-center justify-center rounded-lg text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2">
-                <Search size={16} />
-              </button>
-            </div>
-            {!isDesktopShell() && (
-              <button type="button" onClick={() => onToggleCollapsed(true)}
-                aria-label={t("sidebar.collapseSidebar")}
-                className="ml-auto flex size-8 items-center justify-center rounded-md text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2">
-                <PanelLeft size={16} />
-              </button>
-            )}
-          </div>
-          </>}
-          {/* 内容区（chat/files 常驻挂载保状态，仅切显隐） */}
-          <div className={wide ? "flex min-h-0 flex-1 flex-col" : "contents"}>
-            <div
-              className={!wide ? "contents" : clsx(
-                "min-h-0 flex-1",
-                view === "chat" && !collapsed ? "flex" : "hidden",
-              )}
-            >
-              <div className={wide ? "min-h-0 w-full flex-1" : "contents"}>{children}</div>
-            </div>
-            <div
-              className={clsx(
-                "min-h-0 flex-1",
-                wide && view === "files" && !collapsed ? "flex" : "hidden",
-              )}
-            >
-              <div className="min-h-0 w-full flex-1">
-                {wide && workspace}
+          {wide && (
+            <>
+              <div
+                data-sidebar-brand=""
+                className="flex h-12 shrink-0 items-center gap-2 ps-[13px] pe-[7px]"
+              >
+                <Link
+                  to="/chat"
+                  aria-label={APP_NAME}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline focus-visible:outline-2"
+                >
+                  <BrandLogo alt={APP_NAME} className="-mx-1 size-7 shrink-0" />
+                  <BrandWordmark decorative className="h-7 w-auto min-w-0" />
+                </Link>
+                <div className="ml-auto flex shrink-0 items-center">
+                  <button
+                    type="button"
+                    title={t("nav.notifications")}
+                    aria-label={t("nav.notifications")}
+                    onClick={() =>
+                      window.dispatchEvent(new Event(OPEN_NOTIFICATIONS_EVENT))
+                    }
+                    className="relative flex size-8 items-center justify-center rounded-lg text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2"
+                  >
+                    <Bell size={16} />
+                    {notificationCount > 0 && (
+                      <span
+                        className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[var(--theme-primary)]"
+                        aria-label={String(notificationCount)}
+                      />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    title={t("sidebar.searchSessions")}
+                    aria-label={t("sidebar.searchSessions")}
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new Event(DESKTOP_SIDEBAR_OPEN_SEARCH_EVENT),
+                      )
+                    }
+                    className="flex size-8 items-center justify-center rounded-lg text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2"
+                  >
+                    <Search size={16} />
+                  </button>
+                </div>
+                {!isDesktopShell() && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleCollapsed(true)}
+                    aria-label={t("sidebar.collapseSidebar")}
+                    className="ml-auto flex size-8 items-center justify-center rounded-md text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2"
+                  >
+                    <PanelLeft size={16} />
+                  </button>
+                )}
               </div>
+            </>
+          )}
+          <div className={wide ? "flex min-h-0 flex-1 flex-col" : "contents"}>
+            <div className={wide ? "min-h-0 w-full flex-1" : "contents"}>
+              {children}
             </div>
           </div>
         </div>
@@ -320,10 +305,16 @@ export function DesktopSidebarShell({
           onKeyDown={(e) => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
             e.preventDefault();
-            const next = clampWidth(widthRef.current + (e.key === "ArrowLeft" ? -10 : 10));
+            const next = clampWidth(
+              widthRef.current + (e.key === "ArrowLeft" ? -10 : 10),
+            );
             widthRef.current = next;
             setWidth(next);
-            try { localStorage.setItem(WIDTH_STORAGE_KEY, String(next)); } catch { /* storage unavailable */ }
+            try {
+              localStorage.setItem(WIDTH_STORAGE_KEY, String(next));
+            } catch {
+              /* storage unavailable */
+            }
           }}
           role="separator"
           tabIndex={0}
@@ -345,7 +336,6 @@ export function DesktopSidebarShell({
         </div>
       )}
     </div>
-    </SidebarWorkspaceContext.Provider>
   );
 }
 

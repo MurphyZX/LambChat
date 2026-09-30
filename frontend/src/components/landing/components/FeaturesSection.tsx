@@ -29,10 +29,7 @@ export function FeaturesSection() {
               <span className="blog-feature-number">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <SceneIllustration
-                scene={f.illustration}
-                className="mb-4"
-              />
+              <SceneIllustration scene={f.illustration} className="mb-4" />
               <h3 className="text-15 sm:text-16 font-bold text-theme-text mb-2.5 leading-snug">
                 {t(`landing.${f.titleKey}`, f.titleKey)}
               </h3>

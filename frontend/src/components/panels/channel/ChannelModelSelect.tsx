@@ -56,7 +56,7 @@ export function ChannelModelSelect({
           value: model.id,
           label: (
             <>
-              <span className="font-sans">{model.label}</span>
+              <span className="font-serif">{model.label}</span>
               <span className="opacity-60"> ({model.value})</span>
             </>
           ),

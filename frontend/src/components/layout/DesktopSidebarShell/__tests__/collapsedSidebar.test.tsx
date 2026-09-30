@@ -26,23 +26,36 @@ test("collapsed sidebar disables its hidden controls and restores them on expans
   expect(sidebar.hasAttribute("inert")).toBe(false);
 });
 
-vi.mock("../../../../hooks/useAuth", () => ({ useAuth: () => ({ user: { username: "tester" }, hasAnyPermission: () => true, hasPermission: () => true }) }));
-vi.mock("../../../../contexts/SettingsContext", () => ({ useSettingsContext: () => ({ enableMemory: true }) }));
-
+vi.mock("../../../../hooks/useAuth", () => ({
+  useAuth: () => ({
+    user: { username: "tester" },
+    hasAnyPermission: () => true,
+    hasPermission: () => true,
+  }),
+}));
+vi.mock("../../../../contexts/SettingsContext", () => ({
+  useSettingsContext: () => ({ enableMemory: true }),
+}));
 
 test("panels hide the wide sidebar while chat keeps its expanded preference", () => {
   function Routes() {
     const navigate = useNavigate();
-    return <>
-      <button onClick={() => navigate("/scheduled-tasks")}>Tasks page</button>
-      <button onClick={() => navigate("/settings")}>Settings page</button>
-      <button onClick={() => navigate("/chat")}>Chat page</button>
-      <DesktopSidebarShell collapsed={false} onToggleCollapsed={() => {}}>
-        <button>New chat</button>
-      </DesktopSidebarShell>
-    </>;
+    return (
+      <>
+        <button onClick={() => navigate("/scheduled-tasks")}>Tasks page</button>
+        <button onClick={() => navigate("/settings")}>Settings page</button>
+        <button onClick={() => navigate("/chat")}>Chat page</button>
+        <DesktopSidebarShell collapsed={false} onToggleCollapsed={() => {}}>
+          <button>New chat</button>
+        </DesktopSidebarShell>
+      </>
+    );
   }
-  const { container, getByText } = render(<MemoryRouter initialEntries={["/chat"]}><Routes /></MemoryRouter>);
+  const { container, getByText } = render(
+    <MemoryRouter initialEntries={["/chat"]}>
+      <Routes />
+    </MemoryRouter>,
+  );
   const sidebar = () => container.querySelector("[data-desktop-sidebar]")!;
   expect(sidebar().hasAttribute("inert")).toBe(false);
   fireEvent.click(getByText("Tasks page"));

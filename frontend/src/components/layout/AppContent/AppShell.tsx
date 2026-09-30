@@ -50,6 +50,7 @@ function isStandaloneDisplayMode(): boolean {
 
 export interface AppShellProps {
   activeTab: TabType;
+  headerActions?: ReactNode;
   showProfileModal: boolean;
   onCloseProfileModal: () => void;
   setMobileSidebarOpen: (open: boolean) => void;
@@ -80,6 +81,7 @@ export interface AppShellProps {
 
 export function AppShell({
   activeTab,
+  headerActions,
   showProfileModal,
   onCloseProfileModal,
   setMobileSidebarOpen,
@@ -299,9 +301,17 @@ export function AppShell({
       >
         {sidebar}
 
-        <div className="relative z-0 flex flex-1 min-w-0 flex-col overflow-hidden">
+        <div
+          className="relative z-0 flex flex-1 min-w-0 flex-col overflow-hidden"
+          style={
+            activeTab !== "chat"
+              ? { containerType: "inline-size", containerName: "panel-shell" }
+              : undefined
+          }
+        >
           <Header
             activeTab={activeTab}
+            headerActions={headerActions}
             setMobileSidebarOpen={setMobileSidebarOpen}
             currentProjectId={currentProjectId}
             projectManager={projectManager}

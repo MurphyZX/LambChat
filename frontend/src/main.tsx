@@ -37,6 +37,7 @@ import "./styles/markdown.css";
 import "./styles/pwa.css";
 import "./styles/utilities.css";
 import "./styles/panels.css";
+import "./styles/legacy-panels.css";
 import { AuthProvider } from "./hooks/useAuth";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { installMobileViewportResetHandlers } from "./utils/mobile";

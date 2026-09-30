@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 /**
  * 名称类文案（agent/角色/persona/团队/模型/技能/会话/项目/用户名）
- * 管理面板使用 font-sans，聊天与阅读区域保留 font-serif。
+ * 与实体卡片标题一样统一使用 font-serif（Source Serif 4）。
  */
 function readComponent(...segments: string[]): string {
   return readFileSync(
@@ -12,25 +12,25 @@ function readComponent(...segments: string[]): string {
   );
 }
 
-test("role selectors render role names with font-sans", () => {
+test("role selectors render role names with font-serif", () => {
   const selector = readComponent("panels/AgentPanel/shared/RoleSelector.tsx");
-  expect(selector).toMatch(/flex items-center gap-2 font-sans/);
+  expect(selector).toMatch(/flex items-center gap-2 font-serif/);
   expect(selector).toMatch(
-    /<span className="font-sans">\{role\.name\}<\/span>/,
+    /<span className="font-serif">\{role\.name\}<\/span>/,
   );
   const square = readComponent("team/RoleSquare.tsx");
-  expect(square).toMatch(/team-role-card__name font-sans/);
+  expect(square).toMatch(/team-role-card__name font-serif/);
   const builder = readComponent("team/TeamBuilder.tsx");
-  expect(builder).toMatch(/team-form-role-option__name font-sans/);
+  expect(builder).toMatch(/team-form-role-option__name font-serif/);
 });
 
-test("team member card renders agent and model names with font-sans", () => {
+test("team member card renders agent and model names with font-serif", () => {
   const source = readComponent("team/TeamMemberCard.tsx");
-  expect(source).toMatch(/font-sans">\{agentLabel\}/);
-  expect(source).toMatch(/font-sans">\{modelLabel\}/);
+  expect(source).toMatch(/font-serif">\{agentLabel\}/);
+  expect(source).toMatch(/font-serif">\{modelLabel\}/);
   // 成员模式/成员模型下拉中的实体名同样 serif（富标签）
   expect(
-    source.match(/className="font-sans"/g)?.length,
+    source.match(/className="font-serif"/g)?.length,
   ).toBeGreaterThanOrEqual(2);
 });
 
@@ -49,18 +49,18 @@ test("subagent and team tool results render member names with font-serif", () =>
     /text-12 text-theme-text font-semibold font-serif truncate/,
   );
   const picker = readComponent("team/TeamPickerModal.tsx");
-  expect(picker).toMatch(/scb__mini-tag font-sans/);
+  expect(picker).toMatch(/scb__mini-tag font-serif/);
 });
 
-test("channel selects render entity names with font-sans", () => {
+test("channel selects render entity names with font-serif", () => {
   const agent = readComponent("panels/channel/ChannelAgentSelect.tsx");
-  expect(agent).toMatch(/font-sans">\s*\{resolveAgentDisplayName/);
+  expect(agent).toMatch(/font-serif">\s*\{resolveAgentDisplayName/);
   const model = readComponent("panels/channel/ChannelModelSelect.tsx");
-  expect(model).toMatch(/font-sans">\{model\.label\}/);
+  expect(model).toMatch(/font-serif">\{model\.label\}/);
   const persona = readComponent("panels/channel/ChannelPersonaSelect.tsx");
-  expect(persona.match(/truncate font-sans/g)?.length).toBe(2);
+  expect(persona.match(/truncate font-serif/g)?.length).toBe(2);
   const team = readComponent("panels/channel/ChannelTeamSelect.tsx");
-  expect(team.match(/truncate font-sans/g)?.length).toBe(2);
+  expect(team.match(/truncate font-serif/g)?.length).toBe(2);
   // 富标签需要 GlassSelect 支持 ReactNode label
   const glass = readComponent("common/GlassSelect.tsx");
   expect(glass).toMatch(/label: ReactNode/);
@@ -70,7 +70,7 @@ test("skill selectors render skill names with font-serif", () => {
   const skill = readComponent("selectors/SkillSelector.tsx");
   expect(skill).toMatch(/text-12 sm:text-13 font-medium font-serif truncate/);
   const personaEditor = readComponent("persona/PersonaEditorSkillSelector.tsx");
-  expect(personaEditor).toMatch(/text-14 font-medium font-sans truncate/);
+  expect(personaEditor).toMatch(/text-14 font-medium font-serif truncate/);
   const slash = readComponent("chat/SlashDropdownMenu.tsx");
   expect(slash).toMatch(/min-w-0 flex-1 truncate font-serif/);
 });
@@ -94,17 +94,17 @@ test("search and recent chat lists render session titles with font-serif", () =>
   expect(recent).toMatch(/truncate text-13 font-serif/);
 });
 
-test("users panel renders usernames and role tags with font-sans", () => {
+test("users panel renders usernames and role tags with font-serif", () => {
   const source = readComponent("panels/UsersPanel.tsx");
-  expect(source.match(/font-medium font-sans text-theme-text/g)?.length).toBe(
+  expect(source.match(/font-medium font-serif text-theme-text/g)?.length).toBe(
     2,
   );
-  expect(source.match(/tag tag-default font-sans/g)?.length).toBe(2);
+  expect(source.match(/tag tag-default font-serif/g)?.length).toBe(2);
 });
 
-test("settings panel section heading uses medium sans text", () => {
+test("settings panel group eyebrow matches profile serif eyebrow", () => {
   const source = readComponent("panels/SettingsPanel.tsx");
   expect(source).toMatch(
-    /text-13 font-medium font-sans/,
+    /text-12 font-semibold font-serif uppercase tracking-wider/,
   );
 });

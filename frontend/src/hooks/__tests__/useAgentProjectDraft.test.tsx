@@ -4,9 +4,13 @@ import { expect, test, vi } from "vitest";
 import { useAgent } from "../useAgent";
 import { sessionApi } from "../../services/api";
 
-vi.mock("../useAuth", () => ({ useAuth: () => ({ hasAnyPermission: () => false }) }));
+vi.mock("../useAuth", () => ({
+  useAuth: () => ({ hasAnyPermission: () => false }),
+}));
 vi.mock("../../services/api/authenticatedRequest", () => ({
-  authenticatedRequest: vi.fn(async () => new Response(JSON.stringify({ agents: [] }))),
+  authenticatedRequest: vi.fn(
+    async () => new Response(JSON.stringify({ agents: [] })),
+  ),
 }));
 
 test("project drafts expose their destination before sending and reset it for a general chat", async () => {

@@ -31,7 +31,9 @@ test("section toggle, add and more actions stay independent", () => {
   fireEvent.click(more);
   const popover = document.getElementById(more.getAttribute("popovertarget")!);
   expect(popover?.getAttribute("popover")).toBe("auto");
-  fireEvent.click(screen.getByRole("button", { name: "Select chats", hidden: true }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Select chats", hidden: true }),
+  );
   expect(select).toHaveBeenCalledOnce();
   expect(toggle).toHaveBeenCalledOnce();
 });

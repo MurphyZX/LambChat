@@ -4,7 +4,11 @@ import { EmptyState } from "../EmptyState";
 
 test("empty states show the selected local illustration without duplicating accessible text", () => {
   const { container } = render(
-    <EmptyState illustration="files" title="No files" description="Start a chat" />,
+    <EmptyState
+      illustration="files"
+      title="No files"
+      description="Start a chat"
+    />,
   );
   const image = container.querySelector("img");
   expect(image).toHaveAttribute("src", "/images/illustrations/lamb-files.png");
@@ -14,7 +18,9 @@ test("empty states show the selected local illustration without duplicating acce
 });
 
 test("an unavailable illustration falls back to the static brand avatar", () => {
-  const { container } = render(<EmptyState illustration="welcome" title="No results" />);
+  const { container } = render(
+    <EmptyState illustration="welcome" title="No results" />,
+  );
   const image = container.querySelector("img");
   expect(image).not.toBeNull();
   fireEvent.error(image!);
@@ -25,7 +31,12 @@ test("an unavailable illustration falls back to the static brand avatar", () => 
 
 test("empty state actions remain operable alongside the illustration", () => {
   const action = vi.fn();
-  render(<EmptyState title="No messages" action={<button onClick={action}>Start</button>} />);
+  render(
+    <EmptyState
+      title="No messages"
+      action={<button onClick={action}>Start</button>}
+    />,
+  );
   fireEvent.click(screen.getByRole("button", { name: "Start" }));
   expect(action).toHaveBeenCalledOnce();
 });

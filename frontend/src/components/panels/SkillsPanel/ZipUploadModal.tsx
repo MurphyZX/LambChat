@@ -1,6 +1,5 @@
-import { SceneIllustration } from "../../common/SceneIllustration";
 import { useTranslation } from "react-i18next";
-import { Archive, Upload } from "lucide-react";
+import { Archive, UploadCloud, FileArchive, Upload } from "lucide-react";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { EditorSidebar } from "../../common/EditorSidebar";
 import { Checkbox } from "../../common/Checkbox";
@@ -107,7 +106,15 @@ export function ZipUploadModal({
             onChange={onZipFileChange}
             className="hidden"
           />
-          <SceneIllustration scene="files" />
+          <div
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200 ${
+              isDragging
+                ? "bg-[var(--theme-primary)] text-white shadow-lg shadow-[var(--theme-primary)]/20 scale-110"
+                : "bg-[var(--theme-primary-light)] text-[var(--theme-primary)] group-hover:scale-105"
+            }`}
+          >
+            {isDragging ? <FileArchive size={24} /> : <UploadCloud size={24} />}
+          </div>
           <div className="text-center">
             <p className="text-14 font-medium text-[var(--theme-text)]">
               {isDragging

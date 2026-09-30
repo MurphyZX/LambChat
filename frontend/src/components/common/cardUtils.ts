@@ -66,18 +66,10 @@ export function getCategoryIcon(tag: string): LucideIcon {
   return Package;
 }
 
-// Theme-aware warm orange, amber, graphite and ivory; diluted by the cover CSS.
-export const COVER_PALETTES = [
-  ["var(--color-icon-orange)", "var(--theme-bg-card)", "var(--theme-warning)"],
-  ["var(--theme-warning)", "var(--theme-bg-card)", "var(--theme-primary)"],
-  ["var(--theme-primary)", "var(--theme-bg-card)", "var(--theme-text-secondary)"],
-  ["var(--theme-text-secondary)", "var(--theme-bg-card)", "var(--color-icon-orange)"],
-];
-
-export function nameToGradient(name: string, palettes = GRADIENT_PALETTES) {
+export function nameToGradient(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return palettes[Math.abs(hash) % palettes.length];
+  return GRADIENT_PALETTES[Math.abs(hash) % GRADIENT_PALETTES.length];
 }

@@ -138,30 +138,48 @@ export function useWorkspaceOptionActions(
     agents: AgentInfo[];
     currentAgent: string;
     switchAgent: (id: string) => void;
-    restoreAgentOptions: (values: Record<string, boolean | string | number>) => void;
+    restoreAgentOptions: (
+      values: Record<string, boolean | string | number>,
+    ) => void;
   },
 ) {
-  const changeOption = useCallback((key: string, value: boolean | string | number) => {
-    if (sessionId) {
-      void saveSessionWorkspaceOption(sessionId, key, value).catch((error: unknown) => {
-        if (error instanceof Error) toast.error(error.message);
-      });
-    }
-    change(key, value);
-  }, [sessionId, change]);
-  const selectProject = useCallback((id: string | null, workspace?: Project["workspace"]) => {
-    setProject(id);
-    if (workspace) {
-      const values = { sandbox: "local", sandbox_machine_id: workspace.machineId, sandbox_workspace: JSON.stringify(workspace) };
-      const current = agentContext?.agents.find((agent) => agent.id === agentContext.currentAgent);
-      const capable = agentContext?.agents.find((agent) => agent.supports_sandbox);
-      if (agentContext && !current?.supports_sandbox && capable) {
-        agentContext.switchAgent(capable.id);
-        agentContext.restoreAgentOptions(values);
-      } else {
-        Object.entries(values).forEach(([key, value]) => change(key, value));
+  const changeOption = useCallback(
+    (key: string, value: boolean | string | number) => {
+      if (sessionId) {
+        void saveSessionWorkspaceOption(sessionId, key, value).catch(
+          (error: unknown) => {
+            if (error instanceof Error) toast.error(error.message);
+          },
+        );
       }
-    }
-  }, [setProject, change, agentContext]);
+      change(key, value);
+    },
+    [sessionId, change],
+  );
+  const selectProject = useCallback(
+    (id: string | null, workspace?: Project["workspace"]) => {
+      setProject(id);
+      if (workspace) {
+        const values = {
+          sandbox: "local",
+          sandbox_machine_id: workspace.machineId,
+          sandbox_workspace: JSON.stringify(workspace),
+        };
+        const current = agentContext?.agents.find(
+          (agent) => agent.id === agentContext.currentAgent,
+        );
+        const capable = agentContext?.agents.find(
+          (agent) => agent.supports_sandbox,
+        );
+        if (agentContext && !current?.supports_sandbox && capable) {
+          agentContext.switchAgent(capable.id);
+          agentContext.restoreAgentOptions(values);
+        } else {
+          Object.entries(values).forEach(([key, value]) => change(key, value));
+        }
+      }
+    },
+    [setProject, change, agentContext],
+  );
   return { changeOption, selectProject };
 }

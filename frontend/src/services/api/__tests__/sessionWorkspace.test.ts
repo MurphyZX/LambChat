@@ -6,7 +6,12 @@ import { sandboxFsApi } from "../sandboxFs";
 
 test("file listing waits for the selected workspace to be persisted", async () => {
   let finish!: () => void;
-  fetchMock.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
   const saved = saveSessionWorkspaceOption("session-1", "sandbox", "local");
   const listing = sandboxFsApi.list("session-1");
   await Promise.resolve();
@@ -22,9 +27,22 @@ test("file listing waits for the selected workspace to be persisted", async () =
 test("rapid machine and directory changes are saved in order", async () => {
   fetchMock.mockClear();
   let finish!: () => void;
-  fetchMock.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
-  const first = saveSessionWorkspaceOption("session-2", "sandbox_machine_id", "mac");
-  const second = saveSessionWorkspaceOption("session-2", "sandbox_workspace", "selection");
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const first = saveSessionWorkspaceOption(
+    "session-2",
+    "sandbox_machine_id",
+    "mac",
+  );
+  const second = saveSessionWorkspaceOption(
+    "session-2",
+    "sandbox_workspace",
+    "selection",
+  );
   await Promise.resolve();
   expect(fetchMock).toHaveBeenCalledTimes(1);
   finish();
@@ -35,7 +53,9 @@ test("rapid machine and directory changes are saved in order", async () => {
 test("refresh retries a failed workspace save before reading files", async () => {
   fetchMock.mockReset();
   fetchMock.mockRejectedValueOnce(new Error("offline"));
-  await expect(saveSessionWorkspaceOption("recover", "sandbox", "local")).rejects.toThrow("offline");
+  await expect(
+    saveSessionWorkspaceOption("recover", "sandbox", "local"),
+  ).rejects.toThrow("offline");
   await sandboxFsApi.list("recover");
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     expect.stringContaining("/api/sessions/recover"),
@@ -47,11 +67,22 @@ test("refresh retries a failed workspace save before reading files", async () =>
 test("a later directory save also persists a machine change that failed", async () => {
   fetchMock.mockReset();
   fetchMock.mockRejectedValueOnce(new Error("offline"));
-  const machine = saveSessionWorkspaceOption("recover-machine", "sandbox_machine_id", "mac");
-  const directory = saveSessionWorkspaceOption("recover-machine", "sandbox_workspace", "selection");
+  const machine = saveSessionWorkspaceOption(
+    "recover-machine",
+    "sandbox_machine_id",
+    "mac",
+  );
+  const directory = saveSessionWorkspaceOption(
+    "recover-machine",
+    "sandbox_workspace",
+    "selection",
+  );
   await expect(machine).rejects.toThrow("offline");
   await directory;
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ metadata: {
-    "agent_options.sandbox_machine_id": "mac", "agent_options.sandbox_workspace": "selection",
-  } });
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+    metadata: {
+      "agent_options.sandbox_machine_id": "mac",
+      "agent_options.sandbox_workspace": "selection",
+    },
+  });
 });

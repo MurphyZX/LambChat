@@ -39,7 +39,10 @@ const { buildRunModesOptions, collectActiveRunModes } = runModeOptions;
 import { FILE_CATEGORY_PERMISSIONS } from "./chatInputConstants";
 import { getMentionPopupFixedPlacement } from "./chatInputViewport";
 import { useExpandedComposerHost } from "./chatInputExpandedHost";
-import { getMatchingSlashDropdownItems, type ChatInputSlashCommand } from "./chatInputSlashCommands";
+import {
+  getMatchingSlashDropdownItems,
+  type ChatInputSlashCommand,
+} from "./chatInputSlashCommands";
 import {
   consumePendingSelectionActionPrompt,
   SELECTION_ACTION_EVENT,
@@ -263,7 +266,6 @@ export const ChatInput = memo(function ChatInput({
     if (!onMentionQueryChange) return;
     onMentionQueryChange(mention.isActive ? mention.query : null);
   }, [mention.isActive, mention.query, onMentionQueryChange]);
-  // 一轮对话结束后通知工具栏用量 chip 刷新当日金额
   useNotifyTodayUsageRefresh(isLoading);
   // @人选定后把提及片段从草稿摘除并聚焦（人设/团队共用同一行为）
   useEffect(() => {
@@ -298,7 +300,6 @@ export const ChatInput = memo(function ChatInput({
       window.removeEventListener(SELECTION_ACTION_EVENT, handleSelectionAction);
     };
   }, []);
-  // Ctrl+T / Cmd+T -> open team picker
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac =
@@ -716,7 +717,7 @@ export const ChatInput = memo(function ChatInput({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`chat-input-container flex flex-col relative w-full rounded-3xl px-1 border transition-all duration-300 ${
+                className={`chat-input-container font-serif flex flex-col relative w-full rounded-3xl px-1 border transition-all duration-300 ${
                   isDraggingOver ? "data-drag-over" : ""
                 }`}
                 data-mention-active={mention.isActive || undefined}

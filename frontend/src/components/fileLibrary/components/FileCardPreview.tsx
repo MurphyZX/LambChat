@@ -1,4 +1,3 @@
-import { SceneIllustration } from "../../common/SceneIllustration";
 import { useState } from "react";
 import { clsx } from "clsx";
 import { Play } from "lucide-react";
@@ -356,8 +355,7 @@ function OtherCover({
   const tint = ICON_TINT[colorName ?? ""] ?? ICON_TINT.stone;
   return (
     <PaperCanvas className="flex items-center justify-center">
-      <SceneIllustration scene="files" />
-      <Icon size={18} className={clsx("absolute bottom-3 right-3", tint)} />
+      <Icon size={38} strokeWidth={1.2} className={clsx("opacity-70", tint)} />
     </PaperCanvas>
   );
 }

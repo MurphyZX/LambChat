@@ -78,9 +78,7 @@ vi.mock("react-hot-toast", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
 
-import {
-  LocalSandboxSection,
-} from "../LocalSandboxSection";
+import { LocalSandboxSection } from "../LocalSandboxSection";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");

@@ -156,7 +156,7 @@ export function SystemHealthSection() {
             <Activity size={16} />
           </div>
           <div>
-            <span className="text-14 font-semibold font-sans text-stone-800 dark:text-stone-100">
+            <span className="text-14 font-semibold font-serif text-stone-800 dark:text-stone-100">
               {t("systemHealth.title", "System Health")}
             </span>
             {overview && (
@@ -277,7 +277,7 @@ export function SystemHealthSection() {
                         <code className="max-w-[70%] truncate text-stone-600 dark:text-stone-300">
                           {row.location}
                         </code>
-                        <span className="shrink-0 font-medium tabular-nums text-theme-warning">
+                        <span className="shrink-0 font-medium tabular-nums text-orange-600 dark:text-orange-400">
                           +{row.size_diff}
                         </span>
                       </div>

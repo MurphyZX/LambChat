@@ -28,10 +28,14 @@ test("reports each newly extracted locale key once", () => {
       writeFileSync(resolve(localesDir, `${locale}.json`), "{}\n");
     }
 
-    const output = execFileSync(process.execPath, ["--import", tsxPath, extractorPath], {
-      cwd: fixtureDir,
-      encoding: "utf8",
-    });
+    const output = execFileSync(
+      process.execPath,
+      ["--import", tsxPath, extractorPath],
+      {
+        cwd: fixtureDir,
+        encoding: "utf8",
+      },
+    );
 
     expect(
       output.match(/➕ Added to en\.json: example\.newKey/g) ?? [],
@@ -63,10 +67,14 @@ test("extracts keys from .ts hook files but skips __tests__ fixtures", () => {
       writeFileSync(resolve(localesDir, `${locale}.json`), "{}\n");
     }
 
-    const output = execFileSync(process.execPath, ["--import", tsxPath, extractorPath], {
-      cwd: fixtureDir,
-      encoding: "utf8",
-    });
+    const output = execFileSync(
+      process.execPath,
+      ["--import", tsxPath, extractorPath],
+      {
+        cwd: fixtureDir,
+        encoding: "utf8",
+      },
+    );
 
     expect(
       output.match(/➕ Added to en\.json: example\.fromTs/g) ?? [],

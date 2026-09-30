@@ -56,7 +56,10 @@ interface ProjectItemProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onUpdateIcon?: (projectId: string, icon: string) => void;
-  onUpdateWorkspace?: (projectId: string, workspace: Project["workspace"]) => Promise<void>;
+  onUpdateWorkspace?: (
+    projectId: string,
+    workspace: Project["workspace"],
+  ) => Promise<void>;
   scrollRoot?: Element | null;
   draggingSessionId?: string | null;
   onNewSessionInProject?: (projectId: string) => void;
@@ -397,11 +400,15 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
           )}
 
           {!isFavorites && !isEditing && onNewSessionInProject && (
-            <Tooltip content={t("sidebar.newChatInProject", { project: project.name })}>
+            <Tooltip
+              content={t("sidebar.newChatInProject", { project: project.name })}
+            >
               <button
                 type="button"
                 onClick={() => onNewSessionInProject(project.id)}
-                aria-label={t("sidebar.newChatInProject", { project: project.name })}
+                aria-label={t("sidebar.newChatInProject", {
+                  project: project.name,
+                })}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/60 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-700/60 dark:hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)] max-sm:h-9 max-sm:w-9"
               >
                 <Plus size={16} aria-hidden="true" />
@@ -515,7 +522,11 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                 : undefined
             }
             anchorEl={menuAnchor}
-            onWorkspaceChange={onUpdateWorkspace ? (workspace) => onUpdateWorkspace(project.id, workspace) : undefined}
+            onWorkspaceChange={
+              onUpdateWorkspace
+                ? (workspace) => onUpdateWorkspace(project.id, workspace)
+                : undefined
+            }
           />
         )}
       </div>

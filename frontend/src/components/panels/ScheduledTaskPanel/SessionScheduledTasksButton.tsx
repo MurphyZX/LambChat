@@ -1,4 +1,3 @@
-import { SceneIllustration } from "../../common/SceneIllustration";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +21,7 @@ import { formatDateTimeShort } from "../../../utils/datetime";
 import {
   closePersistentToolPanel,
   isPersistentToolPanelOpen,
+  isPersistentToolPanelActive,
   openPersistentToolPanel,
   updatePersistentToolPanel,
 } from "../../chat/ChatMessage/items/persistentToolPanelState";
@@ -101,7 +101,9 @@ function SessionScheduledTaskPanelBody({
         </div>
       ) : tasks.length === 0 ? (
         <div className="scheduled-task-empty-state min-h-0 flex-1 px-6">
-          <SceneIllustration scene="message" className="mx-auto mb-4" />
+          <div className="scheduled-task-empty-state__icon h-12 w-12">
+            <CalendarClock size={24} />
+          </div>
           <p className="scheduled-task-empty-state__body">
             {t(
               "scheduledTask.noConversationTasks",
@@ -124,7 +126,7 @@ function SessionScheduledTaskPanelBody({
               <div className="scheduled-task-mini-card__header">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-14 font-semibold font-sans text-[var(--theme-text)]">
+                    <p className="truncate text-14 font-semibold font-serif text-[var(--theme-text)]">
                       {task.name}
                     </p>
                     <StatusBadge status={task.status} />
@@ -168,10 +170,10 @@ function SessionScheduledTaskPanelBody({
               <div className="scheduled-task-mini-card__actions">
                 <button
                   onClick={() => {
-                    closePersistentToolPanel();
+                    closePersistentToolPanel(SESSION_TASK_PANEL_KEY);
                     navigate(`/scheduled-tasks/${task.id}`);
                   }}
-                  className="scheduled-task-button scheduled-task-button--secondary font-sans"
+                  className="scheduled-task-button scheduled-task-button--secondary font-serif"
                   title={t("scheduledTask.details", "详情")}
                 >
                   <History size={14} />
@@ -286,8 +288,8 @@ export function SessionScheduledTasksButton({
   if (!sessionId || !canRead || count === 0) return null;
 
   const togglePanel = () => {
-    if (isPersistentToolPanelOpen(SESSION_TASK_PANEL_KEY)) {
-      closePersistentToolPanel();
+    if (isPersistentToolPanelActive(SESSION_TASK_PANEL_KEY)) {
+      closePersistentToolPanel(SESSION_TASK_PANEL_KEY);
       return;
     }
     openPersistentToolPanel({

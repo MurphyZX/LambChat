@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useRef, type ReactNode } from "react";
 import {
   SkillsPanelSkeleton,
   MarketplacePanelSkeleton,
@@ -13,6 +13,7 @@ import {
 } from "../../skeletons";
 import { PanelLoadingState } from "../../common/PanelLoadingState";
 import type { TabType } from "./types";
+import { observePanelWidths } from "../../common/panelWidths";
 
 const SkillsHubPanel = lazy(() =>
   import("../../panels/SkillsHubPanel").then((m) => ({
@@ -124,6 +125,11 @@ const skeletonMap: Partial<Record<TabType, ReactNode>> = {
 };
 
 export function TabContent({ activeTab }: { activeTab: TabType }) {
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (panelRef.current) return observePanelWidths(panelRef.current);
+  }, [activeTab]);
+
   if (activeTab === "chat") return null;
 
   const Panel = panelMap[activeTab];
@@ -131,10 +137,11 @@ export function TabContent({ activeTab }: { activeTab: TabType }) {
 
   return (
     <main
+      ref={panelRef}
       data-panel={activeTab}
       className="min-w-0 min-h-0 flex-1 overflow-hidden bg-[var(--theme-bg)]"
     >
-      <div className="mx-auto w-full h-full flex flex-col overflow-hidden lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem] px-4 lg:px-6">
+      <div className="mx-auto w-full h-full flex flex-col overflow-hidden lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem]">
         <Suspense fallback={skeletonMap[activeTab] ?? <PanelLoadingState />}>
           <Panel />
         </Suspense>

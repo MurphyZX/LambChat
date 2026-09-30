@@ -102,7 +102,7 @@ export function RolesAgentTab({
       {selectedRole && (
         <>
           <div className="glass-card divide-y divide-[var(--glass-border)] overflow-hidden rounded-xl">
-            <div className="bg-[var(--glass-bg-subtle)] px-4 py-2.5 font-sans">
+            <div className="bg-[var(--glass-bg-subtle)] px-4 py-2.5 font-serif">
               <h4 className="truncate text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
                 {t("agentConfig.selectAgentsForRole", {
                   roleName: selectedRoleData?.name,
@@ -140,7 +140,7 @@ export function RolesAgentTab({
                     <AgentIcon icon={agent.icon || "Bot"} size={16} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-14 font-medium font-sans text-theme-text">
+                    <div className="truncate text-14 font-medium font-serif text-theme-text">
                       {displayName}
                     </div>
                     <div className="mt-0.5 hidden truncate text-12 text-theme-text-secondary sm:block">

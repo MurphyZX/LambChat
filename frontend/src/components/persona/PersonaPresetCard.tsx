@@ -52,44 +52,15 @@ export function PersonaPresetCard({
   });
 
   return (
-    <div
-      style={
-        {
-          "--panel-card-accent": gradient[0],
-          "--panel-card-accent-end": gradient[2],
-        } as React.CSSProperties
-      }
-      className="scb group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
-    >
-      {/* Status and preference controls */}
-      <div className="scb__banner relative shrink-0">
-        {isPersonaImageAvatar(preset.avatar) ||
-          isEmojiAvatar(preset.avatar) ? (
-          <div className="scb__avatar-ring shrink-0">
-            <PersonaAvatarImage
-              avatar={
-                isEmojiAvatar(preset.avatar)
-                  ? getEmojiAvatarUrl(preset.avatar)
-                  : preset.avatar
-              }
-              alt=""
-              className="scb__avatar-img"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          </div>
-        ) : (
-          <div className="scb__icon-ring shrink-0">
-            <PersonaAvatarIcon
-              avatar={preset.avatar}
-              primaryTag={primaryTag}
-              size={20}
-              className="text-[var(--theme-primary)]"
-            />
-          </div>
-        )}
-        <div className="absolute top-0 right-0 flex gap-1.5">
+    <div className="scb group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none">
+      {/* Gradient Banner */}
+      <div
+        className="scb__banner relative h-12 shrink-0"
+        style={{
+          background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+        }}
+      >
+        <div className="absolute top-2 right-2 flex gap-1.5">
           {selected && (
             <span className="scb__status-pill scb__status-pill--installed">
               {t("personaPresets.using", "使用中")}
@@ -97,11 +68,12 @@ export function PersonaPresetCard({
           )}
         </div>
         {onTogglePreference && (
-          <div className="absolute left-10 top-0 flex gap-1.5">
+          <div className="absolute left-2 top-2 flex gap-1.5">
             <button
               type="button"
-              className={`pps-card__icon-action ${preset.is_pinned ? "pps-card__icon-action--active-pin" : ""
-                }`}
+              className={`pps-card__icon-action ${
+                preset.is_pinned ? "pps-card__icon-action--active-pin" : ""
+              }`}
               title={t("personaPresets.pin", "置顶")}
               onClick={() =>
                 onTogglePreference(preset, { is_pinned: !preset.is_pinned })
@@ -111,8 +83,9 @@ export function PersonaPresetCard({
             </button>
             <button
               type="button"
-              className={`pps-card__icon-action ${preset.is_favorite ? "pps-card__icon-action--active-fav" : ""
-                }`}
+              className={`pps-card__icon-action ${
+                preset.is_favorite ? "pps-card__icon-action--active-fav" : ""
+              }`}
               title={t("personaPresets.favorite", "收藏")}
               onClick={() =>
                 onTogglePreference(preset, {
@@ -127,13 +100,38 @@ export function PersonaPresetCard({
       </div>
 
       {/* Card Body */}
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
+      <div className="flex flex-1 flex-col p-4 pt-5">
         {/* Title row with avatar or icon */}
         <div className="flex items-start gap-3">
-
+          {isPersonaImageAvatar(preset.avatar) ||
+          isEmojiAvatar(preset.avatar) ? (
+            <div className="scb__avatar-ring shrink-0">
+              <PersonaAvatarImage
+                avatar={
+                  isEmojiAvatar(preset.avatar)
+                    ? getEmojiAvatarUrl(preset.avatar)
+                    : preset.avatar
+                }
+                alt=""
+                className="scb__avatar-img"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          ) : (
+            <div className="scb__icon-ring shrink-0">
+              <PersonaAvatarIcon
+                avatar={preset.avatar}
+                primaryTag={primaryTag}
+                size={20}
+                className="text-[var(--theme-primary)]"
+              />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <h3
-              className="truncate text-14 font-semibold font-sans  text-[var(--theme-text)] leading-tight"
+              className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
               title={preset.name}
             >
               {preset.name}
@@ -170,7 +168,7 @@ export function PersonaPresetCard({
         </div>
 
         {/* Description */}
-        <p className="mt-2 text-[0.78125rem] leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2 min-h-[3.25em]">
+        <p className="mt-3 text-13 leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2 min-h-[3.25em]">
           {preset.description || preset.system_prompt}
         </p>
 
@@ -191,8 +189,9 @@ export function PersonaPresetCard({
                 key={tag}
                 type="button"
                 onClick={() => onToggleTag(tag)}
-                className={`scb__mini-tag ${activeTag === tag ? "scb__mini-tag--active" : ""
-                  }`}
+                className={`scb__mini-tag ${
+                  activeTag === tag ? "scb__mini-tag--active" : ""
+                }`}
               >
                 {tag}
               </button>
@@ -209,7 +208,7 @@ export function PersonaPresetCard({
         <div className="flex-1" />
 
         {/* Meta & Actions */}
-        <div className="mt-4 flex items-center justify-between gap-2 pt-1">
+        <div className="scb__footer flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-11 text-[var(--theme-text-secondary)]">
             {preset.skill_names.length > 0 && (
               <span className="inline-flex items-center gap-1">
@@ -260,7 +259,7 @@ export function PersonaPresetCard({
                 onClick={() => onDelete(preset)}
                 className="scb__action-btn"
                 title={t("common.delete", "删除")}
-                style={{ color: "var(--theme-error)" }}
+                style={{ color: "#dc2626" }}
               >
                 <Trash2 size={16} />
               </button>

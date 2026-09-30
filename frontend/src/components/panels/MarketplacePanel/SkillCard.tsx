@@ -13,11 +13,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SkillBaseCard } from "../../common/SkillBaseCard";
-import {
-  COVER_PALETTES,
-  getCategoryIcon,
-  nameToGradient,
-} from "../../common/cardUtils";
+import { getCategoryIcon, nameToGradient } from "../../common/cardUtils";
 import type { MarketplaceSkillResponse } from "../../../types";
 import { formatDate } from "../../../utils/datetime";
 
@@ -61,13 +57,12 @@ export function SkillCard({
   onDelete,
 }: SkillCardProps) {
   const { t } = useTranslation();
-  const gradient = nameToGradient(skill.skill_name, COVER_PALETTES);
+  const gradient = nameToGradient(skill.skill_name);
   const primaryTag = skill.tags[0];
   const CategoryIcon = primaryTag ? getCategoryIcon(primaryTag) : Sparkles;
 
   return (
     <SkillBaseCard
-      cover
       title={skill.skill_name}
       description={skill.description || t("marketplace.noDescription")}
       gradient={gradient}
@@ -191,8 +186,20 @@ export function SkillCard({
               ))}
 
             {canManage && (
-              <div className="relative" data-mp-menu>
+              <div
+                className="relative"
+                data-mp-menu
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.stopPropagation();
+                    onOpenMenu(null);
+                    e.currentTarget.querySelector("button")?.focus();
+                  }
+                }}
+              >
                 <button
+                  aria-label={t("nav.more")}
+                  aria-expanded={openMenuName === skill.skill_name}
                   className="scb__action-btn scb__action-btn--ghost"
                   onClick={(e) => {
                     e.stopPropagation();

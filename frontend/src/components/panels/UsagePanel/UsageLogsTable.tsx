@@ -1,5 +1,4 @@
-import { SceneIllustration } from "../../common/SceneIllustration";
-import { Bot, FileText, Clock } from "lucide-react";
+import { Activity, Bot, FileText, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatDateTimeShort } from "../../../utils/datetime";
 import type { UsageLog } from "../../../types/usage";
@@ -20,18 +19,18 @@ const _STATUS_PILL_STYLES: Record<
   { pill: string; dot: string; labelKey: string }
 > = {
   ok: {
-    pill: "text-theme-text-secondary",
-    dot: "bg-theme-success",
+    pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500 animate-[status-ok-pulse_2s_ease-in-out_infinite]",
     labelKey: "usage.statusOk",
   },
   cancelled: {
-    pill: "text-theme-text-secondary",
-    dot: "bg-theme-warning",
+    pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    dot: "bg-amber-500",
     labelKey: "usage.statusCancelled",
   },
   error: {
-    pill: "text-theme-text-secondary",
-    dot: "bg-theme-error",
+    pill: "bg-red-500/10 text-red-500 dark:text-red-400",
+    dot: "bg-red-500",
     labelKey: "usage.statusError",
   },
 };
@@ -42,9 +41,9 @@ function StatusPill({ status, title }: { status: string; title?: string }) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1.5 text-12 tabular-nums ${style.pill}`}
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-10 font-medium tabular-nums ${style.pill}`}
     >
-      <span className={`size-2 shrink-0 rounded-full ${style.dot}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
       {t(style.labelKey)}
     </span>
   );
@@ -67,12 +66,12 @@ function SectionHeader({
   const end = Math.min(start + shown - 1, total);
 
   return (
-    <div className="usage-section-header mb-4 flex items-center justify-between gap-4">
+    <div className="usage-section-header mb-4 flex items-center justify-between gap-4 sm:mb-5">
       <div className="flex items-center gap-3 sm:gap-3.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--usage-icon-bg)] text-[var(--theme-primary)] sm:h-9 sm:w-9">
           <FileText size={15} strokeWidth={2} />
         </div>
-        <h2 className="truncate text-13 font-medium tracking-tight text-theme-text">
+        <h2 className="truncate text-13 font-bold tracking-tight text-theme-text sm:text-14">
           {title}
         </h2>
       </div>
@@ -191,7 +190,10 @@ function DesktopTable({
                     </div>
                   )}
                   <div className={textCellClass}>
-                    <span className="block truncate tabular-nums" title={log.model}>
+                    <span
+                      className="block truncate tabular-nums"
+                      title={log.model}
+                    >
                       {modelDisplayName(modelLabels, log.model) || "-"}
                     </span>
                   </div>
@@ -270,7 +272,7 @@ function TabletRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <code
-              className="min-w-0 truncate font-sans text-12 font-semibold text-theme-text tabular-nums"
+              className="min-w-0 truncate font-serif text-12 font-semibold text-theme-text tabular-nums"
               title={log.model}
             >
               {modelDisplayName(modelLabels, log.model) || "-"}
@@ -285,10 +287,11 @@ function TabletRow({
           </p>
           {log.status !== "completed" && log.error_message && (
             <p
-              className={`mt-1 truncate text-10 ${usageStatusKind(log.status) === "cancelled"
+              className={`mt-1 truncate text-10 ${
+                usageStatusKind(log.status) === "cancelled"
                   ? "text-amber-600 dark:text-amber-400"
                   : "text-red-500 dark:text-red-400"
-                }`}
+              }`}
               title={log.error_message}
             >
               {log.error_message}
@@ -326,10 +329,11 @@ function TabletRow({
               {label}
             </span>
             <span
-              className={`mt-0.5 block truncate text-12 font-semibold tabular-nums ${strong
+              className={`mt-0.5 block truncate text-12 font-semibold tabular-nums ${
+                strong
                   ? "text-[var(--theme-primary)]"
                   : "text-theme-text-secondary"
-                }`}
+              }`}
             >
               {value}
             </span>
@@ -366,18 +370,19 @@ function MobileCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${statusKind === "ok"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                statusKind === "ok"
                   ? "bg-emerald-500/[0.08] text-emerald-600 dark:text-emerald-400"
                   : statusKind === "cancelled"
                     ? "bg-amber-500/[0.08] text-amber-600 dark:text-amber-400"
                     : "bg-red-500/[0.08] text-red-500 dark:text-red-400"
-                }`}
+              }`}
             >
               <Bot size={16} strokeWidth={2} />
             </div>
             <div className="min-w-0 flex-1">
               <code
-                className="block truncate font-sans text-13 font-bold text-theme-text tabular-nums"
+                className="block truncate font-serif text-13 font-bold text-theme-text tabular-nums"
                 title={log.model}
               >
                 {modelDisplayName(modelLabels, log.model) || "-"}
@@ -394,10 +399,11 @@ function MobileCard({
               </div>
               {log.status !== "completed" && log.error_message && (
                 <p
-                  className={`mt-2 truncate text-10 ${statusKind === "cancelled"
+                  className={`mt-2 truncate text-10 ${
+                    statusKind === "cancelled"
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-red-500 dark:text-red-400"
-                    }`}
+                  }`}
                   title={log.error_message}
                 >
                   {log.error_message}
@@ -423,17 +429,19 @@ function MobileCard({
           ].map(([label, value, strong], i) => (
             <div
               key={String(label)}
-              className={`flex flex-col items-center py-2.5 ${i > 0 ? "border-l border-[var(--usage-border)]" : ""
-                }`}
+              className={`flex flex-col items-center py-2.5 ${
+                i > 0 ? "border-l border-[var(--usage-border)]" : ""
+              }`}
             >
               <span className="text-8 font-semibold uppercase tracking-widest text-theme-text-tertiary">
                 {label}
               </span>
               <span
-                className={`mt-1 text-14 tabular-nums ${strong
+                className={`mt-1 text-14 tabular-nums ${
+                  strong
                     ? "font-bold text-[var(--theme-primary)]"
                     : "font-semibold text-theme-text"
-                  }`}
+                }`}
               >
                 {value}
               </span>
@@ -499,8 +507,10 @@ export function UsageLogsTable({
   if (logs.length === 0) {
     return (
       <div className="usage-empty-state flex flex-col items-center justify-center py-16 text-center sm:py-20">
-        <SceneIllustration scene="reading" className="mb-4" />
-        <p className="text-14 font-medium text-theme-text-secondary">
+        <div className="mb-4 rounded-2xl bg-[var(--glass-bg-subtle)] p-5 ring-1 ring-inset ring-[var(--theme-border-faint)]">
+          <Activity size={28} className="text-theme-text-tertiary/25" />
+        </div>
+        <p className="text-14 font-medium text-theme-text-secondary/60">
           {t("usage.noUsage")}
         </p>
         <p className="mt-1.5 text-12 text-theme-text-secondary">

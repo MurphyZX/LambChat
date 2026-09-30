@@ -201,7 +201,7 @@ export function MiniTrend({ points }: { points: UsageDailyPoint[] }) {
                 strokeWidth={1.5}
                 fill="url(#gradRequests)"
                 dot={false}
-                isAnimationActive={false}
+                isAnimationActive={true}
                 activeDot={{
                   r: 3,
                   fill: "var(--usage-chart-secondary)",
@@ -217,7 +217,7 @@ export function MiniTrend({ points }: { points: UsageDailyPoint[] }) {
                 strokeWidth={2}
                 fill="url(#gradTokens)"
                 dot={false}
-                isAnimationActive={false}
+                isAnimationActive={true}
                 activeDot={{
                   r: 4,
                   fill: "var(--theme-primary)",

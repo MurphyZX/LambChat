@@ -41,7 +41,10 @@ const COLOR_MAP: Record<StatusColor, string> = {
 export function StatusBadge({ color = "stone", label }: StatusBadgeProps) {
   return (
     <span className="status-dot inline-flex shrink-0 items-center gap-1.5 text-12 text-theme-text-secondary">
-      <span aria-hidden="true" className={`inline-block size-2 shrink-0 rounded-full ${COLOR_MAP[color]}`} />
+      <span
+        aria-hidden="true"
+        className={`inline-block size-2 shrink-0 rounded-full ${COLOR_MAP[color]}`}
+      />
       {label}
     </span>
   );

@@ -45,19 +45,40 @@ export function SidebarSectionHeader({
         className="flex min-w-0 flex-1 items-center gap-2 self-stretch text-13 font-medium text-stone-400 dark:text-stone-500 group-hover/section:text-stone-500 dark:group-hover/section:text-stone-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <span className="truncate">{label}</span>
-        <ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform motion-reduce:transition-none ${open ? "opacity-100" : revealClass} ${collapsed ? "-rotate-90" : ""}`} />
+        <ChevronDown
+          size={14}
+          aria-hidden="true"
+          className={`shrink-0 transition-transform motion-reduce:transition-none ${
+            open ? "opacity-100" : revealClass
+          } ${collapsed ? "-rotate-90" : ""}`}
+        />
       </button>
       {children}
-      <div className={`flex shrink-0 items-center gap-1 ${open ? "opacity-100" : revealClass}`}>
+      <div
+        className={`flex shrink-0 items-center gap-1 ${
+          open ? "opacity-100" : revealClass
+        }`}
+      >
         {onCreate && (
           <Tooltip content={createLabel}>
-            <button type="button" onClick={onCreate} aria-label={createLabel} className={actionClass}>
+            <button
+              type="button"
+              onClick={onCreate}
+              aria-label={createLabel}
+              className={actionClass}
+            >
               <Plus size={14} />
             </button>
           </Tooltip>
         )}
         <Tooltip content={moreLabel}>
-          <button ref={triggerRef} type="button" popoverTarget={menuId} aria-label={moreLabel} className={actionClass}>
+          <button
+            ref={triggerRef}
+            type="button"
+            popoverTarget={menuId}
+            aria-label={moreLabel}
+            className={actionClass}
+          >
             <MoreHorizontal size={14} />
           </button>
         </Tooltip>
@@ -71,10 +92,15 @@ export function SidebarSectionHeader({
         className="fixed inset-auto m-0 w-48 rounded-xl border border-theme-border bg-theme-bg-card p-1 text-theme-text shadow-xl"
       >
         {menuItems.map((item) => (
-          <button key={item.label} type="button" className="sidebar-nav-btn flex min-h-8 w-full items-center rounded-lg px-2 text-left text-13 focus-visible:outline focus-visible:outline-2" onClick={() => {
-            menuRef.current?.hidePopover?.();
-            item.onClick();
-          }}>
+          <button
+            key={item.label}
+            type="button"
+            className="sidebar-nav-btn flex min-h-8 w-full items-center rounded-lg px-2 text-left text-13 focus-visible:outline focus-visible:outline-2"
+            onClick={() => {
+              menuRef.current?.hidePopover?.();
+              item.onClick();
+            }}
+          >
             {item.label}
           </button>
         ))}

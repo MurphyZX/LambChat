@@ -10,6 +10,7 @@ import { formatDateTimeShort } from "../../utils/datetime";
 import {
   closePersistentToolPanel,
   isPersistentToolPanelOpen,
+  isPersistentToolPanelActive,
   openPersistentToolPanel,
   updatePersistentToolPanel,
 } from "./ChatMessage/items/persistentToolPanelState";
@@ -129,7 +130,7 @@ export function SessionBookmarksButton({
       <SessionBookmarksPanelBody
         bookmarks={sessionBookmarks}
         onJump={(messageId) => {
-          closePersistentToolPanel();
+          closePersistentToolPanel(SESSION_BOOKMARK_PANEL_KEY);
           onNavigateToMessage?.(messageId);
         }}
       />
@@ -157,8 +158,8 @@ export function SessionBookmarksButton({
   if (!sessionId || count === 0) return null;
 
   const togglePanel = () => {
-    if (isPersistentToolPanelOpen(SESSION_BOOKMARK_PANEL_KEY)) {
-      closePersistentToolPanel();
+    if (isPersistentToolPanelActive(SESSION_BOOKMARK_PANEL_KEY)) {
+      closePersistentToolPanel(SESSION_BOOKMARK_PANEL_KEY);
       return;
     }
     openPersistentToolPanel({

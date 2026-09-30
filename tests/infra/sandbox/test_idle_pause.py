@@ -298,7 +298,7 @@ async def test_lease_impl_fails_open_on_redis_error(
     """真实现的 fail-open 分支：redis 抛错 → 按存续处理（不打断浏览）。"""
     from src.infra.sandbox.idle_pause import _has_browse_lease_impl
 
-    async def broken_client():
+    def broken_client():
         raise RuntimeError("redis down")
 
     import src.infra.storage.redis as redis_module

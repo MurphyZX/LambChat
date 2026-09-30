@@ -67,7 +67,7 @@ export function TeamMemberCard({
     ...availableAgents.map((agent) => ({
       value: agent.id,
       label: (
-        <span className="font-sans">
+        <span className="font-serif">
           {resolveAgentDisplayName(agent, i18n.language, t) || agent.id}
         </span>
       ),
@@ -78,7 +78,7 @@ export function TeamMemberCard({
     { value: "", label: t("team.followSessionModel", "跟随会话模型") },
     ...availableModels.map((model) => ({
       value: model.id,
-      label: <span className="font-sans">{model.label || model.value}</span>,
+      label: <span className="font-serif">{model.label || model.value}</span>,
     })),
   ];
 
@@ -119,7 +119,7 @@ export function TeamMemberCard({
 
           <div className="list-item-card__identity">
             <div className="team-member-card__identity-header">
-              <span className="list-item-card__name font-sans">
+              <span className="list-item-card__name font-serif">
                 {member.role_name || t("team.unnamedRole")}
               </span>
               {member.role_tags.length > 0 && (
@@ -135,12 +135,12 @@ export function TeamMemberCard({
             <span className="team-member-card__meta-row">
               <span className="team-member-card__model" title={agentLabel}>
                 <Bot size={11} />
-                <span className="font-sans">{agentLabel}</span>
+                <span className="font-serif">{agentLabel}</span>
               </span>
               <span className="team-member-card__model-sep" />
               <span className="team-member-card__model" title={modelLabel}>
                 <Cpu size={11} />
-                <span className="font-sans">{modelLabel}</span>
+                <span className="font-serif">{modelLabel}</span>
               </span>
             </span>
           </div>

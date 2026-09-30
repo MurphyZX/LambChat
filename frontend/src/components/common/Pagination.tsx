@@ -51,7 +51,10 @@ export function Pagination({
       aria-label={t("common.pagination")}
     >
       <p className="pagination-summary" aria-live="polite">
-        <span className="pagination-range">{t("common.paginationSummary", { total, pageSize })}{itemLabel ? ` ${itemLabel}` : ""}</span>
+        <span className="pagination-range">
+          {t("common.paginationSummary", { total, pageSize })}
+          {itemLabel ? ` ${itemLabel}` : ""}
+        </span>
         <span className="pagination-position">
           {currentPage} / {totalPages}
         </span>
@@ -82,8 +85,9 @@ export function Pagination({
                 aria-label={t("common.page", { page: p })}
                 aria-current={p === currentPage ? "page" : undefined}
                 onClick={() => changePage(p as number)}
-                className={`pagination-page ${p === currentPage ? "pagination-page-active" : ""
-                  }`}
+                className={`pagination-page ${
+                  p === currentPage ? "pagination-page-active" : ""
+                }`}
               >
                 {p}
               </button>

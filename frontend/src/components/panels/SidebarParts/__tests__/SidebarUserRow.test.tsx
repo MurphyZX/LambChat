@@ -26,7 +26,14 @@ const user = {
 
 test("compact profile shows only an accessible avatar button", () => {
   const onShowProfile = vi.fn();
-  render(<SidebarUserRow compact user={user} imgError={false} onShowProfile={onShowProfile} />);
+  render(
+    <SidebarUserRow
+      compact
+      user={user}
+      imgError={false}
+      onShowProfile={onShowProfile}
+    />,
+  );
   fireEvent.click(screen.getByRole("button", { name: "clivia.yang" }));
   expect(onShowProfile).toHaveBeenCalledOnce();
   expect(screen.queryByText("Admin")).not.toBeInTheDocument();

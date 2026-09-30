@@ -95,8 +95,8 @@ export function GlobalAgentTab({
         {t("agentConfig.globalDescription")}
       </p>
 
-      <div className="grid auto-grid-cols items-stretch gap-4">
-        {localAgents.map((agent) => {
+      <div className="glass-card divide-y divide-[var(--glass-border)] overflow-hidden rounded-xl">
+        {localAgents.map((agent, index) => {
           const displayName = resolveAgentDisplayName(agent, i18n.language, t);
           const displayDescription = resolveAgentDescription(
             agent,
@@ -107,28 +107,29 @@ export function GlobalAgentTab({
           return (
             <div
               key={agent.id}
-              className="scb group p-4"
+              className="group transition-colors duration-150 hover:bg-[var(--glass-bg-hover)]"
+              style={{ animationDelay: `${index * 40}ms` }}
             >
-              <div className="flex h-full items-start justify-between gap-3 font-sans">
+              <div className="flex items-center justify-between gap-3 font-serif px-4 py-3.5">
                 <button
                   type="button"
                   onClick={() => setEditingAgentId(agent.id)}
-                  className="flex min-w-0 flex-1 flex-col items-start gap-3 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-3.5 text-left"
                 >
-                  <div className="scb__icon-ring shrink-0">
-                    <AgentIcon icon={agent.icon || "Bot"} size={16} />
+                  <div className="flex size-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--glass-bg-subtle)] text-theme-text-secondary ring-1 ring-[var(--glass-border)] transition-all duration-200 group-hover:bg-[var(--glass-bg-hover)]">
+                    <AgentIcon icon={agent.icon || "Bot"} size={20} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="truncate text-14 font-medium tracking-tight text-theme-text">
                       {displayName}
                     </h4>
-                    <p className="mt-1 line-clamp-2 text-[0.78125rem] text-theme-text-secondary">
+                    <p className="mt-0.5 hidden truncate text-12 text-theme-text-secondary sm:block">
                       {displayDescription}
                     </p>
                   </div>
                   <Pencil
                     size={14}
-                    className="flex-shrink-0 text-theme-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100"
+                    className="flex-shrink-0 text-theme-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 max-sm:opacity-100"
                   />
                 </button>
 
@@ -243,10 +244,11 @@ export function GlobalAgentTab({
                       key={locale.code}
                       type="button"
                       onClick={() => setActiveLocale(locale.code)}
-                      className={`rounded px-1.5 py-0.5 text-11 font-medium transition-colors duration-150 ${activeLocale === locale.code
+                      className={`rounded px-1.5 py-0.5 text-11 font-medium transition-colors duration-150 ${
+                        activeLocale === locale.code
                           ? "bg-[var(--theme-bg-subtle)] text-[var(--theme-text)]"
                           : "text-theme-text-secondary hover:text-[var(--theme-primary)]"
-                        }`}
+                      }`}
                     >
                       {locale.code.toUpperCase()}
                     </button>

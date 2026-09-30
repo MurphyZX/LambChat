@@ -46,7 +46,7 @@ export function Button({
           size="sm"
           color={
             variant === "primary"
-              ? "text-white"
+              ? "text-white dark:text-stone-900"
               : variant === "danger"
                 ? "text-red-600 dark:text-red-400"
                 : ""

@@ -1103,6 +1103,10 @@
   cursor: not-allowed;
 }
 
+.dark .ppe-btn-primary {
+  color: var(--theme-bg);
+}
+
 .ppe-btn-primary:focus-visible {
   outline: 2px solid var(--theme-ring);
   outline-offset: 2px;

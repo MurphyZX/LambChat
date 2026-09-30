@@ -1,5 +1,5 @@
-import { SceneIllustration } from "../../common/SceneIllustration";
 import { useTranslation } from "react-i18next";
+import { PackageX } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useSettingsContext } from "../../../contexts/SettingsContext";
 import { Permission } from "../../../types";
@@ -38,7 +38,10 @@ export function SkillsPanel({ embedded = false }: SkillsPanelProps) {
   if (!enableSkills) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-stone-500 dark:text-stone-400">
-        <SceneIllustration scene="reading" className="mb-4" />
+        <PackageX
+          size={48}
+          className="mb-3 text-stone-300 dark:text-stone-600"
+        />
         <p className="text-center">{t("skills.featureDisabled")}</p>
       </div>
     );

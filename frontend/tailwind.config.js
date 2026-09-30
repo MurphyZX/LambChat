@@ -53,42 +53,11 @@ export default {
         ],
       },
       colors: {
-        /* 品牌重定向（2026-09-30 焕新）：历史代码里大量 amber-/orange- 工具类
-           本是「暖橙品牌主色」用法，现整体映射为靛蓝系（#5E6AD2，Linear 风），
-           一次性完成全站视觉切换；语义化的警示请改用 text-theme-warning
-           （tokens.css 三主题各自定义）。orange 阶刻意偏紫一档：
-           from-amber-*→to-orange-* 渐变得到靛蓝→紫罗兰品牌渐变。 */
-        amber: {
-          50: "#f6f7fc",
-          100: "#ebeef9",
-          200: "#d7dcf4",
-          300: "#b7c0ec",
-          400: "#929ce0",
-          500: "#6c77d1",
-          600: "#5e6ad2",
-          700: "#4e58b8",
-          800: "#3f4795",
-          900: "#353b74",
-          950: "#222657",
-        },
-        orange: {
-          50: "#f8f6fc",
-          100: "#efeaf9",
-          200: "#ded1f3",
-          300: "#c4adea",
-          400: "#a284dc",
-          500: "#8362cd",
-          600: "#6f4ab8",
-          700: "#5c3b98",
-          800: "#4a2f79",
-          900: "#3a2560",
-          950: "#221541",
-        },
+        // 裸 var() 字符串无法承载透明度修饰符（border-theme-border/60 会
+        // 静默不生成，边框回落 preflight 默认 #e5e7eb，深色模式呈现白边），
+        // 因此统一走 color-mix + <alpha-value>：无修饰符时 100% 混合等于
+        // 原色，/N 时注入对应透明度（守卫测试 themeColorAlphaSource 盯这条）
         theme: {
-          // 裸 var() 字符串无法承载透明度修饰符（border-theme-border/60 会
-          // 静默不生成，边框回落 preflight 默认 #e5e7eb，深色模式呈现白边），
-          // 因此统一走 color-mix + <alpha-value>：无修饰符时 100% 混合等于
-          // 原色，/N 时注入对应透明度（守卫测试 themeColorAlphaSource 盯这条）
           text: "color-mix(in srgb, var(--theme-text) calc(<alpha-value> * 100%), transparent)",
           "text-secondary":
             "color-mix(in srgb, var(--theme-text-secondary) calc(<alpha-value> * 100%), transparent)",
@@ -103,7 +72,8 @@ export default {
             "color-mix(in srgb, var(--theme-bg-subtle) calc(<alpha-value> * 100%), transparent)",
           "bg-code":
             "color-mix(in srgb, var(--theme-bg-code) calc(<alpha-value> * 100%), transparent)",
-          border: "color-mix(in srgb, var(--theme-border) calc(<alpha-value> * 100%), transparent)",
+          border:
+            "color-mix(in srgb, var(--theme-border) calc(<alpha-value> * 100%), transparent)",
           "border-hover":
             "color-mix(in srgb, var(--theme-border-hover) calc(<alpha-value> * 100%), transparent)",
           "border-subtle":
@@ -122,7 +92,8 @@ export default {
           // 漏映射时 text-theme-error 之类会静默不生成（守卫测试盯这条）
           success:
             "color-mix(in srgb, var(--theme-success) calc(<alpha-value> * 100%), transparent)",
-          error: "color-mix(in srgb, var(--theme-error) calc(<alpha-value> * 100%), transparent)",
+          error:
+            "color-mix(in srgb, var(--theme-error) calc(<alpha-value> * 100%), transparent)",
           warning:
             "color-mix(in srgb, var(--theme-warning) calc(<alpha-value> * 100%), transparent)",
           info: "color-mix(in srgb, var(--theme-info) calc(<alpha-value> * 100%), transparent)",

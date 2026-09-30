@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import {
   Server,
   ToggleLeft,
@@ -22,13 +21,13 @@ interface MCPServerCardProps {
 }
 
 const TRANSPORT_COLORS: Record<string, string> = {
-  sse: "bg-[var(--color-background-teal)] text-[var(--color-text-teal)]",
+  sse: "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-800/60",
   streamable_http:
-    "bg-[var(--color-background-purple)] text-[var(--color-text-purple)]",
+    "bg-violet-50 text-violet-600 ring-1 ring-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:ring-violet-800/60",
 };
 
 const DEFAULT_TRANSPORT_COLOR =
-  "bg-[var(--color-background-gray)] text-[var(--color-text-gray)]";
+  "bg-stone-100 text-stone-500 ring-1 ring-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:ring-stone-700";
 
 export function MCPServerCard({
   server,
@@ -53,40 +52,30 @@ export function MCPServerCard({
 
   return (
     <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={(e) => {
-        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
-      className={`scb group flex h-full flex-col overflow-hidden cursor-pointer ${!server.enabled ? "scb--muted" : ""}`}
-      style={
-        {
-          "--panel-card-accent": gradient[0],
-          "--panel-card-accent-end": gradient[2],
-        } as CSSProperties
-      }
+      className={`pps-card group flex h-full flex-col overflow-hidden rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none cursor-pointer transition-all duration-200 ${
+        !server.enabled ? "opacity-50 saturate-50" : "hover:shadow-md"
+      }`}
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("button")) {
           onClick?.();
         }
       }}
     >
-      <div className="scb__banner relative shrink-0">
-        <div className="scb__icon-ring shrink-0">
-          <Server size={16} className="text-theme-text-secondary" />
-        </div>
-        <div className="absolute inset-y-0 right-0 flex items-center justify-end z-[3]">
+      <div
+        className="pps-card__banner relative h-12 shrink-0"
+        style={{
+          background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+        }}
+      >
+        <div className="absolute inset-0 flex items-center justify-end px-2 z-[3]">
           <div className="flex gap-1.5">
             {server.is_internal && (
-              <span className="scb__mini-tag">
+              <span className="scb__status-pill scb__status-pill--installed">
                 {t("mcp.card.internal", "Internal")}
               </span>
             )}
             {server.is_system && !server.is_internal && (
-              <span className="scb__mini-tag">
+              <span className="scb__status-pill scb__status-pill--installed">
                 {t("mcp.card.system")}
               </span>
             )}
@@ -99,12 +88,14 @@ export function MCPServerCard({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
+      <div className="flex flex-1 flex-col p-4 pt-5">
         <div className="flex items-start gap-3">
-
+          <div className="scb__icon-ring shrink-0">
+            <Server size={16} className="text-stone-500 dark:text-stone-400" />
+          </div>
           <div className="min-w-0 flex-1">
             <h3
-              className="line-clamp-2 break-words text-14 font-semibold font-sans  text-[var(--theme-text)] leading-tight"
+              className="line-clamp-2 break-words text-16 font-semibold font-serif text-[var(--theme-text)] leading-tight"
               title={server.name}
             >
               {server.name}
@@ -127,7 +118,7 @@ export function MCPServerCard({
 
         {server.url && (
           <div
-            className="mt-2 text-12 font-mono text-theme-text-tertiary truncate"
+            className="mt-2 text-12 font-mono text-stone-400 dark:text-stone-500 truncate"
             title={server.url}
           >
             {server.url}
@@ -136,8 +127,8 @@ export function MCPServerCard({
 
         <div className="flex-1" />
 
-        <div className="mt-4 flex items-center justify-between gap-2 pt-1">
-          <div className="panel-row-actions flex items-center gap-0.5">
+        <div className="scb__footer flex items-center justify-between gap-2">
+          <div className="flex items-center gap-0.5">
             {server.can_edit && !server.is_internal && onEdit && (
               <IconButton
                 aria-label={t("mcp.card.edit")}
@@ -164,19 +155,25 @@ export function MCPServerCard({
             )}
           </div>
           <button
+            role="switch"
+            aria-checked={server.enabled}
+            aria-label={
+              server.enabled ? t("mcp.card.disable") : t("mcp.card.enable")
+            }
             onClick={(e) => {
               e.stopPropagation();
               onToggle(server.name);
             }}
-            className={`pps-card__action ${server.enabled
+            className={`pps-card__action ${
+              server.enabled
                 ? "pps-card__action--active"
                 : "pps-card__action--primary"
-              }`}
+            }`}
           >
             {server.enabled ? (
               <ToggleRight
                 size={13}
-                className="text-theme-success"
+                className="text-emerald-500 dark:text-emerald-400"
               />
             ) : (
               <ToggleLeft size={13} />

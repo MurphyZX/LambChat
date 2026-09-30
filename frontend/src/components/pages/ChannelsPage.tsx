@@ -1,9 +1,7 @@
-import { StatusBadge } from "../common/StatusBadge";
 /**
  * Channels Page - Lists all available channels and their instances
  */
 
-import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BotMessageSquare, Bot, Radio, Plus, MoreVertical } from "lucide-react";
@@ -17,7 +15,7 @@ import { ChannelPanel } from "../panels/ChannelPanel";
 import { FeishuPanel } from "../panels/channel/feishu/FeishuPanel";
 import { PanelHeader } from "../common/PanelHeader";
 import { ChannelsGridSkeleton } from "../skeletons";
-import { SkillBaseCard } from "../common/SkillBaseCard";
+import type { SkillBaseCardProps } from "../common/SkillBaseCard";
 import { nameToGradient } from "../common/cardUtils";
 import type {
   ChannelMetadata,
@@ -38,6 +36,80 @@ const CHANNEL_ICONS: Record<string, React.FC<{ className?: string }>> = {
 function getChannelIcon(iconName: string, className?: string) {
   const IconComponent = CHANNEL_ICONS[iconName] || Bot;
   return <IconComponent className={className} />;
+}
+
+// Keep the original channel presentation separate from the redesigned skill cards.
+function ChannelCard({
+  title,
+  description,
+  gradient,
+  icon,
+  statusPills,
+  tags,
+  bannerOverlay,
+  onClick,
+  className,
+}: Pick<
+  SkillBaseCardProps,
+  | "title"
+  | "description"
+  | "gradient"
+  | "icon"
+  | "statusPills"
+  | "tags"
+  | "bannerOverlay"
+  | "onClick"
+  | "className"
+>) {
+  return (
+    <div
+      className={`scb group flex h-full flex-col overflow-hidden rounded-2xl bg-theme-bg-card shadow-sm dark:shadow-none ${
+        className ?? ""
+      }`}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (
+          event.target === event.currentTarget &&
+          (event.key === "Enter" || event.key === " ")
+        ) {
+          event.preventDefault();
+          event.currentTarget.click();
+        }
+      }}
+    >
+      {gradient && (
+        <div
+          className="scb__banner relative h-12 shrink-0"
+          style={{
+            background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+          }}
+        >
+          <div className="absolute inset-0 z-[3] flex items-start justify-end p-2">
+            {bannerOverlay}
+          </div>
+        </div>
+      )}
+      <div className="flex flex-1 flex-col p-4 -mt-3 pt-5">
+        <div className="flex items-start gap-3">
+          <div className="scb__icon-ring shrink-0">{icon}</div>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-16 font-semibold font-serif text-theme-text leading-tight">
+              {title}
+            </h3>
+            {statusPills}
+          </div>
+        </div>
+        {description && (
+          <p className="mt-3 text-13 leading-relaxed text-theme-text-secondary line-clamp-2 min-h-[3.25em]">
+            {description}
+          </p>
+        )}
+        {tags && <div className="mt-3">{tags}</div>}
+      </div>
+    </div>
+  );
 }
 
 export function ChannelsPage() {
@@ -184,20 +256,22 @@ export function ChannelsPage() {
       <div className="flex h-full flex-col">
         <PanelHeader
           title={t("channel.title", "Channels")}
-          count={channelTypes.length}
           subtitle={t(
             "channel.description",
             `Connect your favorite chat platforms to ${APP_NAME}`,
           )}
-          icon={
-            <Radio size={24} className="text-[var(--theme-text-secondary)]" />
-          }
+          illustration="panel-channels"
         />
-        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+        <div className="panel-body flex-1 overflow-y-auto">
           <div className="mx-auto max-w-full">
             {channelTypes.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
-                <SceneIllustration scene="message" />
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-[var(--theme-primary)]/20" />
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[var(--theme-primary-light)]">
+                    <Radio className="h-10 w-10 text-[var(--theme-text-secondary)]" />
+                  </div>
+                </div>
                 <h3 className="mt-6 text-20 font-semibold text-[var(--theme-text)]">
                   {t("channel.noChannels", "No channels available")}
                 </h3>
@@ -209,7 +283,7 @@ export function ChannelsPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid auto-grid-cols items-stretch gap-4">
+              <div className="grid auto-grid-cols gap-4">
                 {channelTypes.map((ct) => {
                   const channelInstances = instances[ct.channel_type] || [];
                   const instanceCount = channelInstances.length;
@@ -221,7 +295,7 @@ export function ChannelsPage() {
                   const gradient = nameToGradient(ct.display_name);
 
                   return (
-                    <SkillBaseCard
+                    <ChannelCard
                       key={ct.channel_type}
                       title={ct.display_name}
                       description={ct.description}
@@ -231,9 +305,13 @@ export function ChannelsPage() {
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {instanceCount > 0 &&
                             (hasAnyConnected ? (
-                              <StatusBadge color="green" label={t("channel.connected")} />
+                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-12 font-medium text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                                {t("channel.connected", "Connected")}
+                              </span>
                             ) : (
-                              <StatusBadge color="amber" label={t("channel.disconnected")} />
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-12 font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                                {t("channel.disconnected", "Disconnected")}
+                              </span>
                             ))}
                           {ct.capabilities.includes("websocket") && (
                             <span className="rounded-full bg-[var(--theme-primary-light)] px-2 py-0.5 text-12 font-medium text-[var(--theme-text-secondary)]">
@@ -241,7 +319,7 @@ export function ChannelsPage() {
                             </span>
                           )}
                           {ct.capabilities.includes("webhook") && (
-                            <span className="rounded-full bg-[var(--color-background-purple)] px-2 py-0.5 text-12 font-medium text-[var(--color-text-purple)]">
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-12 font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
                               {t("channel.webhookShort", "Hook")}
                             </span>
                           )}
@@ -259,6 +337,18 @@ export function ChannelsPage() {
                             )}
                           </span>
                         ) : undefined
+                      }
+                      bannerOverlay={
+                        instanceCount > 0 &&
+                        (hasAnyConnected ? (
+                          <span className="rounded-full bg-green-400/30 px-2 py-0.5 text-12 font-medium text-green-50 dark:bg-green-400/20 dark:text-green-100">
+                            {t("channel.connected", "Connected")}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-400/30 px-2 py-0.5 text-12 font-medium text-amber-50 dark:bg-amber-400/20 dark:text-amber-100">
+                            {t("channel.disconnected", "Disconnected")}
+                          </span>
+                        ))
                       }
                       onClick={() => navigate(`/channels/${ct.channel_type}`)}
                       className="cursor-pointer"
@@ -284,12 +374,8 @@ export function ChannelsPage() {
       <div className="flex h-full flex-col">
         <PanelHeader
           title={metadata?.display_name || selectedChannel!}
-          count={channelInstances.length}
           subtitle={metadata?.description || ""}
-          icon={getChannelIcon(
-            metadata?.icon || selectedChannel!,
-            "h-6 w-6 text-[var(--theme-text-secondary)]",
-          )}
+          illustration="panel-channels"
           actions={
             canWrite && (
               <button
@@ -303,7 +389,7 @@ export function ChannelsPage() {
           }
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+        <div className="panel-body flex-1 overflow-y-auto">
           {channelInstances.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-14 text-[var(--theme-text-secondary)]">
@@ -322,7 +408,7 @@ export function ChannelsPage() {
               )}
             </div>
           ) : (
-            <div className="panel-content-card panel-list">
+            <div className="panel-stack mx-auto max-w-full">
               {channelInstances.map((instance) => {
                 const status =
                   statuses[`${selectedChannel}:${instance.instance_id}`];
@@ -335,7 +421,7 @@ export function ChannelsPage() {
                         `/channels/${selectedChannel}/${instance.instance_id}`,
                       )
                     }
-                    className="panel-list-row group cursor-pointer"
+                    className="panel-card cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -345,12 +431,18 @@ export function ChannelsPage() {
                           </h4>
                           {status?.enabled &&
                             (status.connected ? (
-                              <StatusBadge color="green" label={t("channel.connected")} />
+                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-12 font-medium text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                                {t("channel.connected", "Connected")}
+                              </span>
                             ) : (
-                              <StatusBadge color="amber" label={t("channel.disconnected")} />
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-12 font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                                {t("channel.disconnected", "Disconnected")}
+                              </span>
                             ))}
                           {!status?.enabled && (
-                            <StatusBadge color="stone" label={t("channel.disabled")} />
+                            <span className="rounded-full bg-[var(--theme-primary-light)] px-2 py-0.5 text-12 text-[var(--theme-text-secondary)]">
+                              {t("channel.disabled", "Disabled")}
+                            </span>
                           )}
                         </div>
                         <p className="mt-1 text-14 text-[var(--theme-text-secondary)]">
@@ -367,7 +459,7 @@ export function ChannelsPage() {
                             `/channels/${selectedChannel}/${instance.instance_id}`,
                           );
                         }}
-                        className="panel-row-actions flex-shrink-0 rounded p-1 hover:bg-stone-200/60 dark:hover:bg-stone-700/60 transition-colors"
+                        className="flex-shrink-0 rounded p-1 hover:bg-stone-200/60 dark:hover:bg-stone-700/60 transition-colors"
                         title={t("channel.moreOptions", "View details")}
                       >
                         <MoreVertical

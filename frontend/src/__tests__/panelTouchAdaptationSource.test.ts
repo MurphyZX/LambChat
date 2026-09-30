@@ -25,7 +25,10 @@ test.each(HOVER_REVEAL_FILES)(
   (file) => {
     const source = readComponent(file);
     const hoverReveals = source.match(/group-hover:opacity-100/g) ?? [];
-    const touchFallbacks = source.match(/max-sm:opacity-100|\[@media\(hover:none\)\]:opacity-100/g) ?? [];
+    const touchFallbacks =
+      source.match(
+        /max-sm:opacity-100|\[@media\(hover:none\)\]:opacity-100/g,
+      ) ?? [];
     // 该文件内的每一处 hover 显隐都要有移动端可见兜底
     expect(touchFallbacks.length).toBe(hoverReveals.length);
     expect(hoverReveals.length).toBeGreaterThan(0);

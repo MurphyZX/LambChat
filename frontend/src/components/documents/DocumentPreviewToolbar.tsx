@@ -136,7 +136,7 @@ export default function DocumentPreviewToolbar({
         />
       )}
       <FileIcon icon={Icon} bg={fileInfo.bg} color={fileInfo.color} compact />
-      <div className="flex-[0_1_clamp(7rem,28%,12rem)] min-w-0 overflow-hidden">
+      <div className="document-preview-file-info flex-[0_1_clamp(7rem,28%,12rem)] min-w-0 overflow-hidden">
         <h3
           className="text-13 sm:text-14 font-medium font-serif text-[var(--theme-text)] truncate"
           title={fileName}

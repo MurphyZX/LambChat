@@ -384,7 +384,7 @@ export function PersonaPresetSelector({
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3
-                            className="truncate text-16 font-semibold font-sans  text-[var(--theme-text)] leading-tight"
+                            className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
                             title={preset.name}
                           >
                             {preset.name}

@@ -34,7 +34,10 @@ export interface SandboxFsReadResult {
 
 export const sandboxFsApi = {
   /** 列目录（懒加载源）：path 空 = 工作区根。 */
-  async list(sessionId: string, path: string = ""): Promise<SandboxFsListResult> {
+  async list(
+    sessionId: string,
+    path: string = "",
+  ): Promise<SandboxFsListResult> {
     await waitForSessionWorkspace(sessionId);
     const query = new URLSearchParams({ session_id: sessionId });
     if (path) {

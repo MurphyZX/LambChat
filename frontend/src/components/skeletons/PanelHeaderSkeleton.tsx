@@ -20,10 +20,7 @@ export function PanelHeaderSkeleton({
         {/* Identity — title and count */}
         <div className="panel-header__identity flex min-w-0 items-center gap-3 lg:gap-4">
           <div className="min-w-0">
-            <SkeletonLine
-              width="w-28 sm:w-36 xl:w-48"
-              className="!h-4"
-            />
+            <SkeletonLine width="w-28 sm:w-36 xl:w-48" className="!h-4" />
             {hasSubtitle && (
               <SkeletonLine
                 width="w-40 sm:w-52 xl:w-64"

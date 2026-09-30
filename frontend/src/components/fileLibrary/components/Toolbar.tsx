@@ -1,3 +1,4 @@
+import { PanelHeader } from "../../common/PanelHeader";
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -103,15 +104,20 @@ export function Toolbar({
     : null;
 
   return (
-    <div className="relative z-10 mb-3">
+    <div className="sticky top-0 z-10">
       {/* Toolbar backdrop */}
       <div
         className="absolute inset-0"
         style={{ backgroundColor: "var(--theme-bg)" }}
       />
 
-      <div className="relative py-0">
-        <div className="flex items-center justify-between gap-2 @sm:gap-3 w-full font-sans">
+      <PanelHeader
+        title={t("fileLibrary.title")}
+        illustration="panel-files"
+        className="panel-header--desktop-identity"
+      />
+      <div className="file-library-toolbar panel-inset relative">
+        <div className="flex items-center justify-between gap-2 @sm:gap-3 w-full font-serif">
           {/* ─── Left group: Filters ─── */}
           <div className="flex flex-wrap gap-1.5 @sm:gap-2 items-center min-w-0">
             {/* Type filter */}
@@ -133,8 +139,9 @@ export function Toolbar({
                 </span>
                 <ChevronDown
                   size={16}
-                  className={`text-theme-text-tertiary hidden @sm:block transition-transform duration-200 ${showFilter ? "rotate-180" : ""
-                    }`}
+                  className={`text-theme-text-tertiary hidden @sm:block transition-transform duration-200 ${
+                    showFilter ? "rotate-180" : ""
+                  }`}
                 />
               </button>
               <DropdownShell
@@ -151,8 +158,9 @@ export function Toolbar({
                       onFilterChange(f.key);
                       setShowFilter(false);
                     }}
-                    className={`${ddItemBase} ${activeFilter === f.key ? ddItemActive : ddItemDef
-                      }`}
+                    className={`${ddItemBase} ${
+                      activeFilter === f.key ? ddItemActive : ddItemDef
+                    }`}
                   >
                     {f.icon && <f.icon size={16} />}
                     {t(f.labelKey)}
@@ -164,10 +172,11 @@ export function Toolbar({
             {/* Favorites */}
             <button
               onClick={onFavoritesToggle}
-              className={`${btnBase} w-9 h-9 p-0 flex items-center justify-center transition-all duration-150 ${favoritesOnly
+              className={`${btnBase} w-9 h-9 p-0 flex items-center justify-center transition-all duration-150 ${
+                favoritesOnly
                   ? "border-amber-300/80 dark:border-amber-600/60 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-sm shadow-amber-100"
                   : "border-theme-border text-theme-text-secondary hover:bg-theme-bg-subtle hover:border-theme-border-hover"
-                }`}
+              }`}
             >
               <Star
                 size={16}
@@ -190,8 +199,9 @@ export function Toolbar({
                     setShowProject(true);
                     setTimeout(() => projectDd.update(), 0);
                   }}
-                  className={`${btnBase} px-2.5 ${selectedProject ? btnActive : btnDefault
-                    }`}
+                  className={`${btnBase} px-2.5 ${
+                    selectedProject ? btnActive : btnDefault
+                  }`}
                 >
                   <FolderKanban size={16} />
                   <span className="max-w-[72px] truncate">
@@ -199,8 +209,9 @@ export function Toolbar({
                   </span>
                   <ChevronDown
                     size={16}
-                    className={`text-theme-text-tertiary transition-transform duration-200 ${showProject ? "rotate-180" : ""
-                      }`}
+                    className={`text-theme-text-tertiary transition-transform duration-200 ${
+                      showProject ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
                 <DropdownShell
@@ -216,8 +227,9 @@ export function Toolbar({
                       onProjectChange(null);
                       setShowProject(false);
                     }}
-                    className={`${smItemBase} ${!selectedProject ? ddItemActive : ddItemDef
-                      }`}
+                    className={`${smItemBase} ${
+                      !selectedProject ? ddItemActive : ddItemDef
+                    }`}
                   >
                     {t("fileLibrary.allProjects")}
                   </button>
@@ -229,8 +241,9 @@ export function Toolbar({
                         onProjectChange(p.id);
                         setShowProject(false);
                       }}
-                      className={`${smItemBase} ${selectedProject === p.id ? ddItemActive : ddItemDef
-                        }`}
+                      className={`${smItemBase} ${
+                        selectedProject === p.id ? ddItemActive : ddItemDef
+                      }`}
                     >
                       <span className="truncate">{p.name}</span>
                     </button>
@@ -259,8 +272,9 @@ export function Toolbar({
                 </span>
                 <ChevronDown
                   size={16}
-                  className={`text-theme-text-tertiary transition-transform duration-200 ${showSort ? "rotate-180" : ""
-                    }`}
+                  className={`text-theme-text-tertiary transition-transform duration-200 ${
+                    showSort ? "rotate-180" : ""
+                  }`}
                 />
               </button>
               <DropdownShell
@@ -282,8 +296,9 @@ export function Toolbar({
                           onSortChange(o.key, o.order);
                           setShowSort(false);
                         }}
-                        className={`${smItemBase} ${isActive ? ddItemActive : ddItemDef
-                          }`}
+                        className={`${smItemBase} ${
+                          isActive ? ddItemActive : ddItemDef
+                        }`}
                       >
                         <SortIcon
                           order={o.order}
@@ -342,10 +357,11 @@ export function Toolbar({
                       key={mode}
                       onClick={() => onViewModeChange(mode)}
                       title={label}
-                      className={`relative z-10 flex items-center justify-center w-8 h-full rounded-md transition-colors duration-200 ${viewMode === mode
+                      className={`relative z-10 flex items-center justify-center w-8 h-full rounded-md transition-colors duration-200 ${
+                        viewMode === mode
                           ? "text-theme-text"
                           : "text-theme-text-tertiary hover:text-theme-text-secondary"
-                        }`}
+                      }`}
                     >
                       <span className="relative z-10">
                         {mode === "grid" ? (

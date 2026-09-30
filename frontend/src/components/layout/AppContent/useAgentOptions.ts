@@ -254,7 +254,11 @@ export function getAgentOptionSyncMode({
   return "preserve";
 }
 
-export function useAgentOptions(agents: AgentInfo[], currentAgent: string, sandboxOnline = false) {
+export function useAgentOptions(
+  agents: AgentInfo[],
+  currentAgent: string,
+  sandboxOnline = false,
+) {
   const [agentOptionValues, setAgentOptionValues] = useState<
     Record<string, boolean | string | number>
   >({});
@@ -302,7 +306,11 @@ export function useAgentOptions(agents: AgentInfo[], currentAgent: string, sandb
     }
 
     if (syncMode === "reset" || !prevJson) {
-      setAgentOptionValues(buildAgentOptionValues(options, undefined, undefined, { sandboxOnline }));
+      setAgentOptionValues(
+        buildAgentOptionValues(options, undefined, undefined, {
+          sandboxOnline,
+        }),
+      );
       return;
     }
 
@@ -396,7 +404,9 @@ export function useAgentOptions(agents: AgentInfo[], currentAgent: string, sandb
     const options = normalizeAgentOptions(
       agents.find((a) => a.id === currentAgent)?.options,
     );
-    setAgentOptionValues(buildAgentOptionValues(options, undefined, undefined, { sandboxOnline }));
+    setAgentOptionValues(
+      buildAgentOptionValues(options, undefined, undefined, { sandboxOnline }),
+    );
   }, [agents, currentAgent, sandboxOnline]);
 
   // 从外部恢复配置

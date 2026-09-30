@@ -28,7 +28,10 @@ beforeEach(() => {
   mocks.daemonProcessStatus.mockResolvedValue("stopped");
   mocks.readPairingPat.mockResolvedValue(null);
   mocks.getValidAccessToken.mockResolvedValue("refreshed-jwt");
-  mocks.createPairingPat.mockResolvedValue({ token: "new-pat", pat_id: "pat-id" });
+  mocks.createPairingPat.mockResolvedValue({
+    token: "new-pat",
+    pat_id: "pat-id",
+  });
 });
 afterEach(() => vi.useRealTimers());
 const flush = () => act(() => vi.advanceTimersByTimeAsync(0));
@@ -96,9 +99,11 @@ test("transient failure retries, but repeated failures stop after three attempts
 
 test("logout while minting revokes the unused PAT without saving it", async () => {
   let finish!: (value: { token: string; pat_id: string }) => void;
-  mocks.createPairingPat.mockReturnValue(new Promise((resolve) => {
-    finish = resolve;
-  }));
+  mocks.createPairingPat.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
   const { unmount } = renderHook(() => useDesktopAutoPair("user-1"));
   await flush();
   unmount();

@@ -59,7 +59,7 @@ test("team builder list adopts shared panel and role-library presentation", () =
   expect(wrapperSource).toMatch(
     /skill-theme-shell flex h-full min-h-0 flex-col/,
   );
-  expect(wrapperSource).toMatch(/panel-scroll min-h-0 flex-1 overflow-y-auto/);
+  expect(wrapperSource).toMatch(/skill-content-area flex-1 overflow-y-auto/);
   expect(wrapperSource).toMatch(/TEAM_PAGE_SIZE/);
   expect(wrapperSource).toMatch(/<Pagination/);
   expect(wrapperSource).not.toMatch(/IntersectionObserver/);

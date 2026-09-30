@@ -1,3 +1,4 @@
+import { Cpu } from "lucide-react";
 import { Pagination } from "../../../common/Pagination";
 import { useClientPagination } from "../../../../hooks/useClientPagination";
 import { useState, useEffect, useMemo } from "react";
@@ -70,7 +71,7 @@ export function RolesModelTab({
   if (availableModels.length === 0) {
     return (
       <EmptyState
-        illustration="reading"
+        icon={<Cpu size={28} />}
         title={t("agentConfig.noModelsConfigured")}
         description={t("agentConfig.noModelsConfiguredHint")}
       />
@@ -139,10 +140,10 @@ export function RolesModelTab({
 
       {selectedRole && (
         <>
-          <div className="agent-config-list overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] panel-list">
+          <div className="agent-config-list overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] divide-y divide-[var(--glass-border)]">
             {/* Header row */}
-            <div className="flex items-center justify-between gap-3 font-sans bg-[var(--glass-bg-subtle)] px-3.5 py-2.5 sm:px-4">
-              <h4 className="min-w-0 truncate text-12 font-medium uppercase tracking-wider text-theme-text-secondary">
+            <div className="flex items-center justify-between gap-3 font-serif bg-[var(--glass-bg-subtle)] px-3.5 py-2.5 sm:px-4">
+              <h4 className="min-w-0 truncate text-12 font-medium uppercase tracking-wider text-stone-500 dark:text-stone-400">
                 {t("agentConfig.selectModelsForRole", {
                   roleName: selectedRoleData?.name,
                 })}
@@ -154,7 +155,7 @@ export function RolesModelTab({
                 >
                   {t("agentConfig.selectAll")}
                 </button>
-                <span className="text-theme-text-tertiary">|</span>
+                <span className="text-stone-300 dark:text-stone-600">|</span>
                 <button
                   onClick={handleClearAll}
                   className="text-12 px-2 py-1 rounded-md text-stone-500 hover:text-stone-700 hover:bg-white/50 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-700/40 transition-colors duration-150"
@@ -178,19 +179,20 @@ export function RolesModelTab({
             </div>
 
             {/* Model rows */}
-            <div className="panel-list">
+            <div className="divide-y divide-[var(--glass-border)]">
               {slice(availableModels).map((model) => {
                 const isSelected = currentRoleModels.includes(model.id);
                 const hasDesc = !!model.description;
                 return (
                   <div
                     key={model.id}
-                    className={`transition-colors duration-150 ${isSelected
+                    className={`transition-colors duration-150 ${
+                      isSelected
                         ? "bg-[var(--glass-bg-subtle)]"
                         : "hover:bg-[var(--glass-bg-hover)]"
-                      }`}
+                    }`}
                   >
-                    <label className="flex min-h-12 cursor-pointer items-center gap-3 px-3.5 py-2.5 sm:px-4 sm:gap-3.5">
+                    <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3.5 py-3 sm:px-4 sm:gap-3.5">
                       <Checkbox
                         checked={isSelected}
                         onChange={() => toggleModel(model.id)}
@@ -203,14 +205,14 @@ export function RolesModelTab({
                         size={20}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-14 font-medium font-sans text-theme-text">
+                        <div className="truncate text-14 font-medium font-serif text-stone-950 dark:text-stone-100">
                           {model.label}
                         </div>
-                        <div className="text-12 font-mono text-theme-text-tertiary truncate sm:hidden mt-0.5">
+                        <div className="text-12 font-mono text-stone-400 dark:text-stone-500 truncate sm:hidden mt-0.5">
                           {model.value}
                         </div>
                       </div>
-                      <span className="text-12 font-mono text-theme-text-tertiary truncate max-w-[140px] hidden sm:inline">
+                      <span className="text-12 font-mono text-stone-400 dark:text-stone-500 truncate max-w-[140px] hidden sm:inline">
                         {model.value}
                       </span>
                       {hasDesc && (
@@ -224,15 +226,16 @@ export function RolesModelTab({
                         >
                           <ChevronDown
                             size={14}
-                            className={`transition-transform duration-200 ${expandedModel === model.id ? "rotate-180" : ""
-                              }`}
+                            className={`transition-transform duration-200 ${
+                              expandedModel === model.id ? "rotate-180" : ""
+                            }`}
                           />
                         </button>
                       )}
                     </label>
                     {expandedModel === model.id && hasDesc && (
                       <div className="px-3.5 pb-3 pl-[3.25rem] pt-0 sm:px-4 sm:pl-[3.75rem]">
-                        <p className="text-12 text-theme-text-secondary leading-relaxed">
+                        <p className="text-12 text-stone-500 dark:text-stone-400 leading-relaxed">
                           {model.description}
                         </p>
                       </div>
@@ -241,15 +244,15 @@ export function RolesModelTab({
                 );
               })}
             </div>
+          </div>
 
-            <div className="panel-pagination empty:hidden">
-              <Pagination
-                page={page}
-                pageSize={pageSize}
-                total={availableModels.length}
-                onChange={setPage}
-              />
-            </div>
+          <div className="panel-pagination empty:hidden">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={availableModels.length}
+              onChange={setPage}
+            />
           </div>
           {hasChanges && (
             <div className="flex items-center justify-end">

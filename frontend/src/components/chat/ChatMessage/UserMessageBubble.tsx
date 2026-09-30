@@ -149,9 +149,7 @@ export function UserMessageBubble({
 
           {/* Message bubble */}
           {hasContent && (
-            <div
-              className="user-message-bubble max-w-full px-5 py-2.5 border transition-shadow duration-200 hover:-translate-y-px"
-            >
+            <div className="user-message-bubble max-w-full px-5 py-2.5 border transition-shadow duration-200 hover:-translate-y-px">
               <div
                 className="user-message-inline-markdown leading-relaxed text-15 sm:text-16"
                 style={{ color: "var(--theme-text)" }}

@@ -16,8 +16,6 @@ export const DESKTOP_SIDEBAR_TOGGLE_EVENT = "lambchat:desktop-sidebar-toggle";
 export const OPEN_NOTIFICATIONS_EVENT = "lambchat:open-notifications";
 export const NOTIFICATION_COUNT_EVENT = "lambchat:notification-count";
 
-export type DesktopSidebarView = "chat" | "files";
-
 /** Tauri 桌面壳环境（web/移动端 false）。 */
 export function isDesktopShell(): boolean {
   if (typeof window === "undefined") return false;

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Bot, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n";
 import toast from "react-hot-toast";
@@ -65,16 +65,16 @@ export function AgentConfigPanel() {
       setAvailableAgents(
         canManageAgents && globalConfig
           ? globalConfig.agents
-            .filter((a) => a.enabled)
-            .map((a) => ({
-              id: a.id,
-              name: a.name,
-              description: a.description,
-              version: "",
-              icon: a.icon,
-              sort_order: a.sort_order,
-              labels: a.labels,
-            }))
+              .filter((a) => a.enabled)
+              .map((a) => ({
+                id: a.id,
+                name: a.name,
+                description: a.description,
+                version: "",
+                icon: a.icon,
+                sort_order: a.sort_order,
+                labels: a.labels,
+              }))
           : agentList.agents || [],
       );
 
@@ -192,8 +192,8 @@ export function AgentConfigPanel() {
       {/* 头部 */}
       <PanelHeader
         title={t("agentConfig.title")}
-        count={availableAgents.length}
-        icon={<Bot size={24} className="text-theme-text-secondary" />}
+        subtitle={t("agentConfig.subtitle")}
+        illustration="panel-agents"
         actions={
           <Button
             onClick={handleRefresh}
@@ -220,10 +220,11 @@ export function AgentConfigPanel() {
         <div className="flex glass-divider px-2">
           <button
             onClick={() => setActiveTab("global")}
-            className={`px-4 py-3.5 text-14 font-medium transition-all relative ${activeTab === "global"
-                ? "text-theme-text"
+            className={`px-4 py-3.5 text-14 font-medium transition-all relative ${
+              activeTab === "global"
+                ? "text-stone-900 dark:text-stone-100"
                 : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-              }`}
+            }`}
           >
             {activeTab === "global" && (
               <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-stone-600 dark:bg-stone-400" />
@@ -232,10 +233,11 @@ export function AgentConfigPanel() {
           </button>
           <button
             onClick={() => setActiveTab("roles")}
-            className={`px-4 py-3.5 text-14 font-medium transition-all relative ${activeTab === "roles"
-                ? "text-theme-text"
+            className={`px-4 py-3.5 text-14 font-medium transition-all relative ${
+              activeTab === "roles"
+                ? "text-stone-900 dark:text-stone-100"
                 : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-              }`}
+            }`}
           >
             {activeTab === "roles" && (
               <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-stone-600 dark:bg-stone-400" />
@@ -246,7 +248,7 @@ export function AgentConfigPanel() {
       )}
 
       {/* 内容 */}
-      <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+      <div className="panel-body flex-1 overflow-y-auto">
         {canManageAgents ? (
           activeTab === "global" ? (
             <GlobalAgentTab
@@ -267,7 +269,7 @@ export function AgentConfigPanel() {
         ) : (
           // 非管理员只显示可用 agents
           <div className="space-y-5">
-            <p className="text-14 text-theme-text-secondary px-1 leading-relaxed">
+            <p className="text-14 text-stone-500 dark:text-stone-400 px-1 leading-relaxed">
               {t("agentConfig.availableAgents")}
             </p>
             <div className="grid gap-3">
@@ -287,18 +289,18 @@ export function AgentConfigPanel() {
                     key={agent.id}
                     className="flex items-center gap-3.5 glass-card rounded-xl p-4 transition-all duration-200 hover:shadow-[var(--glass-shadow-hover)]"
                   >
-                    <div className="scb__icon-ring shrink-0">
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--glass-bg-subtle)] ring-1 ring-[var(--glass-border)] shadow-sm">
                       <AgentIcon
                         icon={agent.icon || "Bot"}
                         size={20}
-                        className="text-theme-text-secondary"
+                        className="text-stone-600 dark:text-stone-400"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-14 font-semibold text-theme-text truncate tracking-tight font-sans">
+                      <h4 className="text-14 font-semibold text-stone-900 dark:text-stone-100 truncate tracking-tight font-serif">
                         {displayName}
                       </h4>
-                      <p className="text-12 text-theme-text-secondary truncate mt-0.5 hidden sm:block">
+                      <p className="text-12 text-stone-500 dark:text-stone-400 truncate mt-0.5 hidden sm:block">
                         {displayDescription}
                       </p>
                     </div>

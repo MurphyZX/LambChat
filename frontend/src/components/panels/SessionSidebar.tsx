@@ -10,7 +10,6 @@
 
 import {
   useState,
-  useContext,
   useRef,
   useCallback,
   useMemo,
@@ -18,8 +17,6 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { SidebarWorkspaceContext } from "../layout/DesktopSidebarShell/SidebarWorkspaceContext";
-import { SidebarUserRow } from "./SidebarParts/SidebarUserRow";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { BackendSession } from "../../services/api";
@@ -121,7 +118,6 @@ export const SessionSidebar = forwardRef<
   ref,
 ) {
   const { t } = useTranslation();
-  const workspace = useContext(SidebarWorkspaceContext);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -198,7 +194,7 @@ export const SessionSidebar = forwardRef<
   const inDesktopShell = variant === "desktopShell";
   const isCollapsed = inDesktopShell
     ? false
-    : (externalCollapsed ?? internalCollapsed);
+    : externalCollapsed ?? internalCollapsed;
   const setIsCollapsed = onToggleCollapsed ?? setInternalCollapsed;
 
   // ─── Refs ────────────────────────────────────────────────────────
@@ -585,37 +581,7 @@ export const SessionSidebar = forwardRef<
             "var(--app-safe-area-bottom-active, var(--app-safe-area-bottom, 0px))",
         }}
       >
-        {isMobile && workspace && (
-          <div className="flex shrink-0 gap-1 border-b border-theme-border p-2">
-            {(["chat", "files"] as const).map((view) => (
-              <button
-                key={view}
-                type="button"
-                aria-pressed={workspace.view === view}
-                className={`rounded-lg px-3 py-2 text-13 hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2 ${workspace.view === view ? "bg-theme-bg-subtle text-theme-text" : "text-theme-text-secondary"}`}
-                onClick={() => workspace.switchView(view)}
-              >
-                {t(
-                  view === "chat"
-                    ? "workspacePanel.viewChats"
-                    : "workspacePanel.title",
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-        {isMobile && workspace?.view === "files" ? (
-          <>
-            <div className="min-h-0 flex-1">{workspace.workspace}</div>
-            <div className="shrink-0 px-2 py-1 border-t border-theme-border">
-              <SidebarUserRow
-                user={user}
-                imgError={imgError}
-                onShowProfile={onShowProfile!}
-              />
-            </div>
-          </>
-        ) : isMobile ? (
+        {isMobile ? (
           <SessionListContent
             {...sessionListProps}
             onCollapse={() => {

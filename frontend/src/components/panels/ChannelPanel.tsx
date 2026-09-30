@@ -284,7 +284,7 @@ export function ChannelPanel({
             className="flex items-center justify-between rounded-lg bg-[var(--glass-bg-subtle)] px-3 py-2.5"
           >
             <div>
-              <span className="text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+              <span className="text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
                 {field.title}
               </span>
               {field.description && (
@@ -295,14 +295,16 @@ export function ChannelPanel({
             </div>
             <button
               onClick={() => updateFormField(field.name, !value)}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${value
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
+                value
                   ? "bg-amber-500 shadow-sm shadow-amber-500/25"
                   : "bg-stone-200 dark:bg-stone-700"
-                }`}
+              }`}
             >
               <span
-                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${value ? "translate-x-[18px]" : "translate-x-[3px]"
-                  }`}
+                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  value ? "translate-x-[18px]" : "translate-x-[3px]"
+                }`}
               />
             </button>
           </div>
@@ -311,7 +313,7 @@ export function ChannelPanel({
       case "select":
         return (
           <div key={field.name}>
-            <label className="mb-1 block text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+            <label className="mb-1 block text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
               {field.title}
             </label>
             <Select
@@ -328,7 +330,7 @@ export function ChannelPanel({
       case "password":
         return (
           <div key={field.name}>
-            <label className="mb-1 block text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+            <label className="mb-1 block text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
               {field.title}{" "}
               {field.required && !hasExistingConfig && (
                 <span className="text-red-500">*</span>
@@ -355,7 +357,7 @@ export function ChannelPanel({
       default:
         return (
           <div key={field.name}>
-            <label className="mb-1 block text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+            <label className="mb-1 block text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
               {field.title}
               {field.required && (!hasExistingConfig || !field.sensitive) && (
                 <span className="text-red-500"> *</span>
@@ -419,10 +421,11 @@ export function ChannelPanel({
               )}
               <div>
                 <span
-                  className={`text-14 font-semibold ${status.connected
+                  className={`text-14 font-semibold ${
+                    status.connected
                       ? "text-green-600 dark:text-green-400"
                       : "text-red-600 dark:text-red-400"
-                    }`}
+                  }`}
                 >
                   {status.connected
                     ? t("channel.connected", "Connected")
@@ -456,7 +459,7 @@ export function ChannelPanel({
 
       {/* Configuration Card */}
       <div className="glass-card rounded-xl p-4">
-        <h3 className="mb-4 text-13 font-medium font-sans text-stone-900 dark:text-stone-100">
+        <h3 className="mb-4 text-14 font-semibold font-serif text-stone-900 dark:text-stone-100">
           {t("channel.configuration", "Configuration")}
         </h3>
 
@@ -464,7 +467,7 @@ export function ChannelPanel({
           {/* Instance Name - only show for new instances */}
           {isNewInstance && (
             <div>
-              <label className="mb-1 block text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+              <label className="mb-1 block text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
                 {t("channel.instanceName", "Instance Name")}{" "}
                 <span className="text-red-500">*</span>
               </label>
@@ -484,7 +487,7 @@ export function ChannelPanel({
           {/* Instance Name Display - show for existing instances */}
           {!isNewInstance && hasExistingConfig && (
             <div className="rounded-lg bg-[var(--glass-bg-subtle)] px-3 py-2.5">
-              <span className="text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+              <span className="text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
                 {t("channel.instanceName", "Instance Name")}
               </span>
               <p className="text-14 text-stone-900 dark:text-stone-100">
@@ -496,7 +499,7 @@ export function ChannelPanel({
           {/* Enable Toggle */}
           <div className="flex items-center justify-between rounded-lg bg-[var(--glass-bg-subtle)] px-3 py-2.5">
             <div>
-              <span className="text-14 font-medium font-sans text-stone-700 dark:text-stone-200">
+              <span className="text-14 font-medium font-serif text-stone-700 dark:text-stone-200">
                 {t("channel.enabled", "Enable Channel")}
               </span>
               <p className="text-12 text-stone-500 dark:text-stone-400">
@@ -505,14 +508,16 @@ export function ChannelPanel({
             </div>
             <button
               onClick={() => setEnabled(!enabled)}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${enabled
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
+                enabled
                   ? "bg-amber-500 shadow-sm shadow-amber-500/25"
                   : "bg-stone-200 dark:bg-stone-700"
-                }`}
+              }`}
             >
               <span
-                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${enabled ? "translate-x-[18px]" : "translate-x-[3px]"
-                  }`}
+                className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  enabled ? "translate-x-[18px]" : "translate-x-[3px]"
+                }`}
               />
             </button>
           </div>
@@ -623,7 +628,7 @@ export function ChannelPanel({
         <PanelHeader
           title={metadata.display_name}
           subtitle={t("channel.description")}
-          icon={getChannelIcon()}
+          illustration="panel-channels"
           actions={
             <Button
               onClick={() => navigate("/channels")}
@@ -633,9 +638,7 @@ export function ChannelPanel({
             </Button>
           }
         />
-        <div className="panel-content-card min-h-0 flex-1 overflow-y-auto p-4">
-          {formContent}
-        </div>
+        <div className="panel-body flex-1 overflow-y-auto">{formContent}</div>
         <div className="border-t border-[var(--theme-border)] px-3 py-3 sm:px-4">
           {actionButtons}
         </div>

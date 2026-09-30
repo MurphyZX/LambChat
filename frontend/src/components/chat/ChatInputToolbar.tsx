@@ -338,7 +338,7 @@ export function ChatInputToolbar({
             }
             label={sandboxLabel || ""}
             title={sandboxChipTitle}
-            labelClassName="hidden sm:inline"
+            labelClassName="composer-sandbox-label hidden sm:inline max-w-40"
             onClick={() => onActivePanelChange("sandbox")}
             trailing={
               sandboxChipLocal ? (

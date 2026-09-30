@@ -2,7 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 import { SkillBaseCard } from "../SkillBaseCard";
-test("keeps status and actions without decorative gradient banners", () => {
+test("restores the original banner while keeping management actions", () => {
   const { container } = render(
     <SkillBaseCard
       title="Research"
@@ -11,17 +11,21 @@ test("keeps status and actions without decorative gradient banners", () => {
     />,
   );
   expect(screen.getByRole("button", { name: "Manage" })).toBeTruthy();
-  expect(container.querySelector('[style*="gradient"]')).toBeNull();
+  expect(container.querySelector(".scb__banner")).not.toBeNull();
 });
 
-
-test("marketplace covers keep one title and icon with status outside the cover", () => {
+test("marketplace cards keep one title and icon below the original banner", () => {
   const { container } = render(
-    <SkillBaseCard title="Hire Me" cover icon={<span>H</span>} statusPills={<span>Published</span>} />,
+    <SkillBaseCard
+      title="Hire Me"
+      gradient={["red", "green", "blue"]}
+      icon={<span>H</span>}
+      statusPills={<span>Published</span>}
+    />,
   );
-  const cover = container.querySelector(".scb__cover");
+  const cover = container.querySelector(".scb__banner");
   expect(cover).not.toBeNull();
-  expect(cover?.textContent).toBe("HHire Me");
+  expect(container.querySelector("h3")?.textContent).toBe("Hire Me");
   expect(container.querySelectorAll("h3")).toHaveLength(1);
   expect(cover?.textContent).not.toContain("Published");
 });
@@ -31,11 +35,18 @@ test("card selection supports the keyboard without hijacking nested actions", as
   const { vi } = await import("vitest");
   const onSelect = vi.fn();
   const { container } = render(
-    <SkillBaseCard title="Keyboard card" selectionMode onSelect={onSelect} bannerOverlay={<button>Inspect</button>} />,
+    <SkillBaseCard
+      title="Keyboard card"
+      selectionMode
+      onSelect={onSelect}
+      bannerOverlay={<button>Inspect</button>}
+    />,
   );
   const card = container.querySelector(".scb")!;
   fireEvent.keyDown(card, { key: "Enter" });
   expect(onSelect).toHaveBeenCalledTimes(1);
-  fireEvent.keyDown(screen.getByRole("button", { name: "Inspect" }), { key: "Enter" });
+  fireEvent.keyDown(screen.getByRole("button", { name: "Inspect" }), {
+    key: "Enter",
+  });
   expect(onSelect).toHaveBeenCalledTimes(1);
 });

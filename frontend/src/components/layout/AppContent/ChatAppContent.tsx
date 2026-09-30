@@ -38,13 +38,17 @@ import {
 } from "./sessionState";
 import { getTeamRouteRequest } from "./teamRouteState";
 import { resolvePersonaAgentId } from "../../../hooks/useAgent/agentSelection";
+import { SessionWorkspaceButton } from "../../workspacePanel/SessionWorkspaceButton";
 import { AppShell } from "./AppShell";
 import { ChatView } from "./ChatView";
 import { DesktopSidebarShellGate } from "../DesktopSidebarShell/DesktopSidebarShell";
 import { filterApprovalsBySession } from "../../../utils/approvals";
 import { shouldShowMessageOutline } from "./messageOutline";
 import { buildEffectiveSkills, countEnabledSkills } from "./skillAvailability";
-import { useSessionToggleCallbacks, useWorkspaceOptionActions } from "./sessionToggleCallbacks";
+import {
+  useSessionToggleCallbacks,
+  useWorkspaceOptionActions,
+} from "./sessionToggleCallbacks";
 import type { ChatAppContentProps } from "./types";
 const SCHEDULED_TASK_DEFAULTS_KEY = "lambchat_scheduled_task_defaults";
 const CHAT_SKILL_LIST_PARAMS = { limit: 100 };
@@ -130,14 +134,12 @@ export function ChatAppContent({
     enabled: canReadPersonaPresets,
     listParams: personaPresetListParams,
   });
-
   const handlePersonaPresetSearchChange = useCallback((query: string) => {
     setPersonaPresetQuery(query);
   }, []);
   const handlePersonaPresetTagChange = useCallback((tag: string | null) => {
     setPersonaPresetTag(tag);
   }, []);
-
   const hasMorePersonaPresets = personaPresets.length < personaPresetsTotal;
   const handleLoadMorePersonaPresets = useCallback(() => {
     if (!hasMorePersonaPresets || personaPresetsLoadingMore) return;
@@ -148,10 +150,8 @@ export function ChatAppContent({
     loadMorePersonaPresets,
     personaPresetListParams,
   ]);
-
   const [projects, setProjects] = useState<Project[]>([]);
   const [composerFocusRequest, setComposerFocusRequest] = useState(0);
-
   const sessionConfigRef = useRef({
     disabledSkills: [] as string[],
     enabledSkills: undefined as string[] | undefined,
@@ -159,7 +159,6 @@ export function ChatAppContent({
     disabledMcpTools: [] as string[],
     agentOptions: {} as Record<string, boolean | string | number>,
   });
-
   const {
     messages,
     sessionId,
@@ -243,12 +242,10 @@ export function ChatAppContent({
       setTimeout(() => fetchSkills(), 500);
     },
   });
-
   ensureResumeStreamRef.current = (runId) => {
     void reconnectSSE(runId);
   };
   useEffect(() => void refreshApprovals(), [sessionId, refreshApprovals]);
-
   const switchToPersonaAgentMode = useCallback(() => {
     if (currentAgent !== "team") return;
     const nextAgentId = resolvePersonaAgentId(currentAgent, undefined, agents);
@@ -257,7 +254,6 @@ export function ChatAppContent({
     }
     selectTeam(null);
   }, [agents, currentAgent, selectTeam, switchAgent]);
-
   const prevAgentRef = useRef(currentAgent);
   useEffect(() => {
     if (prevAgentRef.current !== currentAgent) {
@@ -265,14 +261,12 @@ export function ChatAppContent({
       refreshToolsForAgent(currentAgent);
     }
   }, [currentAgent, refreshToolsForAgent]);
-
   const filteredModels = useMemo(() => {
     if (!availableModels) return null;
     if (agentAllowedModelIds === null) return availableModels;
     if (agentAllowedModelIds.length === 0) return [];
     return availableModels.filter((m) => agentAllowedModelIds.includes(m.id));
   }, [availableModels, agentAllowedModelIds]);
-
   const { online: sandboxOnline } = useSandboxStatus();
   const {
     agentOptionValues,
@@ -283,7 +277,9 @@ export function ChatAppContent({
   } = useAgentOptions(agents, currentAgent, sandboxOnline);
 
   const { changeOption, selectProject } = useWorkspaceOptionActions(
-    sessionId, handleToggleAgentOption, setPendingProjectId,
+    sessionId,
+    handleToggleAgentOption,
+    setPendingProjectId,
     { agents, currentAgent, switchAgent, restoreAgentOptions },
   );
 
@@ -300,10 +296,12 @@ export function ChatAppContent({
     getDefaultAgentOptions: () => agentOptionValues,
   });
 
-  // 桌面双栏「文件」面板：会话沙箱模式/选机/工作区绑定——任一切换都驱动
+  // 右侧会话文件面板：沙箱模式/选机/工作区绑定——任一切换都驱动
   // 面板重新解析工作区（云端提示、reveal 菜单、树重置）
   const workspaceModeForShell =
-    typeof agentOptionValues?.sandbox === "string" ? agentOptionValues.sandbox : null;
+    typeof agentOptionValues?.sandbox === "string"
+      ? agentOptionValues.sandbox
+      : null;
   const workspaceMachineForShell =
     typeof agentOptionValues?.sandbox_machine_id === "string"
       ? agentOptionValues.sandbox_machine_id
@@ -776,6 +774,14 @@ export function ChatAppContent({
   return (
     <AppShell
       activeTab="chat"
+      headerActions={
+        <SessionWorkspaceButton
+          sessionId={sessionId}
+          sandboxMode={workspaceModeForShell}
+          machineId={workspaceMachineForShell}
+          workspaceSelection={workspaceSelectionForShell}
+        />
+      }
       showProfileModal={showProfileModal}
       onCloseProfileModal={onCloseProfileModal}
       setMobileSidebarOpen={setMobileSidebarOpen}
@@ -796,10 +802,6 @@ export function ChatAppContent({
           onShowProfile={onShowProfile}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={setSidebarCollapsed}
-          sessionId={sessionId}
-          sandboxMode={workspaceModeForShell}
-          machineId={workspaceMachineForShell}
-          workspaceSelection={workspaceSelectionForShell}
         >
           <SessionSidebar
             ref={sidebarRef}

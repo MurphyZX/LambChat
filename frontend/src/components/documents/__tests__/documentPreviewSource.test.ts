@@ -6,7 +6,10 @@ const source = readFileSync(
 );
 
 test("document preview keeps the selected mode independent of mobile viewport size", () => {
-  const preview = readFileSync(new URL("../DocumentPreview.tsx", import.meta.url), "utf8");
+  const preview = readFileSync(
+    new URL("../DocumentPreview.tsx", import.meta.url),
+    "utf8",
+  );
   expect(preview).toContain("viewMode={state.viewMode}");
   expect(preview).toContain("onViewModeChange={state.setViewMode}");
 });

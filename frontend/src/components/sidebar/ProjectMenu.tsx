@@ -145,7 +145,12 @@ export function ProjectMenu({
 
           {/* Menu items */}
           <div className="px-2 pb-4">
-            {onWorkspaceChange && <ProjectWorkspaceField value={_project.workspace} onChange={onWorkspaceChange} />}
+            {onWorkspaceChange && (
+              <ProjectWorkspaceField
+                value={_project.workspace}
+                onChange={onWorkspaceChange}
+              />
+            )}
             {/* New Session */}
             {onNewSessionInProject && (
               <button
@@ -213,7 +218,12 @@ export function ProjectMenu({
       style={menuStyle}
       className="w-48 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-lg py-1"
     >
-      {onWorkspaceChange && <ProjectWorkspaceField value={_project.workspace} onChange={onWorkspaceChange} />}
+      {onWorkspaceChange && (
+        <ProjectWorkspaceField
+          value={_project.workspace}
+          onChange={onWorkspaceChange}
+        />
+      )}
       {/* Rename option */}
       <button
         onClick={() => {

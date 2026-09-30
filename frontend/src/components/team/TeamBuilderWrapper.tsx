@@ -107,47 +107,47 @@ function normalizeImportedTeam(value: unknown): TeamCreateRequest | null {
         : null,
     members: Array.isArray(item.members)
       ? item.members
-        .map((member): ImportedTeamMember | null => {
-          if (!member || typeof member !== "object") return null;
-          const record = member as Record<string, unknown>;
-          const personaPresetId = String(record.persona_preset_id ?? "");
-          if (!personaPresetId) return null;
-          return {
-            member_id:
-              typeof record.member_id === "string"
-                ? record.member_id
-                : undefined,
-            persona_preset_id: personaPresetId,
-            agent_id:
-              typeof record.agent_id === "string" && record.agent_id
-                ? record.agent_id
-                : null,
-            model_id:
-              typeof record.model_id === "string" && record.model_id
-                ? record.model_id
-                : null,
-            role_name:
-              typeof record.role_name === "string"
-                ? record.role_name
-                : undefined,
-            role_avatar:
-              typeof record.role_avatar === "string"
-                ? record.role_avatar
-                : null,
-            role_tags: Array.isArray(record.role_tags)
-              ? record.role_tags.map(String)
-              : [],
-            role_instructions:
-              typeof record.role_instructions === "string"
-                ? record.role_instructions
-                : undefined,
-            position:
-              typeof record.position === "number" ? record.position : 0,
-            enabled:
-              typeof record.enabled === "boolean" ? record.enabled : true,
-          };
-        })
-        .filter((member): member is ImportedTeamMember => Boolean(member))
+          .map((member): ImportedTeamMember | null => {
+            if (!member || typeof member !== "object") return null;
+            const record = member as Record<string, unknown>;
+            const personaPresetId = String(record.persona_preset_id ?? "");
+            if (!personaPresetId) return null;
+            return {
+              member_id:
+                typeof record.member_id === "string"
+                  ? record.member_id
+                  : undefined,
+              persona_preset_id: personaPresetId,
+              agent_id:
+                typeof record.agent_id === "string" && record.agent_id
+                  ? record.agent_id
+                  : null,
+              model_id:
+                typeof record.model_id === "string" && record.model_id
+                  ? record.model_id
+                  : null,
+              role_name:
+                typeof record.role_name === "string"
+                  ? record.role_name
+                  : undefined,
+              role_avatar:
+                typeof record.role_avatar === "string"
+                  ? record.role_avatar
+                  : null,
+              role_tags: Array.isArray(record.role_tags)
+                ? record.role_tags.map(String)
+                : [],
+              role_instructions:
+                typeof record.role_instructions === "string"
+                  ? record.role_instructions
+                  : undefined,
+              position:
+                typeof record.position === "number" ? record.position : 0,
+              enabled:
+                typeof record.enabled === "boolean" ? record.enabled : true,
+            };
+          })
+          .filter((member): member is ImportedTeamMember => Boolean(member))
       : [],
   };
 }
@@ -364,7 +364,7 @@ export function TeamBuilderWrapper() {
   const currentScope = scopeTabs.find((tab) => tab.key === scopeFilter);
   const CurrentScopeIcon =
     SCOPE_ICON_MAP[
-    (currentScope?.icon ?? "Users") as keyof typeof SCOPE_ICON_MAP
+      (currentScope?.icon ?? "Users") as keyof typeof SCOPE_ICON_MAP
     ];
 
   const clearFilters = useCallback(() => {
@@ -450,10 +450,8 @@ export function TeamBuilderWrapper() {
       <PanelHeader
         className="skill-panel-header"
         title={t("team.title")}
-        count={total}
-        icon={
-          <Users size={18} className="text-theme-text-secondary" />
-        }
+        subtitle={t("team.subtitle")}
+        illustration="panel-team"
         searchValue={query}
         onSearchChange={setQuery}
         searchPlaceholder={t("team.searchPlaceholder", "搜索团队名称、描述...")}
@@ -469,10 +467,11 @@ export function TeamBuilderWrapper() {
                   setIsScopeOpen((prev) => !prev);
                   setIsFilterOpen(false);
                 }}
-                className={`btn-secondary h-10 px-2.5 ${scopeFilter !== "all"
+                className={`btn-secondary h-10 px-2.5 ${
+                  scopeFilter !== "all"
                     ? "border-[var(--theme-primary)] text-[var(--theme-text)]"
                     : ""
-                  }`}
+                }`}
               >
                 <CurrentScopeIcon size={14} />
                 <span className="hidden sm:inline">
@@ -480,8 +479,9 @@ export function TeamBuilderWrapper() {
                 </span>
                 <ChevronDown
                   size={14}
-                  className={`transition-transform ${isScopeOpen ? "rotate-180" : ""
-                    }`}
+                  className={`transition-transform ${
+                    isScopeOpen ? "rotate-180" : ""
+                  }`}
                 />
               </button>
             </div>
@@ -496,10 +496,11 @@ export function TeamBuilderWrapper() {
                     setIsFilterOpen((prev) => !prev);
                     setIsScopeOpen(false);
                   }}
-                  className={`btn-secondary h-10 px-2.5 ${activeTag
+                  className={`btn-secondary h-10 px-2.5 ${
+                    activeTag
                       ? "border-[var(--theme-primary)] text-[var(--theme-text)]"
                       : ""
-                    }`}
+                  }`}
                 >
                   <Tag size={14} />
                   <span className="hidden sm:inline">
@@ -512,8 +513,9 @@ export function TeamBuilderWrapper() {
                   )}
                   <ChevronDown
                     size={14}
-                    className={`transition-transform ${isFilterOpen ? "rotate-180" : ""
-                      }`}
+                    className={`transition-transform ${
+                      isFilterOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
               </div>
@@ -554,73 +556,117 @@ export function TeamBuilderWrapper() {
         }
       />
 
-      <div className="panel-content-card panel-content-card--grid">
-        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
-          {loadError && (
-            <div
-              role="alert"
-              className="p-4 text-center text-theme-text-secondary"
+      <div className="panel-body skill-content-area flex-1 overflow-y-auto">
+        {loadError && (
+          <div
+            role="alert"
+            className="p-4 text-center text-theme-text-secondary"
+          >
+            <p>{t("common.loadFailed")}</p>
+            <button
+              type="button"
+              className="btn-secondary mt-3"
+              onClick={() => void loadTeams()}
             >
-              <p>{t("common.loadFailed")}</p>
-              <button
-                type="button"
-                className="btn-secondary mt-3"
-                onClick={() => void loadTeams()}
-              >
-                {t("common.refresh")}
-              </button>
-            </div>
-          )}
+              {t("common.refresh")}
+            </button>
+          </div>
+        )}
 
-          {loading ? (
-            <EmptyState illustration="welcome" title={t("team.loading")} />
-          ) : teams.length === 0 ? (
-            <EmptyState
-              illustration="welcome"
-              title={
-                hasActiveFilters
-                  ? t("team.noMatchingTeams")
-                  : t("team.noTeamsYet")
-              }
-              description={
-                hasActiveFilters
-                  ? t("personaPresets.tryOtherFilters", "试试其他搜索条件")
-                  : t("team.noTeamsDesc")
-              }
-              action={
-                hasActiveFilters ? (
-                  <button onClick={clearFilters} className="btn-secondary">
-                    {t("personaPresets.clearFilters", "清除筛选")}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleCreateNew}
-                    className="btn-primary h-9 text-14"
-                  >
-                    <Plus size={15} />
-                    {t("team.createFirst")}
-                  </button>
-                )
-              }
-            />
-          ) : (
-            <div className="grid auto-grid-cols items-stretch gap-4">
-              {teams.map((team) => {
-                const gradient = nameToGradient(team.name);
-                const activeCount = team.members.filter((m) => m.enabled).length;
-                return (
+        {loading ? (
+          <EmptyState icon={<Users size={28} />} title={t("team.loading")} />
+        ) : teams.length === 0 ? (
+          <EmptyState
+            icon={<Users size={28} />}
+            title={
+              hasActiveFilters
+                ? t("team.noMatchingTeams")
+                : t("team.noTeamsYet")
+            }
+            description={
+              hasActiveFilters
+                ? t("personaPresets.tryOtherFilters", "试试其他搜索条件")
+                : t("team.noTeamsDesc")
+            }
+            action={
+              hasActiveFilters ? (
+                <button onClick={clearFilters} className="btn-secondary">
+                  {t("personaPresets.clearFilters", "清除筛选")}
+                </button>
+              ) : (
+                <button
+                  onClick={handleCreateNew}
+                  className="btn-primary h-9 text-14"
+                >
+                  <Plus size={15} />
+                  {t("team.createFirst")}
+                </button>
+              )
+            }
+          />
+        ) : (
+          <div className="grid auto-grid-cols gap-3">
+            {teams.map((team) => {
+              const colors = nameToGradient(team.name);
+              const activeCount = team.members.filter((m) => m.enabled).length;
+              return (
+                <div
+                  key={team.id}
+                  className="team-card scb group flex h-full flex-col overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
+                  style={{ "--team-accent": colors[0] } as React.CSSProperties}
+                >
+                  {/* Gradient Banner */}
                   <div
-                    key={team.id}
-                    style={
-                      {
-                        "--panel-card-accent": gradient[0],
-                        "--panel-card-accent-end": gradient[2],
-                      } as React.CSSProperties
-                    }
-                    className="team-card scb group flex h-full flex-col overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
+                    className="scb__banner relative h-12 shrink-0"
+                    style={{
+                      background: `linear-gradient(45deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
+                    }}
                   >
-                    {/* Status and preference controls */}
-                    <div className="scb__banner relative shrink-0">
+                    <div className="absolute left-2 top-2 flex gap-1.5">
+                      <button
+                        type="button"
+                        className={`pps-card__icon-action ${
+                          team.is_pinned
+                            ? "pps-card__icon-action--active-pin"
+                            : ""
+                        }`}
+                        title={t("personaPresets.pin", "Pin")}
+                        onClick={() =>
+                          handleTogglePreference(team, {
+                            is_pinned: !team.is_pinned,
+                          })
+                        }
+                      >
+                        <Pin size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        className={`pps-card__icon-action ${
+                          team.is_favorite
+                            ? "pps-card__icon-action--active-fav"
+                            : ""
+                        }`}
+                        title={t("personaPresets.favorite", "Favorite")}
+                        onClick={() =>
+                          handleTogglePreference(team, {
+                            is_favorite: !team.is_favorite,
+                          })
+                        }
+                      >
+                        <Star size={12} />
+                      </button>
+                    </div>
+                    <div className="absolute top-2 right-2 flex gap-1.5">
+                      <span className="scb__status-pill scb__status-pill--installed">
+                        {t("team.activeStatus", { count: activeCount })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="flex flex-1 flex-col p-4 pt-5">
+                    {/* Title row with avatar */}
+                    <div className="flex items-start gap-3">
                       <TeamAvatar
                         avatar={team.avatar}
                         fallbackAvatar={getTeamFallbackAvatar(team)}
@@ -630,161 +676,117 @@ export function TeamBuilderWrapper() {
                         imgClassName="scb__avatar-img"
                         iconSize={20}
                       />
-                      <div className="absolute left-10 top-0 flex gap-1.5">
-                        <button
-                          type="button"
-                          className={`pps-card__icon-action ${team.is_pinned
-                              ? "pps-card__icon-action--active-pin"
-                              : ""
-                            }`}
-                          title={t("personaPresets.pin", "Pin")}
-                          onClick={() =>
-                            handleTogglePreference(team, {
-                              is_pinned: !team.is_pinned,
-                            })
-                          }
+                      <div className="min-w-0 flex-1">
+                        <h3
+                          className="truncate text-16 font-semibold font-serif  text-[var(--theme-text)] leading-tight"
+                          title={team.name}
                         >
-                          <Pin size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`pps-card__icon-action ${team.is_favorite
-                              ? "pps-card__icon-action--active-fav"
-                              : ""
-                            }`}
-                          title={t("personaPresets.favorite", "Favorite")}
-                          onClick={() =>
-                            handleTogglePreference(team, {
-                              is_favorite: !team.is_favorite,
-                            })
-                          }
-                        >
-                          <Star size={12} />
-                        </button>
-                      </div>
-                      <div className="absolute top-0 right-0 flex gap-1.5">
-                        <span className="scb__status-pill scb__status-pill--installed">
-                          {t("team.activeStatus", { count: activeCount })}
-                        </span>
+                          {team.name}
+                        </h3>
+                        <div className="mt-1.5 flex items-center gap-2 text-11 text-[var(--theme-text-secondary)]">
+                          <span>
+                            {t("team.memberCount_one", {
+                              count: team.members.length,
+                            })}
+                          </span>
+                          <span className="inline-block h-1 w-1 rounded-full bg-[var(--theme-border)]" />
+                          <span>
+                            {t("team.active", { count: activeCount })}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Card Body */}
-                    <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
-                      {/* Title row with avatar */}
-                      <div className="flex items-start gap-3">
+                    {/* Description */}
+                    <p className="mt-3 text-13 leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2 min-h-[3.25em]">
+                      {team.description || t("team.coordinatedDesc")}
+                    </p>
 
-                        <div className="min-w-0 flex-1">
-                          <h3
-                            className="truncate text-14 font-semibold font-sans  text-[var(--theme-text)] leading-tight"
-                            title={team.name}
-                          >
-                            {team.name}
-                          </h3>
-                          <div className="mt-1.5 flex items-center gap-2 text-11 text-[var(--theme-text-secondary)]">
-                            <span>
-                              {t("team.memberCount_one", {
-                                count: team.members.length,
-                              })}
-                            </span>
-                            <span className="inline-block h-1 w-1 rounded-full bg-[var(--theme-border)]" />
-                            <span>
-                              {t("team.active", { count: activeCount })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <p className="mt-2 text-[0.78125rem] leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2 min-h-[3.25em]">
-                        {team.description || t("team.coordinatedDesc")}
-                      </p>
-
-                      {/* Member avatars */}
-                      {team.members.length > 0 && (
-                        <div className="team-card__avatars mt-3">
-                          {team.members.slice(0, 5).map(renderMemberAvatar)}
-                          {team.members.length > 5 && (
-                            <span className="team-card__avatar-overflow">
-                              +{team.members.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {(team.tags ?? []).length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {(team.tags ?? []).slice(0, 4).map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              className={`skill-tag-chip ${activeTag === tag ? "skill-tag-chip--active" : ""
-                                }`}
-                              onClick={() => toggleTag(tag)}
-                            >
-                              {tag}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex-1" />
-
-                      {/* Meta & Actions */}
-                      <div className="mt-4 flex items-center justify-between gap-2 pt-1">
-                        <div className="flex items-center gap-2 text-11 text-[var(--theme-text-secondary)]">
-                          <span className="inline-flex items-center gap-1">
-                            <Users size={11} />
-                            {t("team.rolesCount", { count: team.members.length })}
+                    {/* Member avatars */}
+                    {team.members.length > 0 && (
+                      <div className="team-card__avatars mt-3">
+                        {team.members.slice(0, 5).map(renderMemberAvatar)}
+                        {team.members.length > 5 && (
+                          <span className="team-card__avatar-overflow">
+                            +{team.members.length - 5}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
+                        )}
+                      </div>
+                    )}
+
+                    {(team.tags ?? []).length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {(team.tags ?? []).slice(0, 4).map((tag) => (
                           <button
-                            onClick={() => handleUseTeam(team)}
-                            className="scb__action-btn scb__action-btn--ghost"
-                            title={t("team.use", "使用")}
+                            key={tag}
+                            type="button"
+                            className={`skill-tag-chip ${
+                              activeTag === tag ? "skill-tag-chip--active" : ""
+                            }`}
+                            onClick={() => toggleTag(tag)}
                           >
-                            <Sparkles size={16} />
+                            {tag}
                           </button>
-                          <button
-                            onClick={() => handleEditTeam(team.id)}
-                            className="scb__action-btn scb__action-btn--ghost"
-                            title={t("team.edit")}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleCloneTeam(team.id)}
-                            className="scb__action-btn scb__action-btn--ghost"
-                            title={t("team.clone")}
-                          >
-                            <Copy size={16} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(team.id)}
-                            className="scb__action-btn scb__action-btn--ghost team-card__delete-action"
-                            title={t("team.delete")}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex-1" />
+
+                    {/* Meta & Actions */}
+                    <div className="scb__footer flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-11 text-[var(--theme-text-secondary)]">
+                        <span className="inline-flex items-center gap-1">
+                          <Users size={11} />
+                          {t("team.rolesCount", { count: team.members.length })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleUseTeam(team)}
+                          className="scb__action-btn scb__action-btn--ghost"
+                          title={t("team.use", "使用")}
+                        >
+                          <Sparkles size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleEditTeam(team.id)}
+                          className="scb__action-btn scb__action-btn--ghost"
+                          title={t("team.edit")}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleCloneTeam(team.id)}
+                          className="scb__action-btn scb__action-btn--ghost"
+                          title={t("team.clone")}
+                        >
+                          <Copy size={16} />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(team.id)}
+                          className="scb__action-btn scb__action-btn--ghost team-card__delete-action"
+                          title={t("team.delete")}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-        <div className="panel-pagination empty:hidden">
-          <Pagination
-            page={page}
-            pageSize={TEAM_PAGE_SIZE}
-            total={total}
-            onChange={setPage}
-          />
-        </div>
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={TEAM_PAGE_SIZE}
+          total={total}
+          onChange={setPage}
+        />
       </div>
       <EditorSidebar
         open={editorOpen}

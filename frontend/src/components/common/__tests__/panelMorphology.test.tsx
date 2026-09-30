@@ -11,7 +11,9 @@ vi.mock("react-i18next", () => ({
 afterEach(cleanup);
 
 test("page identity includes its count beside the heading", () => {
-  render(<PanelHeader title="Users" count={65} actions={<button>Create</button>} />);
+  render(
+    <PanelHeader title="Users" count={65} actions={<button>Create</button>} />,
+  );
   expect(screen.getByRole("heading", { name: "Users" })).toBeTruthy();
   expect(screen.getByText("65").className).toContain("panel-header__count");
 });
@@ -25,5 +27,7 @@ test("single-page lists keep their summary but hide navigation controls", () => 
 test("status keeps a text label alongside a decorative semantic dot", () => {
   const { container } = render(<StatusBadge color="green" label="Enabled" />);
   expect(screen.getByText("Enabled").className).toContain("status-dot");
-  expect(container.querySelector('[aria-hidden="true"]')?.className).toContain("bg-theme-success");
+  expect(container.querySelector('[aria-hidden="true"]')?.className).toContain(
+    "bg-theme-success",
+  );
 });

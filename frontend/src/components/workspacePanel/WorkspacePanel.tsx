@@ -1,19 +1,14 @@
-/**
- * 电脑面板（桌面双栏的「电脑」二级面板）——豆包式双视图：
- *
- *   [本地电脑] 本地沙箱 daemon（经 /api/sandbox/fs 中继），实时列目录、
- *              懒加载、文本预览、右键复制路径 / 在文件管理器中显示；
- *   [云端电脑] 云端沙箱（E2B/Daytona SDK 直连，/api/sandbox/fs/cloud/*），
- *              状态徽标（运行中/已暂停/未创建/未启用）+ 同款文件树；
- *              浏览即意图——paused 沙箱在首次列目录时自动唤醒，未创建/
- *              被回收不新建，给引导文案。
- *
- * 视图默认跟随会话当前平台，用户可手动切换（本地会话也能看它的云端子
- * 目录）；会话切换时回到跟随。任一上下文变化（会话/平台/机器/绑定/视图）
- * 整树重置，杜绝 stale 文件。
- */
+/** 会话右侧工作区：按需浏览本地/云端文件，复用文档预览。 */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   ChevronRight,
@@ -23,12 +18,19 @@ import {
   FolderOpen,
   HardDrive,
   Loader2,
-  Monitor,
   RefreshCw,
 } from "lucide-react";
 import clsx from "clsx";
+import { ToolbarIconButton } from "../common/ui/ToolbarIconButton";
 import { Tooltip } from "../common/Tooltip";
-import { LazyDocumentPreview } from "../documents/LazyDocumentPreview";
+import { activateRightPanelByKey } from "../common/rightPanelCoordinator";
+import { RightPanelActiveContext } from "../common/useRightPanelEntry";
+import {
+  closeRevealPreviewTab,
+  getRevealPreviewTabs,
+  setActiveRevealPreviewState,
+} from "../chat/ChatMessage/items/activeRevealPreviewStore";
+import { createActiveRevealPreviewState } from "../chat/ChatMessage/items/revealPreviewState";
 import { getFileTypeInfo } from "../documents/utils";
 import { useSandboxStatus } from "../../hooks/useSandboxStatus";
 import {
@@ -48,10 +50,6 @@ import {
 import { parseWorkspaceSelection } from "../chat/workspaceSelection";
 import { copyToClipboard } from "../../utils/clipboard";
 
-type WorkspaceView = "local" | "cloud";
-
-const VIEW_STORAGE_KEY = "lambchat_workspace_view";
-
 interface WorkspacePanelProps {
   sessionId: string | null;
   /** 会话沙箱模式（agent_options.sandbox，"local" | "cloud"）。 */
@@ -60,11 +58,8 @@ interface WorkspacePanelProps {
   machineId?: string | null;
   /** 会话 sandbox_workspace 的原样 JSON（reveal 用，Rust 侧与绑定文件比对）。 */
   workspaceSelection?: string | null;
-}
-
-interface PendingPreview {
-  path: string;
-  content: string;
+  /** Render controls beside the shell title; undefined retains the standalone toolbar. */
+  headerActionsTarget?: HTMLElement | null;
 }
 
 interface ContextMenuState {
@@ -73,65 +68,52 @@ interface ContextMenuState {
   path: string;
 }
 
-function readStoredView(): WorkspaceView {
-  try {
-    return localStorage.getItem(VIEW_STORAGE_KEY) === "cloud" ? "cloud" : "local";
-  } catch {
-    return "local";
-  }
-}
-
 export function WorkspacePanel({
   sessionId,
   sandboxMode,
   machineId,
   workspaceSelection,
+  headerActionsTarget,
 }: WorkspacePanelProps) {
   const { t } = useTranslation();
-  const { machines, currentMachineId, defaultMachineId, online } = useSandboxStatus();
+  const active = useContext(RightPanelActiveContext);
+  const { machines, currentMachineId, defaultMachineId, online } =
+    useSandboxStatus();
 
-  // ── 视图：默认跟随会话平台，会话切换时回归跟随；用户手选持久化 ──
-  const [view, setView] = useState<WorkspaceView>(() =>
-    sandboxMode === "cloud" ? "cloud" : sandboxMode === "local" ? "local" : readStoredView(),
-  );
-  const sessionRef = useRef({ sessionId, sandboxMode });
-  useEffect(() => {
-    if (sessionRef.current.sessionId !== sessionId || sessionRef.current.sandboxMode !== sandboxMode) {
-      sessionRef.current = { sessionId, sandboxMode };
-      setView(sandboxMode === "cloud" ? "cloud" : "local");
-    }
-  }, [sessionId, sandboxMode]);
-  const switchView = useCallback((next: WorkspaceView) => {
-    setView(next);
-    try {
-      localStorage.setItem(VIEW_STORAGE_KEY, String(next));
-    } catch {
-      /* 私密模式等场景静默 */
-    }
-  }, []);
-
+  // Match the conversation default; a stale panel preference must not choose its backend.
+  const view = sandboxMode === "local" ? "local" : "cloud";
   const isCloudView = view === "cloud";
 
   // ── 本地视图的目标机与 reveal 资格（对齐 SessionWorkspaceBar）──
   const onlineMachines = machines.filter((item) => item.online);
   const selection = parseWorkspaceSelection(workspaceSelection);
   const selectedMachineId =
-    machineId || defaultMachineId || (onlineMachines.length === 1 ? onlineMachines[0].machine_id : "");
+    machineId ||
+    defaultMachineId ||
+    (onlineMachines.length === 1 ? onlineMachines[0].machine_id : "");
   const isLocalMachineWorkspace =
-    !isCloudView && online && !!currentMachineId && selectedMachineId === currentMachineId;
+    !isCloudView &&
+    online &&
+    !!currentMachineId &&
+    selectedMachineId === currentMachineId;
 
   // ── 云端视图状态徽标（零副作用速览，不唤醒沙箱）──
-  const [cloudStatus, setCloudStatus] = useState<SandboxCloudStatus | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<SandboxCloudStatus | null>(
+    null,
+  );
   const [cloudStatusLoading, setCloudStatusLoading] = useState(false);
+  const cloudRequest = useRef(0);
   const refreshCloudStatus = useCallback(async () => {
     if (!sessionId) return;
+    const request = ++cloudRequest.current;
     setCloudStatusLoading(true);
     try {
-      setCloudStatus(await sandboxFsCloudStatusApi.status(sessionId));
+      const status = await sandboxFsCloudStatusApi.status(sessionId);
+      if (request === cloudRequest.current) setCloudStatus(status);
     } catch {
-      setCloudStatus(null);
+      if (request === cloudRequest.current) setCloudStatus(null);
     } finally {
-      setCloudStatusLoading(false);
+      if (request === cloudRequest.current) setCloudStatusLoading(false);
     }
   }, [sessionId]);
   useEffect(() => {
@@ -139,11 +121,15 @@ export function WorkspacePanel({
       setCloudStatus(null);
       return undefined;
     }
+    if (!active) return;
     void refreshCloudStatus();
     // 30s 对账：暂停/回收后徽标及时转黄（status 零副作用，不唤醒沙箱）
     const timer = window.setInterval(() => void refreshCloudStatus(), 30_000);
-    return () => window.clearInterval(timer);
-  }, [isCloudView, sessionId, refreshCloudStatus]);
+    return () => {
+      cloudRequest.current += 1;
+      window.clearInterval(timer);
+    };
+  }, [active, isCloudView, sessionId, refreshCloudStatus]);
 
   // 云端可浏览：已创建（running/paused——浏览即唤醒）；未创建/未启用显示空态
   const cloudBrowsable =
@@ -161,27 +147,56 @@ export function WorkspacePanel({
     : online && sandboxMode !== "cloud"
       ? sessionId
       : null;
-  const resetKey = `${sessionId ?? ""}|${view}|${isCloudView ? (cloudStatus?.state ?? "") : `${sandboxMode ?? ""}|${selectedMachineId}|${selection?.id ?? ""}`}`;
-  const { root, state, error, toggleDir, refresh, expandedPaths } = useWorkspaceTree(
-    effectiveSessionId,
-    resetKey,
-    source,
-  );
+  const resetKey = `${sessionId ?? ""}|${view}|${
+    isCloudView
+      ? "cloud"
+      : `${sandboxMode ?? ""}|${selectedMachineId}|${selection?.id ?? ""}`
+  }`;
+  const { root, state, error, toggleDir, refresh, expandedPaths } =
+    useWorkspaceTree(effectiveSessionId, resetKey, source);
 
-  const [preview, setPreview] = useState<PendingPreview | null>(null);
+  const previewPrefix = `workspace:${JSON.stringify([
+    resetKey,
+    workspaceSelection,
+  ])}:`;
   const [openingPath, setOpeningPath] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewRequest = useRef(0);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    previewRequest.current += 1;
+    for (const tab of getRevealPreviewTabs()) {
+      const key = tab.request.previewKey;
+      if (key.startsWith("workspace:") && !key.startsWith(previewPrefix))
+        closeRevealPreviewTab(key);
+    }
+    setPreviewError(null);
+    setOpeningPath(null);
+    setContextMenu(null);
+    return () => {
+      previewRequest.current += 1;
+    };
+  }, [previewPrefix]);
+
+  useEffect(() => {
     if (!contextMenu) return undefined;
     const close = () => setContextMenu(null);
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        close();
+      }
+    };
+    document.addEventListener("keydown", keydown, true);
     // click 在菜单项 onClick 冒泡后到达，下一拍再挂避免立即自关闭
     const timer = window.setTimeout(() => {
       document.addEventListener("click", close);
       document.addEventListener("contextmenu", close);
     }, 0);
     return () => {
+      document.removeEventListener("keydown", keydown, true);
       window.clearTimeout(timer);
       document.removeEventListener("click", close);
       document.removeEventListener("contextmenu", close);
@@ -191,35 +206,61 @@ export function WorkspacePanel({
   const openFile = useCallback(
     async (path: string) => {
       if (!sessionId) return;
+      const previewKey = `${previewPrefix}${path}`;
+      if (
+        getRevealPreviewTabs().some(
+          (tab) => tab.request.previewKey === previewKey,
+        )
+      ) {
+        activateRightPanelByKey(`reveal-preview:${previewKey}`);
+        return;
+      }
+      const request = ++previewRequest.current;
       setOpeningPath(path);
+      setPreviewError(null);
       try {
         const result = await source.read(sessionId, path, 0, 2000);
-        if (result.encoding === "utf-8") {
-          setPreview({ path, content: result.content ?? "" });
-        } else if (result.encoding === "base64") {
-          // 二进制：documents 预览层需要 URL 通道，本轮给占位（路径操作仍可用）
-          setPreview({
-            path,
-            content: t("workspacePanel.binaryFileHint", {
-              defaultValue: "（二进制文件，暂不支持内联预览）",
-            }),
-          });
+        if (request !== previewRequest.current) return;
+        if (result.error) throw new Error(result.error);
+        if (result.encoding === "utf-8" || result.encoding === "base64") {
+          // Binary reads keep the existing placeholder until a URL channel is available.
+          const content =
+            result.encoding === "utf-8"
+              ? result.content ?? ""
+              : t("workspacePanel.binaryFileHint", {
+                  defaultValue: "（二进制文件，暂不支持内联预览）",
+                });
+          setActiveRevealPreviewState(
+            createActiveRevealPreviewState(
+              {
+                kind: "file",
+                previewKey,
+                filePath: path,
+                content,
+              },
+              "manual",
+            ),
+          );
         }
-        // 文件级错误（file_not_found 等）：静默失败——树刷新后节点自然消失
       } catch {
-        // 中继失败：预览不弹，交由整体错误态/用户重试
+        if (request === previewRequest.current)
+          setPreviewError(t("documents.error"));
       } finally {
-        setOpeningPath(null);
+        if (request === previewRequest.current) setOpeningPath(null);
       }
     },
-    [sessionId, source, t],
+    [sessionId, source, t, previewPrefix],
   );
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent, path: string) => {
       event.preventDefault();
       event.stopPropagation();
-      setContextMenu({ x: event.clientX, y: event.clientY, path });
+      setContextMenu({
+        x: Math.max(8, Math.min(event.clientX, window.innerWidth - 240)),
+        y: Math.max(8, Math.min(event.clientY, window.innerHeight - 100)),
+        path,
+      });
     },
     [],
   );
@@ -227,9 +268,18 @@ export function WorkspacePanel({
   const handleReveal = useCallback(
     async (relPath: string) => {
       if (!sessionId || isCloudView) return;
-      await revealWorkspacePath(sessionId, relPath, workspaceSelection, selectedMachineId);
+      try {
+        await revealWorkspacePath(
+          sessionId,
+          relPath,
+          workspaceSelection,
+          selectedMachineId,
+        );
+      } catch {
+        setPreviewError(t("sessionWorkspace.failed"));
+      }
     },
-    [sessionId, isCloudView, workspaceSelection, selectedMachineId],
+    [sessionId, isCloudView, workspaceSelection, selectedMachineId, t],
   );
 
   const handleRefresh = useCallback(() => {
@@ -248,18 +298,23 @@ export function WorkspacePanel({
           <div key={node.path}>
             <button
               onClick={() => toggleDir(node.path)}
-              className="sidebar-nav-btn w-full h-7 rounded-[8px] flex items-center gap-1.5 pr-2 transition-colors"
+              aria-expanded={expanded}
+              title={node.path}
+              className="sidebar-nav-btn w-full min-h-11 sm:min-h-8 rounded-md flex items-center gap-1.5 pr-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-ring)]"
               style={{ paddingLeft: padding }}
             >
               <ChevronRight
                 size={13}
                 className={clsx(
-                  "shrink-0 text-stone-400 transition-transform duration-150",
+                  "shrink-0 text-theme-text-muted transition-transform duration-150 motion-reduce:transition-none",
                   expanded && "rotate-90",
                 )}
               />
               {node.loading ? (
-                <Loader2 size={15} className="shrink-0 animate-spin text-stone-400" />
+                <Loader2
+                  size={15}
+                  className="shrink-0 animate-spin text-stone-400"
+                />
               ) : expanded ? (
                 <FolderOpen size={15} className="shrink-0 text-stone-500" />
               ) : (
@@ -267,9 +322,7 @@ export function WorkspacePanel({
               )}
               <span className="truncate text-13 text-left">{node.name}</span>
             </button>
-            {expanded &&
-              node.children &&
-              renderNodes(node.children, depth + 1)}
+            {expanded && node.children && renderNodes(node.children, depth + 1)}
           </div>
         );
       }
@@ -280,14 +333,23 @@ export function WorkspacePanel({
         <button
           key={node.path}
           onClick={() => void openFile(node.path)}
+          title={node.path}
+          aria-busy={isLoading}
           onContextMenu={(e) => handleContextMenu(e, node.path)}
-          className="sidebar-nav-btn w-full h-7 rounded-[8px] flex items-center gap-1.5 pr-2 transition-colors"
+          className="sidebar-nav-btn w-full min-h-11 sm:min-h-8 rounded-md flex items-center gap-1.5 pr-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-ring)]"
           style={{ paddingLeft: padding + 13 + 6 }}
         >
           {isLoading ? (
-            <Loader2 size={15} className="shrink-0 animate-spin text-stone-400" />
+            <Loader2
+              size={15}
+              className="shrink-0 animate-spin text-stone-400"
+            />
           ) : (
-            <Icon size={15} className="shrink-0" style={{ color: info.color }} />
+            <Icon
+              size={15}
+              className="shrink-0"
+              style={{ color: info.color }}
+            />
           )}
           <span className="truncate text-13 text-left">{node.name}</span>
         </button>
@@ -300,14 +362,22 @@ export function WorkspacePanel({
     const stateValue = cloudStatus?.state;
     if (stateValue === "running") {
       return (
-        <Tooltip content={t("workspacePanel.cloudRunning", { defaultValue: "云端电脑 · 运行中" })}>
+        <Tooltip
+          content={t("workspacePanel.cloudRunning", {
+            defaultValue: "云端电脑 · 运行中",
+          })}
+        >
           <span className="size-1.5 rounded-full bg-emerald-500" />
         </Tooltip>
       );
     }
     if (stateValue === "paused") {
       return (
-        <Tooltip content={t("workspacePanel.cloudPaused", { defaultValue: "云端电脑 · 已暂停，打开时自动唤醒" })}>
+        <Tooltip
+          content={t("workspacePanel.cloudPaused", {
+            defaultValue: "云端电脑 · 已暂停，打开时自动唤醒",
+          })}
+        >
           <span className="size-1.5 rounded-full bg-amber-500" />
         </Tooltip>
       );
@@ -323,86 +393,68 @@ export function WorkspacePanel({
       });
     }
     if (cloudStatus?.state === "disabled") {
-      return t("workspacePanel.cloudDisabled", { defaultValue: "云端沙箱未启用" });
+      return t("workspacePanel.cloudDisabled", {
+        defaultValue: "云端沙箱未启用",
+      });
     }
     return null;
   }, [cloudStatus, t]);
 
-  const showLocalCloudHint = !isCloudView && sandboxMode === "cloud";
-  const localViewBlocked = !online || !sessionId || showLocalCloudHint;
+  const localViewBlocked = !isCloudView && (!online || !sessionId);
+  const toolbar = (
+    <div className="flex items-center gap-1.5">
+      {cloudStateBadge}
+      <ToolbarIconButton
+        variant="muted"
+        onClick={handleRefresh}
+        disabled={state === "loading" || cloudStatusLoading}
+        className="disabled:opacity-40"
+        aria-label={t("workspacePanel.refresh", { defaultValue: "刷新" })}
+        title={t("workspacePanel.refresh", { defaultValue: "刷新" })}
+        icon={
+          <RefreshCw
+            size={16}
+            className={
+              state === "loading" || cloudStatusLoading
+                ? "animate-spin motion-reduce:animate-none"
+                : ""
+            }
+          />
+        }
+      />
+    </div>
+  );
 
   return (
-    <div className="flex h-full flex-col bg-[var(--theme-bg-sidebar)]">
-      {/* 视图切换(图标式,主流桌面端样式)+ 状态徽标 + 刷新（顶部节奏与会话视图操作行对齐） */}
-      <div className="flex items-center justify-between gap-1 ps-[9px] pe-[7px] pt-2 pb-1.5">
-        <div className="flex items-center gap-0.5 rounded-lg bg-stone-200/60 p-0.5 dark:bg-stone-800/60">
-          <Tooltip content={t("workspacePanel.viewLocal", { defaultValue: "本地电脑" })} placement="bottom">
-            <button
-              onClick={() => switchView("local")}
-              aria-pressed={!isCloudView}
-              aria-label={t("workspacePanel.viewLocal", { defaultValue: "本地电脑" })}
-              className={clsx(
-                "flex size-6 items-center justify-center rounded-md transition-colors",
-                !isCloudView
-                  ? "bg-white text-stone-800 shadow-sm dark:bg-stone-700 dark:text-stone-100"
-                  : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200",
-              )}
-            >
-              <Monitor size={14} />
-            </button>
-          </Tooltip>
-          <Tooltip content={t("workspacePanel.viewCloud", { defaultValue: "云端电脑" })} placement="bottom">
-            <button
-              onClick={() => switchView("cloud")}
-              aria-pressed={isCloudView}
-              aria-label={t("workspacePanel.viewCloud", { defaultValue: "云端电脑" })}
-              className={clsx(
-                "flex size-6 items-center justify-center rounded-md transition-colors",
-                isCloudView
-                  ? "bg-white text-stone-800 shadow-sm dark:bg-stone-700 dark:text-stone-100"
-                  : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200",
-              )}
-            >
-              <Cloud size={14} />
-            </button>
-          </Tooltip>
+    <div className="flex h-full min-h-0 flex-col bg-theme-bg text-theme-text">
+      {headerActionsTarget
+        ? createPortal(toolbar, headerActionsTarget)
+        : headerActionsTarget === undefined && (
+            <div className="flex shrink-0 justify-end border-b border-theme-border px-2 py-1">
+              {toolbar}
+            </div>
+          )}
+
+      {!isCloudView && selection && (
+        <div
+          className="shrink-0 truncate border-b border-theme-border px-3 py-2 text-12 text-theme-text-secondary"
+          title={selection.path}
+        >
+          {selection.path}
         </div>
-        <div className="flex items-center gap-1.5">
-          {cloudStateBadge}
-          <Tooltip content={t("workspacePanel.refresh", { defaultValue: "刷新" })}>
-            <button
-              onClick={handleRefresh}
-              disabled={state === "loading" || cloudStatusLoading}
-              className="flex size-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200/60 dark:text-stone-400 dark:hover:bg-stone-700/40 transition-colors disabled:opacity-40"
-              aria-label={t("workspacePanel.refresh", { defaultValue: "刷新" })}
-            >
-              <RefreshCw
-                size={14}
-                className={state === "loading" || cloudStatusLoading ? "animate-spin" : ""}
-              />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
+      )}
+      {previewError && (
+        <p
+          role="alert"
+          className="shrink-0 px-3 py-2 text-12 text-theme-text-secondary"
+        >
+          {previewError}
+        </p>
+      )}
 
       {/* 本地视图状态区 */}
       {!isCloudView ? (
-        showLocalCloudHint ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-            <Cloud size={22} className="text-stone-400" />
-            <p className="text-12 text-stone-500 dark:text-stone-400">
-              {t("workspacePanel.cloudSession", {
-                defaultValue: "此会话使用云端沙箱，工作区文件在云端",
-              })}
-            </p>
-            <button
-              onClick={() => switchView("cloud")}
-              className="text-12 text-stone-600 underline-offset-2 hover:underline dark:text-stone-300"
-            >
-              {t("workspacePanel.switchToCloud", { defaultValue: "查看云端电脑 →" })}
-            </button>
-          </div>
-        ) : !online ? (
+        !online ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             <HardDrive size={22} className="text-stone-400" />
             <p className="text-12 text-stone-500 dark:text-stone-400">
@@ -426,7 +478,9 @@ export function WorkspacePanel({
       {isCloudView && cloudEmptyHint ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
           <Cloud size={22} className="text-stone-400" />
-          <p className="text-12 text-stone-500 dark:text-stone-400">{cloudEmptyHint}</p>
+          <p className="text-12 text-stone-500 dark:text-stone-400">
+            {cloudEmptyHint}
+          </p>
         </div>
       ) : isCloudView && !sessionId ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
@@ -439,10 +493,14 @@ export function WorkspacePanel({
       ) : null}
 
       {/* 文件树（本地/云端共用） */}
-      {!localViewBlocked && !(isCloudView && cloudEmptyHint) && !(isCloudView && !sessionId) ? (
+      {!localViewBlocked &&
+      !(isCloudView && cloudEmptyHint) &&
+      !(isCloudView && !sessionId) ? (
         state === "error" ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-            <p className="text-12 text-stone-500 dark:text-stone-400">{error}</p>
+            <p className="text-12 text-stone-500 dark:text-stone-400">
+              {error}
+            </p>
             <button
               onClick={handleRefresh}
               className="text-12 text-stone-600 hover:underline dark:text-stone-300"
@@ -451,7 +509,7 @@ export function WorkspacePanel({
             </button>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto ps-1 pe-0 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {state === "loading" && root.length === 0 ? (
               <div className="flex items-center justify-center pt-6">
                 <Loader2 size={16} className="animate-spin text-stone-400" />
@@ -469,21 +527,11 @@ export function WorkspacePanel({
         )
       ) : null}
 
-      {/* 文本预览（右侧 dock 面板，复用 documents 预览层） */}
-      {preview && (
-        <LazyDocumentPreview
-          path={preview.path}
-          content={preview.content}
-          onClose={() => setPreview(null)}
-          registryKey={`workspace-preview-${view}-${preview.path}`}
-        />
-      )}
-
       {/* 右键菜单（复制路径 / 在系统文件管理器中显示——仅本地视图本机工作区） */}
       {contextMenu && (
         <div
           ref={menuRef}
-          className="fixed z-[200] min-w-44 overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg dark:border-stone-700 dark:bg-stone-800"
+          className="fixed z-[350] w-56 overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg dark:border-stone-700 dark:bg-stone-800"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button

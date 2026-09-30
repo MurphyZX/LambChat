@@ -1,4 +1,3 @@
-import { PanelHeader } from "../common/PanelHeader";
 import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
@@ -484,21 +483,81 @@ export function SettingsPanel() {
 
   return (
     <>
-      <div className="glass-shell flex h-full min-h-0 flex-col">
-        <PanelHeader title={t("settings.title")} count={visibleCategories.length} />
-        <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-          {/* Hidden file input for import */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            className="hidden"
+      <div className="glass-shell flex h-full flex-col sm:flex-row">
+        {/* Hidden file input for import */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImport}
+          className="hidden"
+        />
+
+        {/* Left Sidebar - Categories (hidden on mobile) */}
+        <div className="settings-sidebar hidden w-60 flex-shrink-0 flex-col border-r border-[var(--glass-border)] sm:flex">
+          {/* Sidebar Header */}
+          <div className="flex items-center gap-2.5 px-5 py-4">
+            <SceneIllustration
+              scene="panel-settings"
+              className="panel-avatar"
+            />
+            <div>
+              <h2 className="text-14 font-semibold text-stone-900 dark:text-stone-100">
+                {t("settings.title")}
+              </h2>
+              <p className="text-12 text-stone-400 dark:text-stone-500">
+                {t("settings.navigation.subtitle")}
+              </p>
+            </div>
+          </div>
+
+          <SettingsCategoryNav
+            categories={visibleCategories}
+            navigation={navigation}
+            activeCategory={activeCategory}
+            searching={isSearching}
+            labels={CATEGORY_LABELS}
+            onSelect={selectCategory}
           />
 
-          {/* Left Sidebar - Categories (hidden on mobile) */}
-          <div className="hidden w-60 flex-shrink-0 flex-col border-r border-[var(--glass-border)] sm:flex">
+          {/* Bottom actions */}
+          <div className="flex gap-1.5 px-3 py-3">
+            <Button
+              onClick={() => setShowAbout(true)}
+              size="sm"
+              leftIcon={<Info size={12} />}
+              className="flex-1 py-1.5 text-12"
+            >
+              {t("common.about", "About")}
+            </Button>
+            {canManage && (
+              <button
+                onClick={handleResetAll}
+                disabled={isLoading}
+                className="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-12 font-medium text-red-500 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
+              >
+                <RotateCcw size={12} />
+                {t("common.resetAll")}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right Content */}
+        <div className="settings-content flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Header with Category Dropdown (mobile) and Search */}
+          <div className="settings-toolbar panel-inset flex-shrink-0">
+            <div className="settings-compact-identity mb-3 items-center gap-3">
+              <SceneIllustration
+                scene="panel-settings"
+                className="panel-avatar"
+              />
+              <h2 className="font-serif text-16 font-semibold text-theme-text">
+                {t("settings.title")}
+              </h2>
+            </div>
             <SettingsCategoryNav
+              mobile
               categories={visibleCategories}
               navigation={navigation}
               activeCategory={activeCategory}
@@ -507,227 +566,190 @@ export function SettingsPanel() {
               onSelect={selectCategory}
             />
 
-            {/* Bottom actions */}
-            <div className="flex gap-1.5 border-t border-[var(--glass-border)] px-3 py-2.5">
-              <Button
-                onClick={() => setShowAbout(true)}
-                size="sm"
-                leftIcon={<Info size={12} />}
-                className="flex-1 py-1.5 text-12"
-              >
-                {t("common.about", "About")}
-              </Button>
+            {/* Search and Export/Import */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search
+                  size={18}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500"
+                />
+                <PanelSearchInput
+                  type="text"
+                  placeholder={t("settings.navigation.searchPlaceholder")}
+                  aria-label={t("settings.navigation.searchPlaceholder")}
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                  className="panel-search h-10"
+                />
+              </div>
               {canManage && (
-                <button
-                  onClick={handleResetAll}
-                  disabled={isLoading}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-12 font-medium text-red-500 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
-                >
-                  <RotateCcw size={12} />
-                  {t("common.resetAll")}
-                </button>
+                <>
+                  <Button
+                    onClick={handleExport}
+                    disabled={!settings}
+                    leftIcon={<Download size={16} />}
+                    className="h-10 px-3"
+                    title={t("settings.exportSettings")}
+                    aria-label={t("settings.exportSettings")}
+                  >
+                    <span className="hidden sm:inline text-14">
+                      {t("common.export")}
+                    </span>
+                  </Button>
+                  <Button
+                    onClick={handleImportClick}
+                    disabled={!settings || isImporting}
+                    loading={isImporting}
+                    leftIcon={<Upload size={16} />}
+                    className="h-10 px-3"
+                    title={t("settings.importSettings")}
+                    aria-label={t("settings.importSettings")}
+                  >
+                    <span className="hidden sm:inline text-14">
+                      {t("common.import")}
+                    </span>
+                  </Button>
+                </>
               )}
             </div>
           </div>
 
-          {/* Right Content */}
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            {/* Header with Category Dropdown (mobile) and Search */}
-            <div className="flex-shrink-0 px-3 pb-3 lg:px-6">
-              <SettingsCategoryNav
-                mobile
-                categories={visibleCategories}
-                navigation={navigation}
-                activeCategory={activeCategory}
-                searching={isSearching}
-                labels={CATEGORY_LABELS}
-                onSelect={selectCategory}
-              />
+          {/* Error */}
+          {error && (
+            <div className="panel-notice flex items-center justify-between rounded-xl bg-red-50 p-3 text-14 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+              <span>{error}</span>
+              <button
+                onClick={clearError}
+                className="ml-2 opacity-60 hover:opacity-100"
+              >
+                <AlertCircle size={16} />
+              </button>
+            </div>
+          )}
 
-              {/* Search and Export/Import */}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-tertiary"
-                  />
-                  <PanelSearchInput
-                    type="text"
-                    placeholder={t("settings.navigation.searchPlaceholder")}
-                    aria-label={t("settings.navigation.searchPlaceholder")}
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                    className="panel-search h-10"
-                  />
+          {/* Settings List */}
+          <div
+            ref={contentRef}
+            className="panel-body min-h-0 flex-1 overflow-y-auto"
+          >
+            <div className="mb-6">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="mb-1 text-12 text-stone-500 dark:text-stone-400">
+                    {isSearching || !activeGroup
+                      ? t("settings.navigation.allCategories")
+                      : t(`settings.navigation.groups.${activeGroup.id}`)}
+                  </p>
+                  <h2 className="text-18 font-semibold text-stone-900 dark:text-stone-100">
+                    {isSearching
+                      ? t("settings.navigation.searchResults")
+                      : CATEGORY_LABELS[activeCategory]}
+                  </h2>
+                  {!isSearching && activeGroup && (
+                    <p className="mt-1 text-12 text-stone-500 dark:text-stone-400">
+                      {t(`settings.navigation.descriptions.${activeGroup.id}`)}
+                    </p>
+                  )}
                 </div>
-                {canManage && (
-                  <>
-                    <Button
-                      onClick={handleExport}
-                      disabled={!settings}
-                      leftIcon={<Download size={16} />}
-                      className="h-10 px-3"
-                      title={t("settings.exportSettings")}
-                      aria-label={t("settings.exportSettings")}
-                    >
-                      <span className="hidden sm:inline text-14">
-                        {t("common.export")}
-                      </span>
-                    </Button>
-                    <Button
-                      onClick={handleImportClick}
-                      disabled={!settings || isImporting}
-                      loading={isImporting}
-                      leftIcon={<Upload size={16} />}
-                      className="h-10 px-3"
-                      title={t("settings.importSettings")}
-                      aria-label={t("settings.importSettings")}
-                    >
-                      <span className="hidden sm:inline text-14">
-                        {t("common.import")}
-                      </span>
-                    </Button>
-                  </>
-                )}
+                <span
+                  role="status"
+                  className="text-12 tabular-nums text-stone-500 dark:text-stone-400"
+                >
+                  {t("settings.navigation.resultCount", {
+                    count: filteredSettings.length,
+                  })}
+                </span>
               </div>
+              {isSearching ? (
+                <Button
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setSearchQuery("")}
+                >
+                  {t("settings.navigation.clearSearch")}
+                </Button>
+              ) : (
+                subcategories.length > 1 && (
+                  <label className="mt-3 flex flex-wrap items-center gap-2 text-12 text-stone-600 dark:text-stone-400">
+                    <span>{t("settings.navigation.subcategory")}</span>
+                    <select
+                      value={activeSubcategory ?? "__all__"}
+                      onChange={(event) =>
+                        setActiveSubcategory(
+                          event.target.value === "__all__"
+                            ? null
+                            : event.target.value,
+                        )
+                      }
+                      className="h-10 min-w-0 max-w-full rounded-lg border border-[var(--glass-border)] bg-[var(--theme-bg-card)] px-3 text-14 text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)] dark:text-stone-100"
+                    >
+                      <option value="__all__">
+                        {t("settings.navigation.allSubcategories")}
+                      </option>
+                      {subcategories.map((group) => (
+                        <option
+                          key={group.subcategory}
+                          value={group.subcategory}
+                        >
+                          {group.label || t("subcategories.general")} ·{" "}
+                          {group.settings.length}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )
+              )}
+              <p className="mt-2 text-12 text-stone-500 dark:text-stone-400">
+                {canManage
+                  ? t("settings.navigation.saveHint")
+                  : t("settings.readOnlyNotice")}
+              </p>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="mx-3 mt-3 flex items-center justify-between rounded-xl bg-red-50 p-3 text-14 text-red-600 dark:bg-red-900/30 dark:text-red-400 sm:mx-4 sm:mt-4">
-                <span>{error}</span>
-                <button
-                  onClick={clearError}
-                  className="ml-2 opacity-60 hover:opacity-100"
-                >
-                  <AlertCircle size={16} />
-                </button>
-              </div>
+            {/* System Health Monitor */}
+            {!isSearching && activeGroup?.id === "infrastructure" && (
+              <SystemHealthSection />
             )}
 
-            {/* Settings List */}
-            <div
-              ref={contentRef}
-              className="min-h-0 flex-1 overflow-y-auto py-3 px-3 lg:px-6"
-            >
-              <div className="mb-4 border-b border-[var(--glass-border)] pb-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="mb-1 text-12 text-theme-text-secondary">
-                      {isSearching || !activeGroup
-                        ? t("settings.navigation.allCategories")
-                        : t(`settings.navigation.groups.${activeGroup.id}`)}
-                    </p>
-                    <h2 className="text-18 font-semibold text-theme-text">
-                      {isSearching
-                        ? t("settings.navigation.searchResults")
-                        : CATEGORY_LABELS[activeCategory]}
-                    </h2>
-                    {!isSearching && activeGroup && (
-                      <p className="mt-1 text-12 text-theme-text-secondary">
-                        {t(`settings.navigation.descriptions.${activeGroup.id}`)}
-                      </p>
-                    )}
-                  </div>
-                  <span
-                    role="status"
-                    className="text-12 tabular-nums text-theme-text-secondary"
-                  >
-                    {t("settings.navigation.resultCount", {
-                      count: filteredSettings.length,
-                    })}
-                  </span>
-                </div>
-                {isSearching ? (
-                  <Button
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    {t("settings.navigation.clearSearch")}
-                  </Button>
-                ) : (
-                  subcategories.length > 1 && (
-                    <label className="mt-3 flex flex-wrap items-center gap-2 text-12 text-theme-text-secondary">
-                      <span>{t("settings.navigation.subcategory")}</span>
-                      <select
-                        value={activeSubcategory ?? "__all__"}
-                        onChange={(event) =>
-                          setActiveSubcategory(
-                            event.target.value === "__all__"
-                              ? null
-                              : event.target.value,
-                          )
-                        }
-                        className="h-10 min-w-0 max-w-full rounded-lg border border-[var(--glass-border)] bg-[var(--theme-bg-card)] px-3 text-14 text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)] dark:text-stone-100"
-                      >
-                        <option value="__all__">
-                          {t("settings.navigation.allSubcategories")}
-                        </option>
-                        {subcategories.map((group) => (
-                          <option
-                            key={group.subcategory}
-                            value={group.subcategory}
-                          >
-                            {group.label || t("subcategories.general")} ·{" "}
-                            {group.settings.length}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )
-                )}
-                <p className="mt-2 text-12 text-theme-text-secondary">
-                  {canManage
-                    ? t("settings.navigation.saveHint")
-                    : t("settings.readOnlyNotice")}
+            {isLoading && !settings ? (
+              <PanelLoadingState text={t("settings.loading")} />
+            ) : filteredSettings.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center text-stone-400 dark:text-stone-500">
+                <Search size={40} className="mb-2 opacity-30" />
+                <p className="text-14">
+                  {isSearching
+                    ? t("settings.noMatch")
+                    : t("settings.noSettings")}
                 </p>
               </div>
-
-              {/* System Health Monitor */}
-              {!isSearching && activeGroup?.id === "infrastructure" && (
-                <SystemHealthSection />
-              )}
-
-              {isLoading && !settings ? (
-                <PanelLoadingState text={t("settings.loading")} />
-              ) : filteredSettings.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center text-theme-text-tertiary">
-                  <SceneIllustration scene="reading" className="mb-4" />
-                  <p className="text-14">
-                    {isSearching
-                      ? t("settings.noMatch")
-                      : t("settings.noSettings")}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {groupedSettings.map((group) => (
-                    <div key={group.subcategory} className="space-y-3">
-                      {group.label && (
-                        <h3 className="text-13 font-medium font-sans text-theme-text-secondary">
-                          {group.label}
-                        </h3>
-                      )}
-                      {group.settings.map((setting) => {
-                        const isSaving = savingKeys.has(setting.key);
-                        const modified = isModified(setting);
-                        const justSaved = savedKeys.has(setting.key);
-                        const isJson = setting.type === "json";
-                        const isSelect =
-                          setting.key === "DEFAULT_AGENT" ||
-                          setting.key === "DEFAULT_USER_ROLE" ||
-                          MODEL_CONFIG_SETTING_KEYS.has(setting.key) ||
-                          setting.type === "boolean" ||
-                          (setting.type === "select" && setting.options);
-                        const displayValue = getDisplayValue(setting);
-                        const legacyModelOption =
-                          MODEL_CONFIG_SETTING_KEYS.has(setting.key) &&
-                            displayValue &&
-                            !availableModels.some(
-                              (model) => model.id === displayValue,
-                            )
-                            ? [
+            ) : (
+              <div className="panel-sections">
+                {groupedSettings.map((group) => (
+                  <div key={group.subcategory} className="panel-stack">
+                    {group.label && (
+                      <h3 className="text-12 font-semibold font-serif uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                        {group.label}
+                      </h3>
+                    )}
+                    {group.settings.map((setting) => {
+                      const isSaving = savingKeys.has(setting.key);
+                      const modified = isModified(setting);
+                      const justSaved = savedKeys.has(setting.key);
+                      const isJson = setting.type === "json";
+                      const isSelect =
+                        setting.key === "DEFAULT_AGENT" ||
+                        setting.key === "DEFAULT_USER_ROLE" ||
+                        MODEL_CONFIG_SETTING_KEYS.has(setting.key) ||
+                        setting.type === "boolean" ||
+                        (setting.type === "select" && setting.options);
+                      const displayValue = getDisplayValue(setting);
+                      const legacyModelOption =
+                        MODEL_CONFIG_SETTING_KEYS.has(setting.key) &&
+                        displayValue &&
+                        !availableModels.some(
+                          (model) => model.id === displayValue,
+                        )
+                          ? [
                               {
                                 value: displayValue,
                                 label: `${t(
@@ -736,64 +758,65 @@ export function SettingsPanel() {
                                 )}: ${displayValue}`,
                               },
                             ]
-                            : [];
+                          : [];
 
-                        return (
-                          <div
-                            key={setting.key}
-                            className="glass-card rounded-xl p-4"
-                          >
-                            {/* Key and Type */}
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {isSearching && (
-                                    <button
-                                      onClick={() => {
-                                        selectCategory(setting.category);
-                                        setActiveSubcategory(
-                                          setting.subcategory || "",
-                                        );
-                                      }}
-                                      className="rounded-md bg-[var(--glass-bg-subtle)] px-2 py-1 text-12 font-medium text-[var(--theme-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)]"
-                                    >
-                                      {CATEGORY_LABELS[setting.category]}
-                                    </button>
-                                  )}
-                                  <code className="rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-12 font-medium text-stone-900 break-all dark:text-stone-100">
-                                    {setting.key}
-                                  </code>
-                                  <span
-                                    className={`tag text-11 ${TYPE_COLORS[setting.type]
-                                      }`}
+                      return (
+                        <div
+                          key={setting.key}
+                          className="glass-card rounded-xl p-4"
+                        >
+                          {/* Key and Type */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {isSearching && (
+                                  <button
+                                    onClick={() => {
+                                      selectCategory(setting.category);
+                                      setActiveSubcategory(
+                                        setting.subcategory || "",
+                                      );
+                                    }}
+                                    className="rounded-md bg-[var(--glass-bg-subtle)] px-2 py-1 text-12 font-medium text-[var(--theme-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--theme-primary)]"
                                   >
-                                    {setting.type}
-                                  </span>
-                                </div>
-                                <p className="mt-1 text-12 text-stone-500 sm:text-14 dark:text-stone-400">
-                                  {t(setting.description)}
-                                </p>
+                                    {CATEGORY_LABELS[setting.category]}
+                                  </button>
+                                )}
+                                <code className="rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-12 font-medium text-stone-900 break-all dark:text-stone-100">
+                                  {setting.key}
+                                </code>
+                                <span
+                                  className={`tag text-11 ${
+                                    TYPE_COLORS[setting.type]
+                                  }`}
+                                >
+                                  {setting.type}
+                                </span>
                               </div>
+                              <p className="mt-1 text-12 text-stone-500 sm:text-14 dark:text-stone-400">
+                                {t(setting.description)}
+                              </p>
                             </div>
+                          </div>
 
-                            {/* Edit Input */}
-                            <div className="mt-3">
-                              {isSelect && (
-                                <Select
-                                  value={displayValue}
-                                  onChange={(v) =>
-                                    handleValueChange(
-                                      setting.key,
-                                      v,
-                                      setting.type === "select"
-                                        ? "string"
-                                        : setting.type,
-                                    )
-                                  }
-                                  disabled={!canManage}
-                                  options={
-                                    setting.key === "DEFAULT_AGENT"
-                                      ? agents.map((agent) => ({
+                          {/* Edit Input */}
+                          <div className="mt-3">
+                            {isSelect && (
+                              <Select
+                                value={displayValue}
+                                onChange={(v) =>
+                                  handleValueChange(
+                                    setting.key,
+                                    v,
+                                    setting.type === "select"
+                                      ? "string"
+                                      : setting.type,
+                                  )
+                                }
+                                disabled={!canManage}
+                                options={
+                                  setting.key === "DEFAULT_AGENT"
+                                    ? agents.map((agent) => ({
                                         value: agent.id,
                                         label:
                                           resolveAgentDisplayName(
@@ -802,40 +825,40 @@ export function SettingsPanel() {
                                             t,
                                           ) || agent.id,
                                       }))
-                                      : setting.key === "DEFAULT_USER_ROLE"
-                                        ? roles.map((role) => ({
+                                    : setting.key === "DEFAULT_USER_ROLE"
+                                      ? roles.map((role) => ({
                                           value: role.name,
                                           label: role.name,
                                         }))
-                                        : MODEL_CONFIG_SETTING_KEYS.has(
-                                          setting.key,
-                                        )
-                                          ? [
+                                      : MODEL_CONFIG_SETTING_KEYS.has(
+                                            setting.key,
+                                          )
+                                        ? [
                                             {
                                               value: "",
                                               label:
                                                 setting.key ===
-                                                  "DEFAULT_MODEL_ID"
+                                                "DEFAULT_MODEL_ID"
                                                   ? t(
-                                                    "settings.firstEnabledModel",
-                                                    "First enabled model",
-                                                  )
-                                                  : setting.key ===
-                                                    "LLM_FALLBACK_MODEL"
-                                                    ? t(
-                                                      "settings.noFallbackModel",
-                                                      "No fallback",
+                                                      "settings.firstEnabledModel",
+                                                      "First enabled model",
                                                     )
-                                                    : setting.key ===
-                                                      "VIDEO_ANALYSIS_MODEL_ID"
-                                                      ? t(
-                                                        "settings.fallbackToImageAnalysisModel",
-                                                        "Fallback to image analysis model",
+                                                  : setting.key ===
+                                                      "LLM_FALLBACK_MODEL"
+                                                    ? t(
+                                                        "settings.noFallbackModel",
+                                                        "No fallback",
                                                       )
+                                                    : setting.key ===
+                                                        "VIDEO_ANALYSIS_MODEL_ID"
+                                                      ? t(
+                                                          "settings.fallbackToImageAnalysisModel",
+                                                          "Fallback to image analysis model",
+                                                        )
                                                       : t(
-                                                        "settings.defaultModel",
-                                                        "Default model",
-                                                      ),
+                                                          "settings.defaultModel",
+                                                          "Default model",
+                                                        ),
                                             },
                                             ...legacyModelOption,
                                             ...availableModels.map((model) => ({
@@ -843,8 +866,8 @@ export function SettingsPanel() {
                                               label: `${model.label} (${model.value})`,
                                             })),
                                           ]
-                                          : setting.type === "boolean"
-                                            ? [
+                                        : setting.type === "boolean"
+                                          ? [
                                               {
                                                 value: "true",
                                                 label: t(
@@ -860,15 +883,72 @@ export function SettingsPanel() {
                                                 ),
                                               },
                                             ]
-                                            : setting.options?.map((opt) => ({
+                                          : setting.options?.map((opt) => ({
                                               value: opt,
                                               label: opt,
                                             })) ?? []
+                                }
+                              />
+                            )}
+                            {setting.type === "text" && (
+                              <Textarea
+                                value={getDisplayValue(setting)}
+                                onChange={(e) =>
+                                  handleValueChange(
+                                    setting.key,
+                                    e.target.value,
+                                    setting.type,
+                                  )
+                                }
+                                disabled={!canManage}
+                                rows={8}
+                                className="bg-[var(--theme-bg-card)] px-3 py-2 text-14 text-stone-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-stone-100"
+                              />
+                            )}
+                            {isJson && setting.json_schema && (
+                              <JsonSchemaEditor
+                                value={
+                                  typeof getDisplayValue(setting) === "string"
+                                    ? JSON.parse(
+                                        getDisplayValue(setting) || "[]",
+                                      )
+                                    : getDisplayValue(setting)
+                                }
+                                schema={setting.json_schema}
+                                disabled={!canManage}
+                                onChange={(val) =>
+                                  handleValueChange(
+                                    setting.key,
+                                    JSON.stringify(val),
+                                    setting.type,
+                                  )
+                                }
+                              />
+                            )}
+                            {isJson && !setting.json_schema && (
+                              <Textarea
+                                value={getDisplayValue(setting)}
+                                onChange={(e) =>
+                                  handleValueChange(
+                                    setting.key,
+                                    e.target.value,
+                                    setting.type,
+                                  )
+                                }
+                                disabled={!canManage}
+                                rows={20}
+                                className="max-h-[45vh] overflow-y-auto bg-[var(--theme-bg-card)] px-3 py-2 font-mono text-12 text-stone-900 disabled:cursor-not-allowed disabled:opacity-60 sm:max-h-none sm:text-14 dark:text-stone-100"
+                              />
+                            )}
+                            {!isSelect &&
+                              setting.type !== "text" &&
+                              !isJson && (
+                                <Input
+                                  type={
+                                    setting.type === "number"
+                                      ? "number"
+                                      : "text"
                                   }
-                                />
-                              )}
-                              {setting.type === "text" && (
-                                <Textarea
                                   value={getDisplayValue(setting)}
                                   onChange={(e) =>
                                     handleValueChange(
@@ -878,151 +958,93 @@ export function SettingsPanel() {
                                     )
                                   }
                                   disabled={!canManage}
-                                  rows={8}
                                   className="bg-[var(--theme-bg-card)] px-3 py-2 text-14 text-stone-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-stone-100"
                                 />
                               )}
-                              {isJson && setting.json_schema && (
-                                <JsonSchemaEditor
-                                  value={
-                                    typeof getDisplayValue(setting) === "string"
-                                      ? JSON.parse(
-                                        getDisplayValue(setting) || "[]",
-                                      )
-                                      : getDisplayValue(setting)
-                                  }
-                                  schema={setting.json_schema}
-                                  disabled={!canManage}
-                                  onChange={(val) =>
-                                    handleValueChange(
-                                      setting.key,
-                                      JSON.stringify(val),
-                                      setting.type,
+                          </div>
+
+                          {/* Actions and Info */}
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                            {canManage && (
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => handleSave(setting)}
+                                  disabled={!modified || isSaving}
+                                  loading={isSaving}
+                                  leftIcon={
+                                    justSaved ? (
+                                      <Check size={14} />
+                                    ) : (
+                                      <Save size={14} />
                                     )
                                   }
-                                />
-                              )}
-                              {isJson && !setting.json_schema && (
-                                <Textarea
-                                  value={getDisplayValue(setting)}
-                                  onChange={(e) =>
-                                    handleValueChange(
-                                      setting.key,
-                                      e.target.value,
-                                      setting.type,
-                                    )
-                                  }
-                                  disabled={!canManage}
-                                  rows={20}
-                                  className="max-h-[45vh] overflow-y-auto bg-[var(--theme-bg-card)] px-3 py-2 font-mono text-12 text-stone-900 disabled:cursor-not-allowed disabled:opacity-60 sm:max-h-none sm:text-14 dark:text-stone-100"
-                                />
-                              )}
-                              {!isSelect &&
-                                setting.type !== "text" &&
-                                !isJson && (
-                                  <Input
-                                    type={
-                                      setting.type === "number"
-                                        ? "number"
-                                        : "text"
-                                    }
-                                    value={getDisplayValue(setting)}
-                                    onChange={(e) =>
-                                      handleValueChange(
-                                        setting.key,
-                                        e.target.value,
-                                        setting.type,
-                                      )
-                                    }
-                                    disabled={!canManage}
-                                    className="bg-[var(--theme-bg-card)] px-3 py-2 text-14 text-stone-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-stone-100"
-                                  />
-                                )}
-                            </div>
-
-                            {/* Actions and Info */}
-                            <div className="mt-3 flex flex-wrap-nowrap items-center justify-between gap-2">
-                              {canManage && (
-                                <div className="flex shrink-0 items-center gap-1.5">
-                                  <Button
-                                    variant="primary"
-                                    size="sm"
-                                    onClick={() => handleSave(setting)}
-                                    disabled={!modified || isSaving}
-                                    loading={isSaving}
-                                    leftIcon={
-                                      justSaved ? (
-                                        <Check size={14} />
-                                      ) : (
-                                        <Save size={14} />
-                                      )
-                                    }
-                                    className="px-3 py-1.5 text-12 sm:text-14 disabled:cursor-not-allowed"
-                                  >
-                                    {justSaved
-                                      ? t("common.saved")
-                                      : t("common.save")}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleReset(setting.key)}
-                                    disabled={isSaving}
-                                    leftIcon={<RotateCcw size={14} />}
-                                    className="px-3 py-1.5 text-12 sm:text-14"
-                                  >
-                                    {t("common.reset")}
-                                  </Button>
-                                </div>
-                              )}
-
-                              {/* Default Value and Updated Info */}
-                              <div className="hidden text-12 text-stone-400 sm:block dark:text-stone-500 max-w-full truncate">
-                                {t("common.default")}:{" "}
-                                {typeof setting.default_value === "object"
-                                  ? JSON.stringify(setting.default_value)
-                                  : String(setting.default_value)}
-                                {setting.updated_at && (
-                                  <span className="ml-2 inline-flex">
-                                    {formatDateTime(setting.updated_at)}
-                                    {setting.updated_by &&
-                                      ` · ${setting.updated_by}`}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Read-only notice */}
-                            {!canManage && (
-                              <div className="mt-2 rounded-lg bg-[var(--glass-bg-subtle)] px-3 py-1.5 text-12 text-theme-text-tertiary">
-                                {t("settings.readOnlyNotice")}
+                                  className="px-3 py-1.5 text-12 sm:text-14 disabled:cursor-not-allowed"
+                                >
+                                  {justSaved
+                                    ? t("common.saved")
+                                    : t("common.save")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleReset(setting.key)}
+                                  disabled={isSaving}
+                                  leftIcon={<RotateCcw size={14} />}
+                                  className="px-3 py-1.5 text-12 sm:text-14"
+                                >
+                                  {t("common.reset")}
+                                </Button>
                               </div>
                             )}
+
+                            {/* Default Value and Updated Info */}
+                            <div className="hidden text-12 text-stone-400 sm:block dark:text-stone-500 max-w-full truncate">
+                              {t("common.default")}:{" "}
+                              {typeof setting.default_value === "object"
+                                ? JSON.stringify(setting.default_value)
+                                : String(setting.default_value)}
+                              {setting.updated_at && (
+                                <span className="ml-2 inline-flex">
+                                  {formatDateTime(setting.updated_at)}
+                                  {setting.updated_by &&
+                                    ` · ${setting.updated_by}`}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--glass-border)] pt-3 sm:hidden">
+
+                          {/* Read-only notice */}
+                          {!canManage && (
+                            <div className="mt-2 rounded-lg bg-[var(--glass-bg-subtle)] px-3 py-1.5 text-12 text-stone-400 dark:text-stone-500">
+                              {t("settings.readOnlyNotice")}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="settings-mobile-actions mt-6 flex flex-wrap gap-2 sm:hidden">
+              <Button
+                size="sm"
+                onClick={() => setShowAbout(true)}
+                leftIcon={<Info size={14} />}
+              >
+                {t("common.about")}
+              </Button>
+              {canManage && (
                 <Button
                   size="sm"
-                  onClick={() => setShowAbout(true)}
-                  leftIcon={<Info size={14} />}
+                  onClick={handleResetAll}
+                  disabled={isLoading}
+                  leftIcon={<RotateCcw size={14} />}
                 >
-                  {t("common.about")}
+                  {t("common.resetAll")}
                 </Button>
-                {canManage && (
-                  <Button
-                    size="sm"
-                    onClick={handleResetAll}
-                    disabled={isLoading}
-                    leftIcon={<RotateCcw size={14} />}
-                  >
-                    {t("common.resetAll")}
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>

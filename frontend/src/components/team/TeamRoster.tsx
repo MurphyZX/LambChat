@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
 import type { TeamMember } from "../../types/team";
@@ -28,7 +29,7 @@ export function TeamRoster({
         <div className="team-pane-header">
           <div>
             <p className="team-pane-eyebrow">{t("team.rosterView")}</p>
-            <h2 className="team-pane-title font-sans">
+            <h2 className="team-pane-title font-serif">
               {t("team.rosterTitle")}
               <span className="team-pane-count">0</span>
             </h2>
@@ -36,7 +37,7 @@ export function TeamRoster({
         </div>
         <EmptyState
           className="flex-1"
-          illustration="welcome"
+          icon={<Users size={28} />}
           title={t("team.noRolesSelected")}
           description={t("team.noRolesDesc")}
         />
@@ -49,7 +50,7 @@ export function TeamRoster({
       <div className="team-pane-header">
         <div>
           <p className="team-pane-eyebrow">{t("team.rosterView")}</p>
-          <h2 className="team-pane-title font-sans">
+          <h2 className="team-pane-title font-serif">
             {t("team.rosterTitle")}
             <span className="team-pane-count">{members.length}</span>
           </h2>

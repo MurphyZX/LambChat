@@ -17,7 +17,10 @@ interface UseProjectManagerReturn {
   setNewProjectIcon: (icon: string) => void;
   newProjectWorkspace: Project["workspace"];
   setNewProjectWorkspace: (workspace: Project["workspace"]) => void;
-  handleUpdateWorkspace: (id: string, workspace: Project["workspace"]) => Promise<void>;
+  handleUpdateWorkspace: (
+    id: string,
+    workspace: Project["workspace"],
+  ) => Promise<void>;
   showNewProjectModal: boolean;
   setShowNewProjectModal: (show: boolean) => void;
   handleCreateProject: () => Promise<void>;
@@ -38,7 +41,8 @@ export function useProjectManager(): UseProjectManagerReturn {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectIcon, setNewProjectIcon] = useState("📁");
-  const [newProjectWorkspace, setNewProjectWorkspace] = useState<Project["workspace"]>(null);
+  const [newProjectWorkspace, setNewProjectWorkspace] =
+    useState<Project["workspace"]>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
   const loadProjects = useCallback(async () => {
@@ -125,9 +129,14 @@ export function useProjectManager(): UseProjectManagerReturn {
     }
   };
 
-  const handleUpdateWorkspace = async (id: string, workspace: Project["workspace"]) => {
+  const handleUpdateWorkspace = async (
+    id: string,
+    workspace: Project["workspace"],
+  ) => {
     const updated = await projectApi.update(id, { workspace });
-    setProjects((prev) => prev.map((project) => project.id === id ? updated : project));
+    setProjects((prev) =>
+      prev.map((project) => (project.id === id ? updated : project)),
+    );
   };
 
   return {

@@ -15,6 +15,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { MoreHorizontal, Search } from "lucide-react";
+import { SceneIllustration, type IllustrationScene } from "./SceneIllustration";
 import { PanelSearchInput } from "./PanelSearchInput";
 
 interface PanelHeaderProps {
@@ -23,8 +24,10 @@ interface PanelHeaderProps {
   count?: number;
   /** 副标题/描述 */
   subtitle?: string;
-  /** 兼容旧调用；页头使用文字与计数表达页面身份。 */
+  /** 标题图标 */
   icon?: ReactNode;
+  /** 场景插图优先于标题图标 */
+  illustration?: IllustrationScene;
   /** 右侧操作按钮区域 */
   actions?: ReactNode;
   /** 搜索值 */
@@ -60,6 +63,8 @@ export function PanelHeader({
   title,
   count,
   subtitle,
+  icon,
+  illustration,
   actions,
   searchValue,
   onSearchChange,
@@ -128,24 +133,54 @@ export function PanelHeader({
     .filter(Boolean)
     .join(" ");
 
+  const mobileMenu = isMobileMenuOpen && (
+    <div className="panel-header__mobile-menu">
+      {searchAccessory && (
+        <div className="panel-header__mobile-menu-section panel-header__mobile-menu-accessory">
+          {searchAccessory}
+        </div>
+      )}
+      {mobileActionNodes.map((action, index) => (
+        <div
+          key={index}
+          className="panel-header__mobile-menu-item"
+          onClick={(e) => {
+            if ((e.target as Element).closest(".ui-select, [data-filter-menu]"))
+              return;
+            setIsMobileMenuOpen(false);
+          }}
+        >
+          {action}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className={rootClassName}>
       {!searchOnly && (
         <div className="panel-header__top flex flex-wrap items-center justify-between gap-3 lg:gap-4">
           <div className="panel-header__identity flex min-w-0 items-center gap-3 lg:gap-4">
+            {illustration ? (
+              <div className="panel-header__icon panel-header__illustration">
+                <SceneIllustration scene={illustration} />
+              </div>
+            ) : (
+              icon && <div className="panel-header__icon">{icon}</div>
+            )}
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
-                <h1 className="panel-header__title truncate text-16 font-semibold text-theme-text font-sans">
+                <h1 className="panel-header__title truncate text-16 font-semibold text-theme-text lg:text-18 font-serif">
                   {title}
                 </h1>
                 {count !== undefined && (
-                  <span className="panel-header__count rounded-full bg-theme-bg-subtle px-2 py-0.5 text-11 tabular-nums text-theme-text-tertiary">
+                  <span className="panel-header__count text-11 font-sans font-normal text-theme-text-tertiary">
                     {count}
                   </span>
                 )}
               </div>
               {subtitle && (
-                <p className="panel-header__subtitle mt-0.5 truncate text-13 leading-snug text-theme-text-secondary">
+                <p className="panel-header__subtitle mt-0.5 truncate text-14 leading-snug text-theme-text-secondary lg:text-[0.85rem]">
                   {subtitle}
                 </p>
               )}
@@ -168,27 +203,7 @@ export function PanelHeader({
               >
                 <MoreHorizontal size={22} />
               </button>
-              {isMobileMenuOpen && (
-                <div className="panel-header__mobile-menu">
-                  {searchAccessory && (
-                    <div className="panel-header__mobile-menu-section panel-header__mobile-menu-accessory">
-                      {searchAccessory}
-                    </div>
-                  )}
-                  {mobileActionNodes.map((action, index) => (
-                    <div
-                      key={index}
-                      className="panel-header__mobile-menu-item"
-                      onClick={(e) => {
-                        if ((e.target as Element).closest(".ui-select")) return;
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      {action}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {mobileMenu}
             </div>
           )}
         </div>
@@ -196,7 +211,7 @@ export function PanelHeader({
 
       {/* 搜索框 */}
       {onSearchChange !== undefined && (
-        <div className="panel-header__search-row mt-3 flex items-center gap-2">
+        <div className="panel-header__search-row mt-2 flex items-center gap-2 sm:mt-3 lg:mt-4">
           <div className="panel-header__search-box relative min-w-0 flex-1">
             <Search
               size={18}
@@ -224,32 +239,7 @@ export function PanelHeader({
                 >
                   <MoreHorizontal size={22} />
                 </button>
-                {isMobileMenuOpen && (
-                  <div className="panel-header__mobile-menu">
-                    {searchAccessory && (
-                      <div className="panel-header__mobile-menu-section panel-header__mobile-menu-accessory">
-                        {searchAccessory}
-                      </div>
-                    )}
-                    {mobileActionNodes.map((action, index) => (
-                      <div
-                        key={index}
-                        className="panel-header__mobile-menu-item"
-                        onClick={(e) => {
-                          if (
-                            (e.target as Element).closest(
-                              ".ui-select, [data-filter-menu]",
-                            )
-                          )
-                            return;
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        {action}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {mobileMenu}
               </div>
             )}
           </div>

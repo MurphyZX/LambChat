@@ -6,7 +6,12 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  SKIP_SCROLL_INTO_VIEW_TAG,
+} from "lexical";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { SkillResponse } from "../../../types";
 import type { ChatInputSlashCommand } from "../chatInputSlashCommands";
@@ -104,6 +109,9 @@ function EditablePlugin({
     if (!focusRequest || disabled) return;
     const frame = requestAnimationFrame(() => {
       editor.getRootElement()?.focus({ preventScroll: true });
+      editor.update(() => $getRoot().selectEnd(), {
+        tag: SKIP_SCROLL_INTO_VIEW_TAG,
+      });
     });
     return () => cancelAnimationFrame(frame);
   }, [editor, disabled, focusRequest]);

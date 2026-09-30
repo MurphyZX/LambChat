@@ -1,6 +1,6 @@
-import { SceneIllustration } from "../common/SceneIllustration";
+import { PanelHeader } from "../common/PanelHeader";
 import { useEffect } from "react";
-import { Package, ShoppingBag } from "lucide-react";
+import { Package, PackageX, ShoppingBag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSettingsContext } from "../../contexts/SettingsContext";
@@ -58,7 +58,10 @@ export function SkillsHubPanel() {
   if (!enableSkills) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-stone-500 dark:text-stone-400">
-        <SceneIllustration scene="reading" className="mb-4" />
+        <PackageX
+          size={48}
+          className="mb-3 text-stone-300 dark:text-stone-600"
+        />
         <p className="text-center">{t("skills.featureDisabled")}</p>
       </div>
     );
@@ -74,9 +77,21 @@ export function SkillsHubPanel() {
 
   return (
     <div className="skill-theme-shell flex h-full min-h-0 flex-col">
+      <PanelHeader
+        title={t(
+          visibleTab === "skills" ? "skills.title" : "marketplace.title",
+        )}
+        subtitle={t(
+          visibleTab === "skills" ? "skills.subtitle" : "marketplace.subtitle",
+        )}
+        illustration={
+          visibleTab === "skills" ? "panel-skills" : "panel-marketplace"
+        }
+        className="panel-header--desktop-identity"
+      />
       {showTabSwitcher && (
         <div
-          className="skills-hub-tabs font-sans"
+          className="skills-hub-tabs font-serif"
           role="tablist"
           aria-label={t("skillsHub.title")}
         >

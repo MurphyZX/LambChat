@@ -8,7 +8,6 @@ import {
   ArrowUpFromLine,
   Clock,
   Bot,
-  Activity,
   RefreshCw,
   DatabaseZap,
   CalendarClock,
@@ -253,11 +252,11 @@ export function UsagePanel() {
   if (isInitialLoading) return <UsagePanelSkeleton />;
 
   return (
-    <div className="glass-shell usage-panel font-sans flex h-full min-h-0 flex-col overflow-y-auto">
+    <div className="glass-shell usage-panel font-serif flex h-full min-h-0 flex-col overflow-y-auto">
       <PanelHeader
         title={t("usage.title")}
-        count={total}
-        icon={<Activity size={22} className="text-theme-text-secondary" />}
+        subtitle={t("usage.subtitle")}
+        illustration="panel-usage"
         searchValue={isAdmin ? searchQuery : undefined}
         onSearchChange={isAdmin ? handleSearchQueryChange : undefined}
         searchPlaceholder={t("usage.searchPlaceholder")}
@@ -275,7 +274,7 @@ export function UsagePanel() {
 
       {/* KPI Cards */}
       {stats && (
-        <div className="mx-auto w-full pb-4">
+        <div className="mx-auto w-full px-4 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-5 lg:px-8">
           <div className="usage-surface grid grid-cols-2 overflow-hidden rounded-xl md:grid-cols-4 xl:grid-cols-7">
             <StatMetric
               icon={Zap}
@@ -284,8 +283,8 @@ export function UsagePanel() {
               hint={
                 dashboardSummary
                   ? t("usage.successRate", {
-                    rate: pct(dashboardSummary.success_rate),
-                  })
+                      rate: pct(dashboardSummary.success_rate),
+                    })
                   : undefined
               }
             />
@@ -338,8 +337,8 @@ export function UsagePanel() {
               hint={
                 (stats.unpriced_requests ?? 0) > 0
                   ? t("usage.unpricedHint", {
-                    count: fmt(stats.unpriced_requests ?? 0),
-                  })
+                      count: fmt(stats.unpriced_requests ?? 0),
+                    })
                   : undefined
               }
             />
@@ -348,7 +347,7 @@ export function UsagePanel() {
       )}
 
       {/* Dashboard sections */}
-      <div className="mx-auto w-full flex-1 pb-4">
+      <div className="mx-auto w-full flex-1 px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 lg:px-8">
         {/* Section header */}
         {dashboard && (
           <div className="mb-5 flex items-center gap-3 sm:mb-6 sm:gap-3.5">
@@ -375,9 +374,9 @@ export function UsagePanel() {
 
         {/* Chart + Rankings */}
         {dashboard && (
-          <div className="mb-5 grid gap-4 sm:mb-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(24rem,0.95fr)]">
+          <div className="mb-5 grid gap-5 sm:mb-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(24rem,0.95fr)]">
             <MiniTrend points={dashboard.daily} />
-            <div className="grid gap-4 xl:grid-cols-1">
+            <div className="grid gap-5 xl:grid-cols-1">
               <RankingList
                 title={personaRankingTitle}
                 icon={BadgeCheck}
@@ -400,7 +399,7 @@ export function UsagePanel() {
 
         {/* Bottom grid */}
         {dashboard && (
-          <div className="mb-5 grid grid-cols-1 gap-4 sm:mb-6 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4">
+          <div className="mb-5 grid grid-cols-1 gap-5 sm:mb-6 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4">
             <RankingList
               title={agentRankingTitle}
               icon={Bot}
@@ -456,30 +455,27 @@ export function UsagePanel() {
         )}
 
         {/* Logs */}
-        <div className="panel-content-card panel-content-card--logs">
-          <UsageLogsTable
-            logs={logs}
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            isAdmin={isAdmin}
-            hasAnyCache={hasAnyCache}
-            modelLabels={modelLabels}
-          />
-          {/* Pagination */}
-          <div className="panel-pagination empty:hidden">
-            <Pagination
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              itemLabel={t("usage.logItems")}
-              onChange={(p) => setSkip((p - 1) * pageSize)}
-            />
-          </div>
-        </div>
+        <UsageLogsTable
+          logs={logs}
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          isAdmin={isAdmin}
+          hasAnyCache={hasAnyCache}
+          modelLabels={modelLabels}
+        />
       </div>
 
-
+      {/* Pagination */}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          itemLabel={t("usage.logItems")}
+          onChange={(p) => setSkip((p - 1) * pageSize)}
+        />
+      </div>
     </div>
   );
 }

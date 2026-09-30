@@ -1,4 +1,3 @@
-import { SceneIllustration } from "../../common/SceneIllustration";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -76,16 +75,11 @@ export function TaskSessionList({
       <PanelHeader
         title={taskName}
         subtitle={t("scheduledTask.sessionsSubtitle")}
-        icon={
-          <MessageSquare
-            size={20}
-            className="text-stone-600 dark:text-stone-400"
-          />
-        }
+        illustration="panel-schedule"
         actions={
           <button
             onClick={() => navigate("/scheduled-tasks", { replace: true })}
-            className="scheduled-task-button scheduled-task-button--secondary font-sans"
+            className="scheduled-task-button scheduled-task-button--secondary font-serif"
           >
             <ArrowLeft size={16} />
             {t("scheduledTask.backToTasks")}
@@ -94,11 +88,13 @@ export function TaskSessionList({
       />
 
       {/* Session List */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
+      <div className="panel-body flex-1 overflow-y-auto">
         {sessions.length === 0 ? (
           <div className="scheduled-task-empty-state">
-            <SceneIllustration scene="message" className="mx-auto mb-4" />
-            <p className="scheduled-task-empty-state__title font-sans">
+            <div className="scheduled-task-empty-state__icon">
+              <MessageSquare size={32} />
+            </div>
+            <p className="scheduled-task-empty-state__title font-serif">
               {t("scheduledTask.noSessions")}
             </p>
             <p className="scheduled-task-empty-state__body">
@@ -132,7 +128,7 @@ export function TaskSessionList({
 
                   {/* Body */}
                   <div className="scheduled-task-session-card__body">
-                    <p className="scheduled-task-session-card__title font-sans">
+                    <p className="scheduled-task-session-card__title font-serif">
                       {session.name || t("scheduledTask.untitledSession")}
                     </p>
                     <div className="scheduled-task-session-card__meta">

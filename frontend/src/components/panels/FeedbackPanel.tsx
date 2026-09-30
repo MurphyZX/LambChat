@@ -1,4 +1,3 @@
-import { StatusBadge } from "../common/StatusBadge";
 /**
  * 反馈管理面板 — 电商平台评价风格
  *
@@ -9,7 +8,6 @@ import { StatusBadge } from "../common/StatusBadge";
  * - 图片：3 列网格，hover 放大
  */
 
-import { SceneIllustration } from "../common/SceneIllustration";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -17,7 +15,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Trash2,
-  Star,
   Copy,
   Check,
   ChevronRight,
@@ -45,7 +42,7 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
   const upPct = stats.up_percentage;
 
   return (
-    <div className="mx-4 sm:mx-6 mt-4 mb-3 p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-stone-50 dark:from-stone-800 dark:via-stone-800/80 dark:to-stone-900 border border-stone-200/60 dark:border-stone-700/50">
+    <div className="panel-summary mb-4 p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-stone-50 dark:from-stone-800 dark:via-stone-800/80 dark:to-stone-900 border border-stone-200/60 dark:border-stone-700/50">
       <div className="flex items-center gap-5">
         {/* Left: big percentage */}
         <div className="flex flex-col items-center flex-shrink-0">
@@ -69,18 +66,18 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
                 strokeWidth="2.5"
                 strokeDasharray={`${upPct * 0.9738} 100`}
                 strokeLinecap="round"
-                className="text-theme-success"
+                className="text-emerald-500 dark:text-emerald-400"
                 style={{ transition: "stroke-dasharray 0.8s ease-out" }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-20 font-bold font-sans tabular-nums text-theme-text leading-none">
+              <span className="text-20 font-bold font-serif tabular-nums text-stone-900 dark:text-stone-100 leading-none">
                 {upPct.toFixed(0)}
                 <span className="text-12 font-semibold">%</span>
               </span>
             </div>
           </div>
-          <span className="mt-1.5 text-10 text-theme-text-tertiary font-medium">
+          <span className="mt-1.5 text-10 text-stone-400 dark:text-stone-500 font-medium">
             {t("feedback.positiveRate")}
           </span>
         </div>
@@ -88,7 +85,7 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
         {/* Right: distribution bars */}
         <div className="flex-1 space-y-2.5 min-w-0">
           <div className="flex items-center gap-2.5">
-            <span className="w-7 text-11 text-theme-text-secondary flex-shrink-0">
+            <span className="w-7 text-11 text-stone-500 dark:text-stone-400 flex-shrink-0">
               {t("feedback.positive")}
             </span>
             <div className="flex-1 h-2 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden">
@@ -105,7 +102,7 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
             </span>
           </div>
           <div className="flex items-center gap-2.5">
-            <span className="w-7 text-11 text-theme-text-secondary flex-shrink-0">
+            <span className="w-7 text-11 text-stone-500 dark:text-stone-400 flex-shrink-0">
               {t("feedback.negative")}
             </span>
             <div className="flex-1 h-2 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden">
@@ -121,10 +118,10 @@ function RatingSummary({ stats }: { stats: FeedbackStats }) {
               {stats.down_count}
             </span>
           </div>
-          <div className="pt-1 border-t border-stone-100 dark:border-stone-700/60">
-            <span className="text-11 text-theme-text-tertiary">
+          <div className="pt-1">
+            <span className="text-11 text-stone-400 dark:text-stone-500">
               {t("feedback.totalCount")}&nbsp;
-              <span className="font-semibold text-theme-text-secondary">
+              <span className="font-semibold text-stone-600 dark:text-stone-300">
                 {stats.total_count}
               </span>
             </span>
@@ -157,24 +154,26 @@ function FilterTabs({
   ];
 
   return (
-    <div className="flex items-center gap-1 px-4 sm:px-6 pb-3">
+    <div className="panel-inset flex items-center gap-1 px-4 sm:px-6 pb-3">
       {tabs.map((tab) => {
         const isActive = active === tab.key;
         return (
           <button
             key={tab.key}
             onClick={() => onChange(tab.key)}
-            className={`relative flex items-center gap-1.5 px-3.5 py-[7px] rounded-lg text-13 font-medium whitespace-nowrap transition-all duration-200 ${isActive
+            className={`relative flex items-center gap-1.5 px-3.5 py-[7px] rounded-lg text-13 font-medium whitespace-nowrap transition-all duration-200 ${
+              isActive
                 ? "bg-stone-900 text-white dark:bg-white dark:text-stone-900 shadow-sm"
-                : "text-theme-text-secondary hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/5"
-              }`}
+                : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/5"
+            }`}
           >
             {tab.label}
             <span
-              className={`min-w-[20px] text-center px-1 py-0.5 rounded-full text-10 font-semibold tabular-nums ${isActive
+              className={`min-w-[20px] text-center px-1 py-0.5 rounded-full text-10 font-semibold tabular-nums ${
+                isActive
                   ? "bg-white/20 dark:bg-stone-900/20 text-inherit"
-                  : "bg-stone-100 dark:bg-stone-700 text-theme-text-tertiary"
-                }`}
+                  : "bg-stone-100 dark:bg-stone-700 text-stone-400 dark:text-stone-500"
+              }`}
             >
               {tab.count}
             </span>
@@ -232,7 +231,7 @@ function ReviewImageGrid({
             flex items-center justify-center flex-shrink-0
             hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
         >
-          <span className="text-12 font-semibold text-theme-text-secondary">
+          <span className="text-12 font-semibold text-stone-500 dark:text-stone-400">
             +{remaining}
           </span>
         </button>
@@ -262,27 +261,35 @@ function FeedbackCard({
 
   return (
     <div
-      className="panel-list-row group"
+      className="panel-inset px-4 sm:px-6 py-4 border-b border-stone-100/80 dark:border-stone-800/60 last:border-b-0
+      hover:bg-stone-50/60 dark:hover:bg-white/[0.02] transition-colors duration-150"
     >
       {/* Header row */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full
-            bg-theme-bg-subtle text-theme-text-secondary text-11 font-bold"
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full
+            bg-gradient-to-br from-stone-200 to-stone-300 dark:from-stone-600 dark:to-stone-700
+            text-stone-500 dark:text-stone-300 text-11 font-bold"
           >
             {feedback.username.charAt(0).toUpperCase()}
           </div>
-          <span className="text-13 font-medium text-theme-text truncate">
+          <span className="text-13 font-medium text-stone-800 dark:text-stone-200 truncate">
             {feedback.username}
           </span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <StatusBadge
-            color={isUp ? "green" : "stone"}
-            label={isUp ? t("feedback.positive") : t("feedback.negative")}
-          />
-          <span className="text-11 text-theme-text-tertiary tabular-nums">
+          <span
+            className={`inline-flex items-center gap-1 text-11 font-medium select-none ${
+              isUp
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-stone-400 dark:text-stone-500"
+            }`}
+          >
+            {isUp ? <ThumbsUp size={12} /> : <ThumbsDown size={12} />}
+            {isUp ? t("feedback.positive") : t("feedback.negative")}
+          </span>
+          <span className="text-11 text-stone-300 dark:text-stone-600 tabular-nums">
             {formatDateTimeShort(feedback.created_at)}
           </span>
         </div>
@@ -300,16 +307,16 @@ function FeedbackCard({
 
       {/* Content: comment */}
       {feedback.comment && (
-        <p className="text-13 text-theme-text-secondary leading-relaxed whitespace-pre-wrap line-clamp-3">
+        <p className="text-13 text-stone-600 dark:text-stone-300 leading-relaxed whitespace-pre-wrap line-clamp-3">
           {feedback.comment}
         </p>
       )}
 
       {/* Action bar — always visible */}
-      <div className="panel-row-actions flex items-center justify-between mt-2.5">
+      <div className="flex items-center justify-between mt-2.5 pt-0">
         <button
           onClick={onViewDetail}
-          className="flex items-center gap-0.5 text-11 text-theme-text-tertiary
+          className="flex items-center gap-0.5 text-11 text-stone-400 dark:text-stone-500
             hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
         >
           <span>{t("feedback.viewDetail", "查看详情")}</span>
@@ -322,8 +329,8 @@ function FeedbackCard({
               e.stopPropagation();
               onDelete();
             }}
-            className="flex items-center gap-1 text-11 text-theme-text-tertiary
-              hover:text-theme-error transition-colors"
+            className="flex items-center gap-1 text-11 text-stone-300 dark:text-stone-600
+              hover:text-red-500 dark:hover:text-red-400 transition-colors"
             title={t("feedback.delete")}
           >
             <Trash2 size={12} />
@@ -377,17 +384,17 @@ function FeedbackDetailModal({
                 {feedback.username.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="text-14 font-medium text-theme-text">
+                <p className="text-14 font-medium text-stone-900 dark:text-stone-100">
                   {feedback.username}
                 </p>
-                <p className="text-11 text-theme-text-tertiary">
+                <p className="text-11 text-stone-400 dark:text-stone-500">
                   {formatDateTime(feedback.created_at)}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
             >
               <svg
                 className="h-4 w-4"
@@ -409,10 +416,11 @@ function FeedbackDetailModal({
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {/* Rating */}
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-12 font-medium ${isUp
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-12 font-medium ${
+                isUp
                   ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
                   : "bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-400"
-                }`}
+              }`}
             >
               {isUp ? <ThumbsUp size={13} /> : <ThumbsDown size={13} />}
               {isUp ? t("feedback.positive") : t("feedback.negative")}
@@ -441,7 +449,7 @@ function FeedbackDetailModal({
 
             {/* Comment */}
             {feedback.comment && (
-              <p className="text-14 text-theme-text-secondary leading-[1.7] whitespace-pre-wrap">
+              <p className="text-14 text-stone-700 dark:text-stone-300 leading-[1.7] whitespace-pre-wrap">
                 {feedback.comment}
               </p>
             )}
@@ -449,10 +457,10 @@ function FeedbackDetailModal({
             {/* Session & Run IDs */}
             <div className="pt-3 mt-1 border-t border-stone-100 dark:border-stone-700/50 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-10 uppercase tracking-wider text-theme-text-tertiary flex-shrink-0 w-[58px]">
+                <span className="text-10 uppercase tracking-wider text-stone-400 dark:text-stone-500 flex-shrink-0 w-[58px]">
                   Session
                 </span>
-                <code className="flex-1 text-11 text-theme-text-tertiary font-mono truncate bg-stone-50 dark:bg-stone-900/50 rounded px-2 py-1">
+                <code className="flex-1 text-11 text-stone-400 dark:text-stone-500 font-mono truncate bg-stone-50 dark:bg-stone-900/50 rounded px-2 py-1">
                   {feedback.session_id}
                 </code>
                 <button
@@ -467,10 +475,10 @@ function FeedbackDetailModal({
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-10 uppercase tracking-wider text-theme-text-tertiary flex-shrink-0 w-[58px]">
+                <span className="text-10 uppercase tracking-wider text-stone-400 dark:text-stone-500 flex-shrink-0 w-[58px]">
                   Run
                 </span>
-                <code className="flex-1 text-11 text-theme-text-tertiary font-mono truncate bg-stone-50 dark:bg-stone-900/50 rounded px-2 py-1">
+                <code className="flex-1 text-11 text-stone-400 dark:text-stone-500 font-mono truncate bg-stone-50 dark:bg-stone-900/50 rounded px-2 py-1">
                   {feedback.run_id}
                 </code>
                 <button
@@ -590,8 +598,8 @@ export function FeedbackPanel() {
       {/* Header */}
       <PanelHeader
         title={t("feedback.title")}
-        count={total}
-        icon={<Star size={20} className="text-theme-text-secondary" />}
+        subtitle={t("feedback.subtitle")}
+        illustration="panel-feedback"
       />
 
       {/* Rating summary */}
@@ -607,43 +615,46 @@ export function FeedbackPanel() {
       )}
 
       {/* Feedback list */}
-      <div className="panel-content-card panel-content-card--list">
-        <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
-          {isLoading && feedbackList.length === 0 ? (
-            <FeedbackPanelSkeleton />
-          ) : !isLoading && feedbackList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <SceneIllustration scene="message" className="mx-auto mb-4" />
-              <p className="text-14 font-medium text-theme-text-secondary">
-                {t("feedback.noFeedback")}
-              </p>
-              <p className="mt-1 text-12 text-theme-text-tertiary">
-                {t("feedback.noFeedbackHint")}
-              </p>
-            </div>
-          ) : (
-            feedbackList.map((feedback) => (
-              <FeedbackCard
-                key={feedback.id}
-                feedback={feedback}
-                canDelete={canDelete}
-                onViewDetail={() => setSelectedFeedback(feedback)}
-                onDelete={() => setDeleteTarget(feedback)}
-                onImageClick={(idx) => handleCardImageClick(feedback, idx)}
+      <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
+        {isLoading && feedbackList.length === 0 ? (
+          <FeedbackPanelSkeleton />
+        ) : !isLoading && feedbackList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800">
+              <ThumbsUp
+                size={24}
+                className="text-stone-300 dark:text-stone-600"
               />
-            ))
-          )}
-        </div>
+            </div>
+            <p className="text-14 font-medium text-stone-500 dark:text-stone-400">
+              {t("feedback.noFeedback")}
+            </p>
+            <p className="mt-1 text-12 text-stone-400 dark:text-stone-600">
+              {t("feedback.noFeedbackHint")}
+            </p>
+          </div>
+        ) : (
+          feedbackList.map((feedback) => (
+            <FeedbackCard
+              key={feedback.id}
+              feedback={feedback}
+              canDelete={canDelete}
+              onViewDetail={() => setSelectedFeedback(feedback)}
+              onDelete={() => setDeleteTarget(feedback)}
+              onImageClick={(idx) => handleCardImageClick(feedback, idx)}
+            />
+          ))
+        )}
+      </div>
 
-        {/* Pagination */}
-        <div className="panel-pagination empty:hidden">
-          <Pagination
-            page={Math.floor(skip / limit) + 1}
-            pageSize={limit}
-            total={total}
-            onChange={(page) => setSkip((page - 1) * limit)}
-          />
-        </div>
+      {/* Pagination */}
+      <div className="panel-pagination empty:hidden">
+        <Pagination
+          page={Math.floor(skip / limit) + 1}
+          pageSize={limit}
+          total={total}
+          onChange={(page) => setSkip((page - 1) * limit)}
+        />
       </div>
 
       {/* Modals */}

@@ -1,4 +1,3 @@
-import { PanelHeader } from "../common/PanelHeader";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -6,9 +5,9 @@ import { useRevealedFilesGrouped } from "../../hooks/useRevealedFiles";
 import { getFullUrl } from "../../services/api";
 import type { RevealedFileItem } from "../../services/api";
 import { projectApi } from "../../services/api/project";
-import DocumentPreview from "../documents/DocumentPreview";
+import { LazyDocumentPreview as DocumentPreview } from "../documents/LazyDocumentPreview";
+import { activateRightPanelByKey } from "../common/rightPanelCoordinator";
 import { ImageViewer, VideoViewer } from "../common";
-import { DelayedUnmount } from "../common/DelayedUnmount";
 import {
   getFileExtension,
   isExcalidrawFile,
@@ -45,7 +44,7 @@ export function RevealedFilesPanel() {
   const [projects, setProjects] = useState<
     Array<{ id: string; name: string; type: string }>
   >([]);
-  const [previewFile, setPreviewFile] = useState<RevealedFileItem | null>(null);
+  const [previewFiles, setPreviewFiles] = useState<RevealedFileItem[]>([]);
   const [imageViewerFile, setImageViewerFile] =
     useState<RevealedFileItem | null>(null);
   const [videoViewerSrc, setVideoViewerSrc] = useState<string | null>(null);
@@ -60,7 +59,7 @@ export function RevealedFilesPanel() {
       .then((data) => {
         if (!cancelled) setProjects(data);
       })
-      .catch(() => { });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -100,7 +99,7 @@ export function RevealedFilesPanel() {
   );
   const activeImageFile = imagePreviewNavigation.current ?? imageViewerFile;
   const imageViewerSrc = activeImageFile?.url
-    ? (getFullUrl(activeImageFile.url) ?? activeImageFile.url)
+    ? getFullUrl(activeImageFile.url) ?? activeImageFile.url
     : null;
   const imageViewerPosition =
     imagePreviewNavigation.index >= 0 && imagePreviewNavigation.total > 1
@@ -129,7 +128,12 @@ export function RevealedFilesPanel() {
         setExcalidrawViewerFile(file);
         return;
       }
-      setPreviewFile(file);
+      setPreviewFiles((current) =>
+        current.some((item) => item.id === file.id)
+          ? current
+          : [...current, file],
+      );
+      activateRightPanelByKey(`library-preview:${file.id}`);
     },
     [buildFileNavigationState, navigate],
   );
@@ -140,7 +144,6 @@ export function RevealedFilesPanel() {
       }),
     [buildFileNavigationState, navigate],
   );
-  const handlePreviewClose = useCallback(() => setPreviewFile(null), []);
   const handleImageViewerClose = useCallback(
     () => setImageViewerFile(null),
     [],
@@ -164,7 +167,6 @@ export function RevealedFilesPanel() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col @container">
-        <PanelHeader title={t("fileLibrary.title")} count={totalSessions} />
         {/* Toolbar */}
         <Toolbar
           search={search}
@@ -186,86 +188,86 @@ export function RevealedFilesPanel() {
           onProjectChange={setSelectedProject}
         />
 
-        <div className="panel-content-card">
-          {/* Content area */}
-          <div className="flex-1 overflow-y-auto min-h-0 relative z-[1] flex flex-col">
-            {error && (
-              <div
-                role="alert"
-                className="p-4 text-center text-theme-text-secondary"
+        {/* Content area */}
+        <div className="panel-body flex-1 overflow-y-auto min-h-0 relative z-[1] flex flex-col">
+          {error && (
+            <div
+              role="alert"
+              className="p-4 text-center text-theme-text-secondary"
+            >
+              <p>{error}</p>
+              <button
+                type="button"
+                className="btn-secondary mt-3"
+                onClick={refresh}
               >
-                <p>{error}</p>
-                <button
-                  type="button"
-                  className="btn-secondary mt-3"
-                  onClick={refresh}
-                >
-                  {t("common.refresh")}
-                </button>
-              </div>
-            )}
-            {!error && (
-              <EmptyState
-                isLoading={isLoading}
-                hasFiles={sessionGroups.length > 0}
-                hasActiveFilters={
-                  !!(
-                    search ||
-                    selectedProject ||
-                    favoritesOnly ||
-                    activeFilter !== "all"
-                  )
-                }
-              />
-            )}
-
-            {sessionGroups.length > 0 && (
-              <div className="flex flex-col pb-6 px-4 @md:px-6 gap-3">
-                <div className="w-full flex flex-col gap-4">
-                  {sessionGroups.map((group) => (
-                    <SessionGroup
-                      key={group.session_id}
-                      sessionName={
-                        group.session_name || t("fileLibrary.untitledSession")
-                      }
-                      sessionId={group.session_id}
-                      files={group.files}
-                      onPreview={handlePreview}
-                      onGoToSession={handleGoToSession}
-                      onToggleFavorite={(f) => toggleFavorite(f.id)}
-                      viewMode={viewMode}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="panel-pagination empty:hidden">
-            <Pagination
-              page={page}
-              pageSize={pageSize}
-              total={totalSessions}
-              onChange={setPage}
+                {t("common.refresh")}
+              </button>
+            </div>
+          )}
+          {!error && (
+            <EmptyState
+              isLoading={isLoading}
+              hasFiles={sessionGroups.length > 0}
+              hasActiveFilters={
+                !!(
+                  search ||
+                  selectedProject ||
+                  favoritesOnly ||
+                  activeFilter !== "all"
+                )
+              }
             />
-          </div>
-        </div>
+          )}
 
-      </div>
-      {/* Document preview modal */}
-      <DelayedUnmount show={!!previewFile}>
-        {previewFile && (
-          <DocumentPreview
-            path={previewFile.file_name}
-            signedUrl={
-              previewFile.url ? getFullUrl(previewFile.url) : undefined
-            }
-            fileSize={previewFile.file_size}
-            mimeType={previewFile.mime_type ?? undefined}
-            onClose={handlePreviewClose}
-            mobileFillViewport
+          {sessionGroups.length > 0 && (
+            <div className="panel-stack">
+              <div className="panel-sections w-full">
+                {sessionGroups.map((group) => (
+                  <SessionGroup
+                    key={group.session_id}
+                    sessionName={
+                      group.session_name || t("fileLibrary.untitledSession")
+                    }
+                    sessionId={group.session_id}
+                    files={group.files}
+                    onPreview={handlePreview}
+                    onGoToSession={handleGoToSession}
+                    onToggleFavorite={(f) => toggleFavorite(f.id)}
+                    viewMode={viewMode}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="panel-pagination empty:hidden">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={totalSessions}
+            onChange={setPage}
           />
-        )}
-      </DelayedUnmount>
+        </div>
+      </div>
+
+      {/* Document preview modal */}
+      {previewFiles.map((previewFile) => (
+        <DocumentPreview
+          key={previewFile.id}
+          registryKey={`library-preview:${previewFile.id}`}
+          path={previewFile.file_name}
+          signedUrl={previewFile.url ? getFullUrl(previewFile.url) : undefined}
+          fileSize={previewFile.file_size}
+          mimeType={previewFile.mime_type ?? undefined}
+          onClose={() =>
+            setPreviewFiles((current) =>
+              current.filter((file) => file.id !== previewFile.id),
+            )
+          }
+          mobileFillViewport
+        />
+      ))}
 
       {/* Image fullscreen viewer */}
       {imageViewerSrc && (
@@ -288,7 +290,6 @@ export function RevealedFilesPanel() {
           src={videoViewerSrc}
           isOpen={!!videoViewerSrc}
           onClose={handleVideoViewerClose}
-          title={previewFile?.file_name || undefined}
         />
       )}
 

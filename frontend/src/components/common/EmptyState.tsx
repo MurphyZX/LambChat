@@ -34,7 +34,9 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={`skill-empty-state ${className ?? ""}`}>
-      {illustration ? <SceneIllustration scene={illustration} /> : (
+      {illustration ? (
+        <SceneIllustration scene={illustration} />
+      ) : (
         <div className="flex size-10 items-center justify-center rounded-full bg-theme-bg-subtle text-theme-text-tertiary">
           {icon ?? <MessageSquare size={20} />}
         </div>
