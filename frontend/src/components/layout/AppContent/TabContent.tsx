@@ -1,7 +1,13 @@
 import { Suspense, lazy, useEffect, useRef, type ReactNode } from "react";
 import {
-  SkillsPanelSkeleton,
-  MarketplacePanelSkeleton,
+  SkillsHubSkeleton,
+  SettingsPanelSkeleton,
+  FilesContentSkeleton,
+  BookmarksPanelSkeleton,
+  PersonaPlazaSkeleton,
+  TeamPanelSkeleton,
+  NotificationsPanelSkeleton,
+  MemoryPanelSkeleton,
   UsersPanelSkeleton,
   RolesPanelSkeleton,
   MCPPanelSkeleton,
@@ -112,8 +118,8 @@ const panelMap: Record<
 };
 
 const skeletonMap: Partial<Record<TabType, ReactNode>> = {
-  skills: <SkillsPanelSkeleton />,
-  marketplace: <MarketplacePanelSkeleton />,
+  skills: <SkillsHubSkeleton />,
+  marketplace: <SkillsHubSkeleton marketplace />,
   users: <UsersPanelSkeleton />,
   roles: <RolesPanelSkeleton />,
   mcp: <MCPPanelSkeleton />,
@@ -122,6 +128,13 @@ const skeletonMap: Partial<Record<TabType, ReactNode>> = {
   channels: <ChannelsGridSkeleton />,
   agents: <AgentModelPanelSkeleton />,
   usage: <UsagePanelSkeleton />,
+  settings: <SettingsPanelSkeleton />,
+  files: <FilesContentSkeleton />,
+  bookmarks: <BookmarksPanelSkeleton />,
+  persona: <PersonaPlazaSkeleton />,
+  team: <TeamPanelSkeleton />,
+  notifications: <NotificationsPanelSkeleton />,
+  memory: <MemoryPanelSkeleton />,
 };
 
 export function TabContent({ activeTab }: { activeTab: TabType }) {

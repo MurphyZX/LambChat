@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { PanelHeader } from "../common/PanelHeader";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import { FeedbackPanelSkeleton } from "../skeletons";
+import { FeedbackListSkeleton } from "../skeletons";
 import { Pagination } from "../common/Pagination";
 import { ImageViewer } from "../common";
 import { feedbackApi } from "../../services/api/feedback";
@@ -617,7 +617,7 @@ export function FeedbackPanel() {
       {/* Feedback list */}
       <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
         {isLoading && feedbackList.length === 0 ? (
-          <FeedbackPanelSkeleton />
+          <FeedbackListSkeleton />
         ) : !isLoading && feedbackList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800">

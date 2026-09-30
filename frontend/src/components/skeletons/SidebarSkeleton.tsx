@@ -36,12 +36,12 @@ function SidebarRailSkeleton() {
           <SidebarRailIconSkeleton />
         </div>
 
-        {/* Action icons — matches real rail: NewChat, Search, ScheduledTasks, FileLibrary, RecentChats, More */}
+        {/* Action icons — matches real rail: NewChat, Search, ScheduledTasks, FileLibrary, Bookmarks, RecentChats, More */}
         <div
           className="mt-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center w-full space-y-1"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 7 }).map((_, i) => (
             <SidebarRailIconSkeleton key={i} />
           ))}
         </div>

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bell, Search, PanelLeft } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import clsx from "clsx";
 import { BrandLogo } from "../../common/BrandLogo";
 import { BrandWordmark } from "../../common/BrandWordmark";
@@ -274,16 +274,6 @@ export function DesktopSidebarShell({
                     <Search size={16} />
                   </button>
                 </div>
-                {!isDesktopShell() && (
-                  <button
-                    type="button"
-                    onClick={() => onToggleCollapsed(true)}
-                    aria-label={t("sidebar.collapseSidebar")}
-                    className="ml-auto flex size-8 items-center justify-center rounded-md text-theme-text-secondary hover:bg-theme-bg-subtle focus-visible:outline focus-visible:outline-2"
-                  >
-                    <PanelLeft size={16} />
-                  </button>
-                )}
               </div>
             </>
           )}

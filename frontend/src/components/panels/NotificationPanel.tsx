@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { Plus, Pencil, Trash2, Bell, ChevronDown, Save } from "lucide-react";
 import { PanelHeader } from "../common/PanelHeader";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import { PanelLoadingState } from "../common/PanelLoadingState";
+import { NotificationsListSkeleton } from "../skeletons";
 import { Pagination } from "../common/Pagination";
 import { StatusBadge } from "../common/StatusBadge";
 import type { StatusColor } from "../common/StatusBadge";
@@ -436,7 +436,7 @@ export function NotificationPanel() {
       {/* Notification List */}
       <div className="panel-body flex-1 overflow-y-auto">
         {isLoading && notifications.length === 0 ? (
-          <PanelLoadingState />
+          <NotificationsListSkeleton />
         ) : !isLoading && notifications.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">

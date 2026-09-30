@@ -1,5 +1,7 @@
 import { SkeletonLine } from "./primitives";
 import { PANEL_ROW_SKELETON_COUNT } from "./PanelSkeletonHelpers";
+import { PanelHeaderSkeleton } from "./PanelHeaderSkeleton";
+import { PanelPaginationSkeleton } from "./PanelSkeletonHelpers";
 import { SidebarSkeleton } from "./SidebarSkeleton";
 
 const appSafeAreaTop =
@@ -15,8 +17,8 @@ function FilesToolbarSkeleton() {
         className="absolute inset-0"
         style={{ backgroundColor: "var(--theme-bg)" }}
       />
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-theme-border/60" />
-      <div className="relative px-3 @sm:px-4 @md:px-6 py-2 @md:py-3">
+      <PanelHeaderSkeleton hasSearch={false} hasActions={false} className="panel-header--desktop-identity" />
+      <div className="file-library-toolbar panel-inset relative">
         <div className="flex items-center justify-between gap-2 @sm:gap-3 w-full font-serif">
           <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
             <div className="skeleton-line h-9 w-16 sm:w-20 rounded-lg" />
@@ -37,10 +39,10 @@ function FilesToolbarSkeleton() {
 /** Session group list skeleton — content only, the real Toolbar stays mounted above it */
 export function FilesListSkeleton() {
   return (
-    <div className="flex flex-col pb-6 px-4 @md:px-6 gap-3 @md:gap-6 animate-fade-in">
+    <div className="panel-sections flex flex-col animate-fade-in">
       {/* Session group 1 */}
-      <div className="w-full flex flex-col gap-2.5 @md:gap-3">
-        <div className="flex items-center justify-between gap-2 pt-4 @md:pt-5 font-serif">
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2 font-serif">
           <SkeletonLine
             width="w-32 sm:w-40"
             className="!h-[14px] sm:!h-[15px] !rounded-md"
@@ -55,8 +57,8 @@ export function FilesListSkeleton() {
       </div>
 
       {/* Session group 2 */}
-      <div className="w-full flex flex-col gap-2.5 @md:gap-3">
-        <div className="flex items-center justify-between gap-2 pt-4 @md:pt-5 font-serif">
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2 font-serif">
           <SkeletonLine
             width="w-24 sm:w-32"
             className="!h-[14px] sm:!h-[15px] !rounded-md"
@@ -76,11 +78,12 @@ export function FilesListSkeleton() {
 /** Files content area skeleton (toolbar + grid cards, no sidebar/header) */
 export function FilesContentSkeleton() {
   return (
-    <div className="flex min-h-full flex-col @container animate-fade-in">
+    <div className="flex h-full min-h-0 flex-col @container animate-fade-in">
       <FilesToolbarSkeleton />
-      <div className="flex-1 overflow-y-auto min-h-0 relative z-[1]">
+      <div className="panel-body flex-1 overflow-y-auto min-h-0 relative z-[1]">
         <FilesListSkeleton />
       </div>
+      <PanelPaginationSkeleton />
     </div>
   );
 }
@@ -142,8 +145,8 @@ export function FilesPageSkeleton() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-hidden">
-          <div className="w-full h-full sm:mx-auto lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem] px-4">
+        <main data-panel="files" className="flex-1 min-w-0 min-h-0 overflow-hidden">
+          <div className="w-full h-full sm:mx-auto lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem]">
             <FilesContentSkeleton />
           </div>
         </main>

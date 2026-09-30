@@ -23,3 +23,12 @@ test("docked panels reserve native titlebar space while keeping the web top edge
     "height: calc(100% - var(--titlebar-inset, 0px) - 0.5rem)",
   );
 });
+
+test("assistant heading preserves serif typography and a stable centered line box", () => {
+  const root = resolve(import.meta.dirname, "../..");
+  const css = readFileSync(resolve(root, "styles/desktop.css"), "utf8");
+  const headingRule = css.match(/\.chat-assistant-heading\s+\.font-serif\s*\{([^}]+)\}/)?.[1] ?? "";
+  expect(headingRule).not.toContain("font-family:");
+  const message = readFileSync(resolve(root, "components/chat/ChatMessage/index.tsx"), "utf8");
+  expect(message).toMatch(/className="min-w-0 truncate[^"\n]*leading-none[^"\n]*font-serif"/);
+});
