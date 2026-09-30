@@ -13,7 +13,7 @@ import {
 import { AboutDialog } from "../common/AboutDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { PanelSearchInput } from "../common/PanelSearchInput";
-import { PanelLoadingState } from "../common/PanelLoadingState";
+import { SettingsListSkeleton } from "../skeletons";
 import { Button, Input, Select, Textarea } from "../common";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -712,7 +712,7 @@ export function SettingsPanel() {
             )}
 
             {isLoading && !settings ? (
-              <PanelLoadingState text={t("settings.loading")} />
+              <SettingsListSkeleton />
             ) : filteredSettings.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-stone-400 dark:text-stone-500">
                 <Search size={40} className="mb-2 opacity-30" />

@@ -157,7 +157,6 @@ html:has([data-titlebar], [data-workspace-ui]) .user-message-bubble {
 html:has([data-titlebar], [data-workspace-ui])
   .chat-assistant-heading
   .font-serif {
-  font-family: var(--desktop-ui-font);
   font-size: 0.875rem;
   font-weight: 600;
 }

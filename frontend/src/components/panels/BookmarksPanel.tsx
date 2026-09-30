@@ -18,7 +18,7 @@ import {
 import { Pagination } from "../common/Pagination";
 import { useClientPagination } from "../../hooks/useClientPagination";
 import { PanelHeader } from "../common/PanelHeader";
-import { PanelLoadingState } from "../common/PanelLoadingState";
+import { BookmarksListSkeleton } from "../skeletons";
 import { useBookmarks } from "../../hooks/useBookmarks";
 import {
   ensureBookmarksLoaded,
@@ -84,7 +84,7 @@ export function BookmarksPanel() {
 
       <div className="panel-body flex-1 overflow-y-auto min-h-0">
         {status === "loading" && items.length === 0 && (
-          <PanelLoadingState text={t("bookmarks.loading")} />
+          <BookmarksListSkeleton />
         )}
 
         {status === "error" && (

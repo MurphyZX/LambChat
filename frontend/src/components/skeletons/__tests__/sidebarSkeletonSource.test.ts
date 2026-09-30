@@ -27,3 +27,7 @@ test("sidebar skeleton shares repeated rail and nav row primitives", () => {
     source.match(/skeleton-line size-5 rounded-md shrink-0/g)?.length,
   ).toBe(1);
 });
+
+test("rail skeleton reserves the bookmarks navigation item", () => {
+  expect(source).toMatch(/Array\.from\(\{ length: 7 \}\)/);
+});

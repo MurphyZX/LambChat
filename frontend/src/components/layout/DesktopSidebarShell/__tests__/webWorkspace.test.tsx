@@ -41,6 +41,28 @@ test("native sidebar toggle opens the drawer at mobile widths", () => {
   expect(toggleMobile).toHaveBeenCalledWith(true);
 });
 
+test("desktop header omits collapse and gives notification and search equal spacing", () => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: 1200,
+  });
+  render(
+    <MemoryRouter>
+      <DesktopSidebarShellGate collapsed={false} onToggleCollapsed={vi.fn()}>
+        <div>chats</div>
+      </DesktopSidebarShellGate>
+    </MemoryRouter>,
+  );
+  expect(
+    screen.queryByRole("button", { name: "sidebar.collapseSidebar" }),
+  ).toBeNull();
+  const notifications = screen.getByRole("button", { name: "nav.notifications" });
+  const search = screen.getByRole("button", { name: "sidebar.searchSessions" });
+  expect(notifications.parentElement).toBe(search.parentElement);
+  expect(notifications).toHaveClass("size-8");
+  expect(search).toHaveClass("size-8");
+});
+
 test("brand header opens the existing search and notification surfaces", () => {
   Object.defineProperty(window, "innerWidth", {
     configurable: true,

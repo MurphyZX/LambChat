@@ -319,7 +319,7 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
     isLoading && filteredSkills.length === 0 && !hasActiveFilters;
 
   if (isInitialLoading) {
-    return <MarketplacePanelSkeleton />;
+    return <MarketplacePanelSkeleton embedded={embedded} />;
   }
 
   return (

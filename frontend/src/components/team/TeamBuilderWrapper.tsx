@@ -1,3 +1,4 @@
+import { TeamListSkeleton } from "../skeletons";
 import {
   useState,
   useEffect,
@@ -574,7 +575,7 @@ export function TeamBuilderWrapper() {
         )}
 
         {loading ? (
-          <EmptyState icon={<Users size={28} />} title={t("team.loading")} />
+          <TeamListSkeleton />
         ) : teams.length === 0 ? (
           <EmptyState
             icon={<Users size={28} />}
